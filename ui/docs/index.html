@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>组件库 | Goed UI</title>
+<style>
+:root{
+  --vp-c-brand:#3eaf7c;
+  --vp-c-brand-light:#4abf8a;
+  --vp-c-brand-dark:#2c9062;
+  --vp-c-brand-bg:rgba(62,175,124,.12);
+  --vp-c-text-1:#213547;
+  --vp-c-text-2:#476582;
+  --vp-c-text-3:#90a4b7;
+  --vp-c-divider:#eaecef;
+  --vp-c-bg:#ffffff;
+  --vp-c-bg-soft:#f6f6f7;
+  --vp-c-bg-code:#282c34;
+  --vp-sidebar-w:272px;
+  --vp-nav-h:60px;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --mono:"JetBrains Mono",Consolas,"Courier New",monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);color:var(--vp-c-text-1);background:var(--vp-c-bg);font-size:16px;line-height:1.75}
+a{color:var(--vp-c-brand);text-decoration:none}
+a:hover{color:var(--vp-c-brand-light)}
+code{font-family:var(--mono);font-size:.875em;background:var(--vp-c-brand-bg);color:var(--vp-c-brand-dark);padding:3px 6px;border-radius:4px}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:#c4cdd5;border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:#a8b5bf}
+
+/* ===== 顶栏 ===== */
+.navbar{position:fixed;top:0;left:0;right:0;height:var(--vp-nav-h);background:rgba(255,255,255,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--vp-c-divider);display:flex;align-items:center;padding:0 24px;z-index:100;transition:.2s}
+.navbar.scrolled{box-shadow:0 4px 12px rgba(0,0,0,.06)}
+.brand{display:flex;align-items:center;gap:10px;cursor:pointer}
+.brand .mark{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#3eaf7c,#2f9e6d);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px}
+.brand .name{font-size:1.15rem;font-weight:600;color:var(--vp-c-text-1)}
+.brand .name span{color:var(--vp-c-brand)}
+.nav-links{margin-left:auto;display:flex;gap:6px;align-items:center}
+.nav-link{padding:6px 12px;border-radius:6px;font-size:.92rem;color:var(--vp-c-text-2);transition:.15s;cursor:pointer}
+.nav-link:hover{color:var(--vp-c-text-1);background:var(--vp-c-bg-soft)}
+
+/* ===== 布局 ===== */
+.page{display:flex;padding-top:var(--vp-nav-h)}
+.sidebar{position:fixed;top:var(--vp-nav-h);left:0;bottom:0;width:var(--vp-sidebar-w);overflow-y:auto;padding:28px 20px 40px}
+.sidebar::-webkit-scrollbar{width:5px}
+.side-group{margin-bottom:20px}
+.side-title{font-size:.78rem;font-weight:700;color:var(--vp-c-text-1);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;padding:0 10px}
+.side-item{display:block;padding:5px 10px;margin:1px 0;border-radius:6px;font-size:.92rem;color:var(--vp-c-text-2);transition:.15s;cursor:pointer}
+.side-item small{float:right;color:var(--vp-c-text-3);font-size:.72rem;font-family:var(--mono);margin-top:2px}
+.side-item:hover{color:var(--vp-c-text-1);background:var(--vp-c-bg-soft)}
+.side-item.active{color:var(--vp-c-brand);background:var(--vp-c-brand-bg);font-weight:500}
+.side-group.side-hide{display:none}
+.side-item.side-hide{display:none}
+
+/* 内容主列（单页显示，居中） */
+.page{justify-content:center}
+.content{flex:1;min-width:0;margin-left:var(--vp-sidebar-w);padding:36px 56px 80px;max-width:860px}
+@media(min-width:1480px){
+  .content{width:860px;flex:none}
+}
+.docpage{display:none}
+.docpage.show{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.pagemeta{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 8px}
+.vtag{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:14px;font-size:.78rem;font-weight:500}
+.vtag.g{background:var(--vp-c-brand-bg);color:var(--vp-c-brand-dark)}
+.vtag.b{background:rgba(47,124,208,.12);color:#2f7cd0}
+.vtag.o{background:rgba(255,125,0,.12);color:#c25b00}
+.vtag.n{background:var(--vp-c-bg-soft);color:var(--vp-c-text-3)}
+
+/* ===== 首页 hero ===== */
+.hero{text-align:center;padding:46px 0 28px}
+.hero h1{font-size:3rem;font-weight:700;letter-spacing:-.02em;line-height:1.2}
+.hero h1 .grad{background:linear-gradient(120deg,#3eaf7c 30%,#2f7cd0);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .tagline{font-size:1.35rem;color:var(--vp-c-text-3);margin:16px 0 8px;max-width:640px;margin-inline:auto}
+.hero .desc{color:var(--vp-c-text-2);max-width:620px;margin:0 auto;font-size:1rem}
+.hero-actions{display:flex;gap:14px;justify-content:center;margin-top:28px}
+.btn{display:inline-flex;align-items:center;height:48px;padding:0 24px;border-radius:10px;font-size:1rem;font-weight:600;transition:.2s;cursor:pointer}
+.btn.primary{background:var(--vp-c-brand);color:#fff}
+.btn.primary:hover{background:var(--vp-c-brand-light)}
+.btn.plain{border:1px solid var(--vp-c-divider);color:var(--vp-c-text-2);background:var(--vp-c-bg)}
+.btn.plain:hover{color:var(--vp-c-brand);border-color:var(--vp-c-brand)}
+.hero-features{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:44px 0 8px;text-align:left}
+.hf{border:1px solid var(--vp-c-divider);border-radius:12px;padding:20px;transition:.2s;background:var(--vp-c-bg);cursor:pointer}
+.hf:hover{border-color:var(--vp-c-brand);transform:translateY(-2px);box-shadow:0 8px 20px rgba(62,175,124,.10)}
+.hf .ic{font-size:1.5rem;margin-bottom:8px}
+.hf h3{font-size:1.02rem;font-weight:600;margin-bottom:6px}
+.hf p{font-size:.88rem;color:var(--vp-c-text-2);line-height:1.65}
+.comp-index{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:26px 0 4px;text-align:left}
+.ci{display:flex;align-items:center;gap:10px;border:1px solid var(--vp-c-divider);border-radius:10px;padding:10px 16px;cursor:pointer;transition:.18s;font-size:.94rem;color:var(--vp-c-text-2)}
+.ci:hover{border-color:var(--vp-c-brand);color:var(--vp-c-brand);background:var(--vp-c-brand-bg)}
+.ci b{font-weight:600}
+.ci small{color:var(--vp-c-text-3);font-family:var(--mono);font-size:.75rem;margin-left:auto}
+
+/* ===== 正文排版 ===== */
+.doc h1{font-size:2rem;font-weight:600;line-height:1.3;padding-bottom:.35em;border-bottom:1px solid var(--vp-c-divider);margin-bottom:20px}
+.doc h2{font-size:1.4rem;font-weight:600;margin:44px 0 16px;padding-bottom:.35em;border-bottom:1px solid var(--vp-c-divider);scroll-margin-top:calc(var(--vp-nav-h) + 24px)}
+.doc h2 .en{color:var(--vp-c-text-3);font-weight:400;font-size:.95rem;font-family:var(--mono);margin-left:10px}
+.doc h3{font-size:1.12rem;font-weight:600;margin:26px 0 10px}
+.doc p{margin:10px 0}
+.doc .lead{color:var(--vp-c-text-2)}
+.doc ul{padding-left:0;list-style:none;margin:12px 0}
+.doc ul li{position:relative;padding:4px 0 4px 22px;color:var(--vp-c-text-2)}
+.doc ul li::before{content:"";position:absolute;left:4px;top:15px;width:6px;height:6px;border-radius:50%;background:var(--vp-c-brand);opacity:.75}
+.doc ul li b{color:var(--vp-c-text-1);font-weight:600}
+.tip{border-left:4px solid var(--vp-c-brand);background:var(--vp-c-brand-bg);border-radius:0 8px 8px 0;padding:12px 18px;margin:16px 0;color:var(--vp-c-text-2);font-size:.94rem}
+.tip b{color:var(--vp-c-brand-dark)}
+
+/* ===== 代码块 ===== */
+.codewrap{position:relative;margin:14px 0}
+.codehead{display:flex;align-items:center;background:#21252b;border-radius:10px 10px 0 0;padding:8px 16px;font-size:.75rem;color:#8b949e;font-family:var(--mono);gap:10px}
+.codehead .dots{display:flex;gap:6px}
+.codehead .dots i{width:10px;height:10px;border-radius:50%}
+.codehead .dots i:nth-child(1){background:#ff5f56}.codehead .dots i:nth-child(2){background:#ffbd2e}.codehead .dots i:nth-child(3){background:#27c93f}
+.codewrap pre{background:var(--vp-c-bg-code);border-radius:0 0 10px 10px;margin:0;padding:16px 18px;overflow-x:auto;font-size:.84rem;line-height:1.7;font-family:var(--mono)}
+.codewrap pre:first-child{border-radius:10px}
+pre code{background:transparent;padding:0;color:#abb2bf;font-size:inherit;border-radius:0}
+.kw{color:#c678dd}.fn{color:#61afef}.st{color:#98c379}.cm{color:#5c6370;font-style:italic}.ty{color:#e5c07b}.nu{color:#d19a66}
+.copy{position:absolute;top:6px;right:10px;background:#3a3f4b;border:none;color:#abb2bf;border-radius:5px;font-size:.72rem;padding:4px 10px;cursor:pointer;opacity:0;transition:.2s;font-family:var(--font)}
+.codewrap:hover .copy{opacity:1}
+.copy:hover{background:var(--vp-c-brand);color:#fff}
+
+/* ===== API 表格 ===== */
+.tablewrap{overflow-x:auto;margin:14px 0}
+table.api{width:100%;border-collapse:collapse;font-size:.88rem;border:1px solid var(--vp-c-divider);border-radius:8px;overflow:hidden}
+.api th{background:var(--vp-c-bg-soft);text-align:left;padding:10px 16px;color:var(--vp-c-text-1);font-weight:600;white-space:nowrap}
+.api td{padding:10px 16px;border-top:1px solid var(--vp-c-divider);vertical-align:top;color:var(--vp-c-text-2)}
+.api tbody tr{transition:.12s}
+.api tbody tr:hover{background:#fafcfa}
+.api td:first-child{white-space:nowrap}
+.api .m{font-family:var(--mono);font-size:.82rem;color:var(--vp-c-brand-dark);background:var(--vp-c-brand-bg);padding:2px 7px;border-radius:4px;display:inline-block;margin:1px 0}
+.api .t{font-family:var(--mono);font-size:.78rem;color:#8250df}
+
+/* ===== 上一页 / 下一页 ===== */
+.pager{display:flex;justify-content:space-between;gap:16px;margin-top:56px;padding-top:24px;border-top:1px solid var(--vp-c-divider)}
+.pager a{display:block;max-width:48%;border:1px solid var(--vp-c-divider);border-radius:10px;padding:14px 20px;transition:.18s;overflow:hidden}
+.pager a:hover{border-color:var(--vp-c-brand);box-shadow:0 6px 16px rgba(62,175,124,.10)}
+.pager a.next{text-align:right;margin-left:auto}
+.pager .dir{display:block;font-size:.78rem;color:var(--vp-c-text-3);margin-bottom:4px}
+.pager .pt{font-size:.98rem;font-weight:600;color:var(--vp-c-text-1)}
+.pager a:hover .pt{color:var(--vp-c-brand)}
+
+/* 右侧大纲 */
+.outline{position:fixed;top:var(--vp-nav-h);right:0;bottom:0;width:230px;padding:36px 24px;overflow-y:auto}
+.outline-title{font-size:.78rem;font-weight:700;color:var(--vp-c-text-1);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px}
+.outline a{display:block;font-size:.85rem;color:var(--vp-c-text-3);padding:4px 0 4px 14px;border-left:1.5px solid var(--vp-c-divider);transition:.15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.outline a:hover{color:var(--vp-c-text-1)}
+.outline a.on{color:var(--vp-c-brand);border-left-color:var(--vp-c-brand);font-weight:500}
+.outline a.lvl3{padding-left:26px;font-size:.8rem}
+.outline-empty{color:var(--vp-c-text-3);font-size:.8rem;padding-left:14px}
+
+@media(max-width:1280px){.outline{display:none}}
+@media(max-width:1024px){
+  .sidebar{display:none}
+  .content{margin-left:0;padding:24px 24px 60px}
+  .hero-features{grid-template-columns:1fr}
+  .comp-index{grid-template-columns:1fr}
+  .hero h1{font-size:2.2rem}
+}
+</style>
+</head>
+<body>
+
+<nav class="navbar" id="navbar">
+  <div class="brand" onclick="go('introduction')">
+    <div class="mark">G</div>
+    <div class="name">Goed <span>UI</span></div>
+  </div>
+  <div class="nav-links">
+    <span class="nav-link" onclick="go('usage')">使用方式</span>
+    <span class="nav-link" onclick="go('architecture')">架构</span>
+    <span class="nav-link" onclick="go('button')">组件</span>
+    <span class="nav-link" style="color:var(--vp-c-text-3)">v0.2</span>
+  </div>
+</nav>
+
+<div class="page">
+<!-- ============ 侧栏 ============ -->
+<aside class="sidebar">
+  <div class="side-group" data-group>
+    <div class="side-title">指南</div>
+    <span class="side-item" data-page="introduction">介绍</span>
+    <span class="side-item" data-page="usage">使用方式</span>
+    <span class="side-item" data-page="architecture">架构</span>
+  </div>
+  <div class="side-group" data-group>
+    <div class="side-title">基础组件</div>
+    <span class="side-item" data-page="button">按钮 <small>Button</small></span>
+    <span class="side-item" data-page="dialog">对话框 <small>Dialog</small></span>
+    <span class="side-item" data-page="inputdialog">输入对话框 <small>InputDialog</small></span>
+    <span class="side-item" data-page="contextmenu">上下文菜单 <small>ContextMenu</small></span>
+    <span class="side-item" data-page="menubar">菜单栏 <small>MenuBar</small></span>
+    <span class="side-item" data-page="scrollbar">滚动条 <small>ScrollBar</small></span>
+    <span class="side-item" data-page="statusbar">状态栏 <small>StatusBar</small></span>
+    <span class="side-item" data-page="canvas">画布 <small>Canvas</small></span>
+  </div>
+  <div class="side-group" data-group>
+    <div class="side-title">编辑器套件</div>
+    <span class="side-item" data-page="editor">文本编辑器 <small>Editor</small></span>
+    <span class="side-item" data-page="findreplace">查找替换 <small>FindReplace</small></span>
+    <span class="side-item" data-page="linenumbers">行号列 <small>LineNumbers</small></span>
+    <span class="side-item" data-page="minimap">缩略图 <small>Minimap</small></span>
+    <span class="side-item" data-page="foldgutter">折叠侧栏 <small>FoldGutter</small></span>
+    <span class="side-item" data-page="filetree">文件树 <small>FileTree</small></span>
+    <span class="side-item" data-page="tabs">标签页 <small>Tabs</small></span>
+  </div>
+  <div class="side-group" data-group>
+    <div class="side-title">预览组件</div>
+    <span class="side-item" data-page="imageview">图片预览 <small>ImageView</small></span>
+    <span class="side-item" data-page="hexviewer">十六进制预览 <small>HexViewer</small></span>
+  </div>
+  <div class="side-group" data-group>
+    <div class="side-title">应用壳层</div>
+    <span class="side-item" data-page="titlebar">标题栏 <small>TitleBar</small></span>
+    <span class="side-item" data-page="application">Application <small>ui/app</small></span>
+  </div>
+</aside>
+
+<!-- ============ 内容（每页单显） ============ -->
+<main class="content doc">
+
+<!-- ===== 页 1：介绍 ===== -->
+<section class="docpage" id="introduction" data-title="介绍">
+  <div class="hero">
+    <h1>Goed <span class="grad">UI 组件库</span></h1>
+    <p class="tagline">纯 Go 实现的桌面 UI 组件体系，为编辑器与工具类应用而生</p>
+    <p class="desc">所有组件为保留模式绘制，接收 core.DrawingContext 抽象渲染，主题经 ui/theme 注入。声明式与命令式两种用法，无 CGo 依赖。</p>
+    <div class="hero-actions">
+      <span class="btn primary" onclick="go('usage')">快速开始</span>
+      <span class="btn plain" onclick="go('button')">浏览第一个组件 →</span>
+    </div>
+  </div>
+  <div class="hero-features">
+    <div class="hf"><div class="ic">🎨</div><h3>主题驱动</h3><p>Dark / Light / Tabby 三套主题令牌，组件零硬编码色值，切换即时生效。</p></div>
+    <div class="hf"><div class="ic">⚡</div><h3>高性能渲染</h3><p>GDI 双缓冲 + Go 侧缩放合成，平铺列表与脏区局部重绘支撑大型工作区。</p></div>
+    <div class="hf"><div class="ic">🧩</div><h3>声明式为主</h3><p>runtime 元素（H 标签）声明界面，响应式驱动更新；命令式作为画布自绘与复杂组件的补充。</p></div>
+  </div>
+  <h2 style="border:none">组件导航</h2>
+  <div class="comp-index" id="comp-index"></div>
+</section>
+
+<!-- ===== 页：使用方式 ===== -->
+<section class="docpage" id="usage" data-title="使用方式">
+  <h1>使用方式</h1>
+  <p class="lead">Goed UI 以<b>声明式为主</b>：应用界面通过 <code>runtime.H(tag, props)</code> 声明 VNode 树，runtime 负责挂载、属性补丁、Flex 布局与响应式更新闭环（Vue 风格）。命令式作为补充，用于画布内部的自绘场景与尚未提供声明式元素的复杂组件。</p>
+
+  <h2>声明式优先（推荐）</h2>
+  <p>根组件在 setup 中返回 VNode 树，状态经 reactive ref 驱动重渲染，无需手动管理失效与重绘：</p>
+<div class="codewrap"><div class="codehead"><span class="dots"><i></i><i></i><i></i></span>Go</div><button class="copy" onclick="cp(this)">Copy</button>
+<pre><code><span class="kw">var</span> App = runtime.<span class="fn">DefineComponent</span>(<span class="st">"MyApp"</span>,
+    <span class="kw">func</span>(ctx *runtime.SetupContext) runtime.RenderFunc {
+        count := runtime.<span class="fn">Ref</span>(<span class="nu">0</span>)
+        <span class="kw">return func</span>() []*runtime.VNode {
+            <span class="kw">return</span> []*runtime.VNode{
+                runtime.<span class="fn">H</span>(<span class="st">"vstack"</span>, runtime.Props{<span class="st">"gap"</span>: <span class="nu">8</span>},
+                    runtime.<span class="fn">H</span>(<span class="st">"titlebar"</span>, runtime.Props{<span class="st">"title"</span>: <span class="st">"My App"</span>}),
+                    runtime.<span class="fn">H</span>(<span class="st">"text"</span>, runtime.Props{
+                        <span class="st">"text"</span>: fmt.<span class="fn">Sprintf</span>(<span class="st">"点击了 %d 次"</span>, count.<span class="fn">Get</span>()),
+                    }),
+                    runtime.<span class="fn">H</span>(<span class="st">"button"</span>, runtime.Props{
+                        <span class="st">"text"</span>:   <span class="st">"+1"</span>,
+                        <span class="st">"onClick"</span>: <span class="kw">func</span>() { count.<span class="fn">Set</span>(count.<span class="fn">Get</span>() + <span class="nu">1</span>) },
+                    }),
+                    <span class="cm">// 声明式画布：onDraw 内部仍可命令式绘制</span>
+                    runtime.<span class="fn">H</span>(<span class="st">"canvas"</span>, runtime.Props{
+                        <span class="st">"flex"</span>:   <span class="nu">1</span>,
+                        <span class="st">"onDraw"</span>: drawScene,
+                        <span class="st">"onEvent"</span>: handleEvent,
+                    }),
+                ),
+            }
+        }
+    })</code></pre></div>
+
+  <h2>当前声明式元素清单</h2>
+  <p>runtime 已注册 <b>8 个宿主元素</b>（<code>elements.go / canvas_element.go / titlebar_element.go / runtime.go</code> 的 init 注册）：</p>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th style="width:110px">元素标签</th><th>宿主</th><th>关键 props</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">box</code></td><td>通用容器：背景 + 内边距 + Flex 布局</td><td><span class="t">flex / background / padding / style</span></td></tr>
+  <tr><td><code class="m">vstack</code></td><td>纵向容器（box 的方向别名）</td><td><span class="t">gap / flex / background</span></td></tr>
+  <tr><td><code class="m">hstack</code></td><td>横向容器（box 的方向别名）</td><td><span class="t">gap / flex / background</span></td></tr>
+  <tr><td><code class="m">button</code></td><td>按钮</td><td><span class="t">text / onClick / flex / visible</span></td></tr>
+  <tr><td><code class="m">input</code></td><td>单行输入框</td><td><span class="t">value / onInput / placeholder / flex</span></td></tr>
+  <tr><td><code class="m">text</code></td><td>文本节点</td><td><span class="t">text / color / fontSize</span></td></tr>
+  <tr><td><code class="m">canvas</code></td><td>自绘画布（通往命令式绘制的桥）</td><td><span class="t">onDraw / onEvent / focusable / mouseCapture / flex / onWindow / dragRegion</span></td></tr>
+  <tr><td><code class="m">titlebar</code></td><td>自绘标题栏</td><td><span class="t">title / 按钮 host</span></td></tr>
+  </tbody></table></div>
+
+  <h2>命令式（补充手段）</h2>
+  <p>命令式用于两类场景：<b>画布内部的自绘内容</b>（onDraw 回调内直接调用组件 Render），以及<b>尚未提供声明式元素的复杂组件</b>（Editor 套件、预览器等以 session 形式在 canvas 内编排）。</p>
+<div class="codewrap"><div class="codehead"><span class="dots"><i></i><i></i><i></i></span>Go</div><button class="copy" onclick="cp(this)">Copy</button>
+<pre><code><span class="cm">// 编辑器 App 的架构：声明式壳（App 组件）+ 命令式芯（session.draw）</span>
+<span class="kw">var</span> App = runtime.<span class="fn">DefineComponent</span>(<span class="st">"Editor"</span>, <span class="kw">func</span>(ctx *runtime.SetupContext) runtime.RenderFunc {
+    <span class="kw">return func</span>() []*runtime.VNode{
+        <span class="kw">return</span> []*runtime.VNode{runtime.<span class="fn">H</span>(<span class="st">"canvas"</span>, runtime.Props{
+            <span class="st">"onDraw"</span>:  session.draw,  <span class="cm">// 命令式编排在这里发生</span>
+            <span class="st">"onEvent"</span>: session.event,
+        })}
+    }
+})
+
+<span class="kw">func</span> (s *session) <span class="fn">draw</span>(ctx core.DrawingContext, b core.Rect) {
+    s.titlebar.<span class="fn">Render</span>(ctx, <span class="nu">0</span>, <span class="nu">0</span>, b.W)
+    s.tree.<span class="fn">Render</span>(ctx, <span class="nu">0</span>, <span class="nu">40</span>, sidebarW, b.H-<span class="nu">40</span>-statusH)
+    s.tabs.<span class="fn">Render</span>(ctx, sidebarW, <span class="nu">40</span>, b.W-sidebarW)
+    <span class="kw">if</span> s.docKind == KindImage && s.imageView.<span class="fn">Ready</span>() {
+        s.imageView.<span class="fn">Render</span>(ctx, editorX, editorY, editorW, editorH)
+    } <span class="kw">else</span> {
+        s.editor.<span class="fn">Render</span>(ctx, editorX, editorY, editorW, editorH)
+    }
+    s.status.<span class="fn">Render</span>(ctx, <span class="nu">0</span>, b.H-s.status.Height, b.W)
+}</code></pre></div>
+
+  <h2>组件支持情况总览</h2>
+  <p>全部 20 个组件/宿主的两种模式支持情况（✅ 完整支持 / 🔶 经桥接使用 / ➖ 暂不支持）：</p>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th style="width:170px">组件</th><th style="width:110px">声明式</th><th style="width:110px">命令式</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td>容器 box / vstack / hstack</td><td>✅</td><td>✅</td><td>原生声明式元素，Flex 布局基石</td></tr>
+  <tr><td>Button 按钮</td><td>✅</td><td>✅</td><td>原生声明式元素</td></tr>
+  <tr><td>Input 输入框</td><td>✅</td><td>✅</td><td>原生声明式元素（onInput 回调接 ref）</td></tr>
+  <tr><td>Text 文本</td><td>✅</td><td>✅</td><td>原生声明式元素</td></tr>
+  <tr><td>Canvas 画布</td><td>✅</td><td>✅</td><td>声明式元素 + 命令式绘制的双模式桥</td></tr>
+  <tr><td>TitleBar 标题栏</td><td>✅</td><td>✅</td><td>原生声明式元素（titlebar）</td></tr>
+  <tr><td>Editor 文本编辑器</td><td>🔶</td><td>✅</td><td>经 canvas 的 onDraw/onEvent 桥接（当前编辑器即此架构）</td></tr>
+  <tr><td>FileTree 文件树</td><td>🔶</td><td>✅</td><td>经 canvas 桥接；声明式元素待建设</td></tr>
+  <tr><td>Tabs 标签页</td><td>🔶</td><td>✅</td><td>经 canvas 桥接；声明式元素待建设</td></tr>
+  <tr><td>FindReplace 查找替换</td><td>🔶</td><td>✅</td><td>悬浮层，经 canvas 桥接</td></tr>
+  <tr><td>StatusBar 状态栏</td><td>🔶</td><td>✅</td><td>经 canvas 桥接</td></tr>
+  <tr><td>MenuBar 菜单栏</td><td>🔶</td><td>✅</td><td>经 canvas 桥接</td></tr>
+  <tr><td>LineNumbers 行号列</td><td>🔶</td><td>✅</td><td>编辑器配套件，经 canvas 桥接</td></tr>
+  <tr><td>Minimap 缩略图</td><td>🔶</td><td>✅</td><td>编辑器内部联动，经 canvas 桥接</td></tr>
+  <tr><td>FoldGutter 折叠侧栏</td><td>🔶</td><td>✅</td><td>编辑器配套件，经 canvas 桥接</td></tr>
+  <tr><td>ImageView 图片预览</td><td>🔶</td><td>✅</td><td>经 canvas 桥接</td></tr>
+  <tr><td>HexViewer 十六进制预览</td><td>🔶</td><td>✅</td><td>经 canvas 桥接</td></tr>
+  <tr><td>Dialog 对话框</td><td>➖</td><td>✅</td><td>模态浮层，命令式 Show/Hide；声明式 v-if 场景待建设</td></tr>
+  <tr><td>InputDialog 输入对话框</td><td>➖</td><td>✅</td><td>模态浮层，命令式</td></tr>
+  <tr><td>ContextMenu 上下文菜单</td><td>➖</td><td>✅</td><td>命令式 Show(x, y, items)</td></tr>
+  </tbody></table></div>
+  <div class="tip"><b>图例</b>：✅ = 原生支持；🔶 = 通过 <code>canvas</code> 元素的 onDraw/onEvent 桥接到命令式 API（声明式壳 + 命令式芯）；➖ = 暂无声明式形态。<br><b>演进方向</b>：为编辑器套件（FileTree / Tabs / Editor）补齐原生声明式元素，将 Dialog/ContextMenu 纳入 v-if/事件驱动的声明式生命周期。</div>
+</section>
+
+<!-- ===== 页：架构 ===== -->
+<section class="docpage" id="architecture" data-title="架构">
+  <h1>架构</h1>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th style="width:190px">层级</th><th>职责</th><th style="width:250px">关键类型</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">ui/core</code></td><td>组件协议、绘制上下文抽象、布局原语</td><td><span class="t">Component / DrawingContext / Rect</span></td></tr>
+  <tr><td><code class="m">ui/runtime</code></td><td>声明式渲染器、VNode 补丁、响应式驱动</td><td><span class="t">DefineComponent / H / Renderer</span></td></tr>
+  <tr><td><code class="m">ui/components</code></td><td>全部 UI 组件</td><td><span class="t">Editor / FileTree / ImageView …</span></td></tr>
+  <tr><td><code class="m">ui/platform/windows</code></td><td>Win32 窗口、GDI 双缓冲、剪贴板、对话框</td><td><span class="t">FramelessWindow / GDIContext</span></td></tr>
+  <tr><td><code class="m">ui/theme</code></td><td>主题令牌与切换（Dark / Light / Tabby）</td><td><span class="t">GetTheme / SetTheme / Next</span></td></tr>
+  <tr><td><code class="m">ui/app</code></td><td>应用构建器：窗口 shell、事件接线、绘制循环</td><td><span class="t">CreateApp / Application</span></td></tr>
+  </tbody></table></div>
+
+  <h2>绘制上下文扩展能力</h2>
+  <p>平台通过接口探测参与扩展能力，组件自动回退：</p>
+  <ul>
+  <li><b>DrawingContext</b> — 基础形状/文本（所有平台必须）</li>
+  <li><b>ImageDrawingContext</b> — 位图绘制（不支持时 ImageView 回退文字提示）</li>
+  <li><b>AlphaDrawingContext</b> — 半透明混合（不支持时 Dialog 回退不透明遮罩）</li>
+  <li><b>clipStack</b> — 嵌套裁剪（Canvas Push/Pop 不破坏外层裁剪区）</li>
+  </ul>
+
+  <h2>一次事件-绘制往返</h2>
+  <ul>
+  <li><b>Win32 消息</b> — FramelessWindow wndProc 收到 WM_* 转为 core.Event</li>
+  <li><b>事件分发</b> — app 层 DispatchEvent 递归派发到焦点组件</li>
+  <li><b>状态更新</b> — 组件修改状态，reactive effect 触发重渲染</li>
+  <li><b>WM_PAINT</b> — GDIContext 双缓冲绘制，组件按区域 Render</li>
+  <li><b>上屏</b> — EndDraw BitBlt 双缓冲到窗口 DC</li>
+  </ul>
+</section>
+
+<!-- ===== 页：按钮 ===== -->
+<section class="docpage" id="button" data-title="按钮 Button">
+  <h1>按钮 <span style="color:var(--vp-c-text-3);font-weight:400;font-size:.95rem;font-family:var(--mono)">Button</span></h1>
+  <div class="pagemeta"><span class="vtag g">命令式</span><span class="vtag b">元素: button</span></div>
+  <p class="lead">标准文本按钮，渲染由主题驱动，悬停/按下状态内置。</p>
+
+  <h2>使用</h2>
+<div class="codewrap"><div class="codehead"><span class="dots"><i></i><i></i><i></i></span>Go</div><button class="copy" onclick="cp(this)">Copy</button>
+<pre><code><span class="cm">// 命令式：创建按钮并注册点击回调</span>
+<span class="ty">btn</span> := components.<span class="fn">NewButton</span>(<span class="st">"打开文件"</span>, <span class="nu">0</span>, <span class="nu">0</span>, <span class="nu">120</span>, <span class="nu">34</span>)
+btn.OnClick = <span class="kw">func</span>() { openDialog() }
+
+<span class="cm">// 事件分发（宿主转发鼠标事件）</span>
+<span class="kw">if</span> btn.<span class="fn">HandleMouseDown</span>(x, y) { <span class="kw">return true</span> }
+btn.<span class="fn">HandleMouseMove</span>(x, y)  <span class="cm">// 悬停高亮</span>
+
+<span class="cm">// 绘制</span>
+btn.<span class="fn">Render</span>(ctx)
+
+<span class="cm">// 声明式等价写法</span>
+runtime.<span class="fn">H</span>(<span class="st">"button"</span>, runtime.Props{
+    <span class="st">"text"</span>:   <span class="st">"打开文件"</span>,
+    <span class="st">"onClick"</span>: openDialog,
+})</code></pre></div>
+
+  <h2>API</h2>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th>成员</th><th>类型</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">NewButton(text, x, y, w, h)</code></td><td><span class="t">*Button</span></td><td>创建按钮，初始位置尺寸可被布局覆盖</td></tr>
+  <tr><td><code class="m">OnClick</code></td><td><span class="t">func()</span></td><td>点击回调</td></tr>
+  <tr><td><code class="m">HandleMouseDown/Up(x, y)</code></td><td><span class="t">bool</span></td><td>命中测试；Up 且在按钮内时触发 OnClick</td></tr>
+  <tr><td><code class="m">HandleMouseMove(x, y)</code></td><td><span class="t">()</span></td><td>更新悬停高亮</td></tr>
+  <tr><td><code class="m">Render(ctx)</code></td><td><span class="t">()</span></td><td>按当前状态绘制</td></tr>
+  </tbody></table></div>
+</section>
+
+<!-- ===== 页：对话框 ===== -->
+<section class="docpage" id="dialog" data-title="对话框 Dialog">
+  <h1>对话框 <span style="color:var(--vp-c-text-3);font-weight:400;font-size:.95rem;font-family:var(--mono)">Dialog</span></h1>
+  <div class="pagemeta"><span class="vtag g">命令式</span><span class="vtag o">模态</span></div>
+  <p class="lead">模态遮罩对话框：半透明压暗全屏，居中面板展示标题与消息。</p>
+
+  <h2>使用</h2>
+<div class="codewrap"><div class="codehead"><span class="dots"><i></i><i></i><i></i></span>Go</div><button class="copy" onclick="cp(this)">Copy</button>
+<pre><code><span class="cm">// 确认对话框（危险操作）</span>
+dlg := components.<span class="fn">NewDialog</span>(<span class="st">""</span>, <span class="st">""</span>)
+dlg.<span class="fn">ShowConfirm</span>(<span class="st">"删除"</span>, <span class="st">"将文件移入回收站？"</span>, <span class="kw">func</span>() {
+    doDelete()
+})
+
+<span class="cm">// 普通信息对话框</span>
+about := components.<span class="fn">NewDialog</span>(<span class="st">"About"</span>, <span class="st">"Goed - v0.2"</span>)
+about.<span class="fn">Show</span>()
+
+<span class="cm">// 事件分发：模态打开时优先拦截</span>
+<span class="kw">if</span> dlg.<span class="fn">IsOpen</span>() {
+    <span class="kw">if</span> ev.Type == core.EventMouseDown {
+        dlg.<span class="fn">HandleMouseDown</span>(ev.X, ev.Y, winW, winH)
+        <span class="kw">return true</span>
+    }
+    <span class="kw">if</span> ev.Type == core.EventKeyDown {
+        <span class="kw">return</span> dlg.<span class="fn">HandleKeyDown</span>(ev.Key)
+    }
+}</code></pre></div>
+
+  <h2>API</h2>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th>方法</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">NewDialog(title, message)</code></td><td>创建（内容可后续改写）</td></tr>
+  <tr><td><code class="m">ShowConfirm(title, msg, onOK)</code></td><td>确认对话框；OK 时执行回调</td></tr>
+  <tr><td><code class="m">Show() / Hide() / IsOpen()</code></td><td>显隐控制</td></tr>
+  <tr><td><code class="m">HandleMouseDown(x, y, w, h)</code></td><td>面板内按钮 / 面板外取消</td></tr>
+  <tr><td><code class="m">HandleKeyDown(key)</code></td><td>Enter 确认、Esc 关闭</td></tr>
+  <tr><td><code class="m">Render(ctx, x, y, w, h)</code></td><td>全屏遮罩 + 面板；支持 alpha 上下文真混合</td></tr>
+  </tbody></table></div>
+</section>
+
+<!-- ===== 页：输入对话框 ===== -->
+<section class="docpage" id="inputdialog" data-title="输入对话框 InputDialog">
+  <h1>输入对话框 <span style="color:var(--vp-c-text-3);font-weight:400;font-size:.95rem;font-family:var(--mono)">InputDialog</span></h1>
+  <div class="pagemeta"><span class="vtag g">命令式</span><span class="vtag o">模态</span></div>
+  <p class="lead">单行文本输入模态框，用于重命名、新建文件/文件夹等短文本录入。</p>
+
+  <h2>使用</h2>
+<div class="codewrap"><div class="codehead"><span class="dots"><i></i><i></i><i></i></span>Go</div><button class="copy" onclick="cp(this)">Copy</button>
+<pre><code>dlg := components.<span class="fn">NewInputDialog</span>()
+
+<span class="cm">// 重命名：带初始值</span>
+dlg.OnConfirm = <span class="kw">func</span>(name <span class="ty">string</span>) {
+    <span class="kw">if</span> err := os.<span class="fn">Rename</span>(oldPath, newPath); err == <span class="kw">nil</span> {
+        refreshTree()
+    }
+}
+dlg.<span class="fn">Show</span>(<span class="st">"重命名"</span>, <span class="st">"位置: "</span>+dir, filepath.<span class="fn">Base</span>(oldPath))
+
+<span class="cm">// 模态事件分发（Enter 提交非空值 / Esc 取消）</span>
+<span class="kw">switch</span> ev.Type {
+<span class="kw">case</span> core.EventKeyChar:
+    <span class="kw">if</span> ev.Char >= <span class="nu">0x20</span> { dlg.<span class="fn">HandleChar</span>(ev.Char) }
+<span class="kw">case</span> core.EventKeyDown:
+    dlg.<span class="fn">HandleKeyDown</span>(ev.Key)
+<span class="kw">case</span> core.EventMouseDown:
+    dlg.<span class="fn">HandleMouseDown</span>(ev.X, ev.Y, winW, winH)
+}</code></pre></div>
+
+  <h2>API</h2>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th>成员</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">NewInputDialog()</code></td><td>创建</td></tr>
+  <tr><td><code class="m">Show(title, hint, seed)</code></td><td>打开：标题、位置提示、初始值</td></tr>
+  <tr><td><code class="m">OnConfirm</code> <span class="t">func(string)</span></td><td>提交回调（仅非空输入触发）</td></tr>
+  <tr><td><code class="m">HandleChar / HandleKeyDown / HandleMouseDown</code></td><td>模态拦截事件处理</td></tr>
+  <tr><td><code class="m">Render(ctx, viewW, viewH)</code></td><td>遮罩 + 面板 + 输入框</td></tr>
+  </tbody></table></div>
+</section>
+
+<!-- ===== 页：上下文菜单 ===== -->
+<section class="docpage" id="contextmenu" data-title="上下文菜单 ContextMenu">
+  <h1>上下文菜单 <span style="color:var(--vp-c-text-3);font-weight:400;font-size:.95rem;font-family:var(--mono)">ContextMenu</span></h1>
+  <div class="pagemeta"><span class="vtag g">命令式</span></div>
+  <p class="lead">右键菜单：宿主按命中条目动态构建，点击外部自动关闭。</p>
+
+  <h2>使用</h2>
+<div class="codewrap"><div class="codehead"><span class="dots"><i></i><i></i><i></i></span>Go</div><button class="copy" onclick="cp(this)">Copy</button>
+<pre><code><span class="cm">// 按命中对象动态构建菜单项</span>
+tree.OnContextMenu = <span class="kw">func</span>(entry *components.FileTreeEntry, x, y <span class="ty">int32</span>) []components.MenuItem {
+    <span class="kw">if</span> entry == <span class="kw">nil</span> {
+        <span class="kw">return</span> []components.MenuItem{
+            {Label: <span class="st">"刷新"</span>, Enabled: <span class="kw">true</span>, OnClick: refresh},
+        }
+    }
+    <span class="kw">return</span> []components.MenuItem{
+        {Label: <span class="st">"打开"</span>, Enabled: <span class="kw">true</span>, OnClick: <span class="kw">func</span>() { open(entry.Path) }},
+        {Label: <span class="st">"重命名"</span>, Enabled: <span class="kw">true</span>, OnClick: <span class="kw">func</span>() { rename(entry.Path) }},
+        {Separator: <span class="kw">true</span>},
+        {Label: <span class="st">"删除"</span>, Enabled: <span class="kw">true</span>, OnClick: <span class="kw">func</span>() { del(entry.Path) }},
+    }
+}
+
+<span class="cm">// 事件分发：菜单打开时优先消费点击</span>
+<span class="kw">if</span> tree.ContextMenu.IsVisible {
+    <span class="kw">if</span> tree.ContextMenu.<span class="fn">HandleMouseDown</span>(x, y) {
+        <span class="kw">return true</span>  <span class="cm">// 命中菜单项即触发回调</span>
+    }
+}</code></pre></div>
+
+  <h2>API</h2>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th>成员</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">NewContextMenu()</code></td><td>创建（FileTree / Tabs 内置各自实例）</td></tr>
+  <tr><td><code class="m">Show(x, y, items) / Hide()</code></td><td>弹出 / 关闭</td></tr>
+  <tr><td><code class="m">MenuItem</code></td><td><span class="t">Label / Shortcut / Separator / Enabled / OnClick</span></td></tr>
+  <tr><td><code class="m">HandleMouseDown(x, y)</code></td><td>命中菜单项即触发回调</td></tr>
+  <tr><td><code class="m">Render(ctx) / RenderAt(ctx, ox, oy)</code></td><td>普通 / 偏移坐标渲染（嵌套场景）</td></tr>
+  </tbody></table></div>
+</section>
+
+<!-- ===== 页：菜单栏 ===== -->
+<section class="docpage" id="menubar" data-title="菜单栏 MenuBar">
+  <h1>菜单栏 <span style="color:var(--vp-c-text-3);font-weight:400;font-size:.95rem;font-family:var(--mono)">MenuBar</span></h1>
+  <div class="pagemeta"><span class="vtag g">命令式</span></div>
+  <p class="lead">顶部菜单栏：点击展开下拉项，悬停跨顶级菜单切换。</p>
+
+  <h2>使用</h2>
+<div class="codewrap"><div class="codehead"><span class="dots"><i></i><i></i><i></i></span>Go</div><button class="copy" onclick="cp(this)">Copy</button>
+<pre><code>menu := components.<span class="fn">NewMenuBar</span>()
+
+menu.<span class="fn">AddMenu</span>(<span class="st">"文件"</span>, []components.MenuItem{
+    {Label: <span class="st">"新建"</span>, Shortcut: <span class="st">"Ctrl+N"</span>, Enabled: <span class="kw">true</span>, OnClick: newDoc},
+    {Label: <span class="st">"打开"</span>, Shortcut: <span class="st">"Ctrl+O"</span>, Enabled: <span class="kw">true</span>, OnClick: openDoc},
+    {Separator: <span class="kw">true</span>},
+    {Label: <span class="st">"退出"</span>, Enabled: <span class="kw">true</span>, OnClick: quit},
+})
+
+<span class="cm">// 事件分发：注意 x 为相对 menuX 原点的坐标</span>
+<span class="kw">const</span> menuX = <span class="nu">124</span>
+<span class="kw">if</span> ev.Y < <span class="nu">40</span> && ev.X >= menuX {
+    <span class="kw">return</span> menu.<span class="fn">HandleMouseDown</span>(ev.X-menuX, ev.Y)
+}
+
+<span class="cm">// 渲染：右缘避开窗口按钮区（4 × TitleBarButtonWidth）</span>
+menu.<span class="fn">Render</span>(ctx, menuX, <span class="nu">0</span>, winW-menuX-components.TitleBarButtonWidth*<span class="nu">4</span>)</code></pre></div>
+
+  <h2>API</h2>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th>方法</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">NewMenuBar()</code></td><td>创建</td></tr>
+  <tr><td><code class="m">AddMenu(label, items)</code></td><td>注册顶级菜单</td></tr>
+  <tr><td><code class="m">HandleMouseDown / HandleMouseMove</code></td><td>事件处理（x 为相对坐标）</td></tr>
+  <tr><td><code class="m">IsOpen() / CloseMenu()</code></td><td>状态查询 / 收起</td></tr>
+  <tr><td><code class="m">Render(ctx, x, y, width)</code></td><td>渲染（下拉浮层）</td></tr>
+  </tbody></table></div>
+</section>
+
+<!-- ===== 页：滚动条 ===== -->
+<section class="docpage" id="scrollbar" data-title="滚动条 ScrollBar">
+  <h1>滚动条 <span style="color:var(--vp-c-text-3);font-weight:400;font-size:.95rem;font-family:var(--mono)">ScrollBar</span></h1>
+  <div class="pagemeta"><span class="vtag g">命令式</span><span class="vtag n">内部通用件</span></div>
+  <p class="lead">纵/横滚动条原语：thumb 命中与拖拽独占指针，被 FileTree / HexViewer / Editor 内部复用。</p>
+
+  <h2>使用</h2>
+<div class="codewrap"><div class="codehead"><span class="dots"><i></i><i></i><i></i></span>Go</div><button class="copy" onclick="cp(this)">Copy</button>
+<pre><code><span class="cm">// 一般经 NewVScrollBar / NewHScrollBar 创建</span>
+bar := components.<span class="fn">NewVScrollBar</span>(x, y, height)
+
+<span class="cm">// 按内容量布局 thumb（自动防越界）</span>
+bar.<span class="fn">ShowClamped</span>(scrollOffset, totalRows, visibleRows)
+
+<span class="cm">// 拖拽语义：MouseUp 时宿主转发 Released</span>
+<span class="kw">if</span> bar.dragging { <span class="cm">// 独占指针期间……</span> }</code></pre></div>
+
+  <h2>API</h2>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th>方法</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">NewVScrollBar(x, y, h)</code></td><td>纵向滚动条</td></tr>
+  <tr><td><code class="m">NewHScrollBar(x, y, w)</code></td><td>横向滚动条</td></tr>
+  <tr><td><code class="m">ShowClamped(offset, total, visible)</code></td><td>按内容量计算 thumb 位置</td></tr>
+  <tr><td><code class="m">HandleMouseDown / dragging</code></td><td>拖拽语义（宿主在 MouseUp 转发 Released）</td></tr>
+  </tbody></table></div>
+</section>
+
+<!-- ===== 页：状态栏 ===== -->
+<section class="docpage" id="statusbar" data-title="状态栏 StatusBar">
+  <h1>状态栏 <span style="color:var(--vp-c-text-3);font-weight:400;font-size:.95rem;font-family:var(--mono)">StatusBar</span></h1>
+  <div class="pagemeta"><span class="vtag g">命令式</span></div>
+  <p class="lead">底部状态条：左右双分区文本，右区超宽自动截断。</p>
+
+  <h2>使用</h2>
+<div class="codewrap"><div class="codehead"><span class="dots"><i></i><i></i><i></i></span>Go</div><button class="copy" onclick="cp(this)">Copy</button>
+<pre><code>status := components.<span class="fn">NewStatusBar</span>()
+
+status.<span class="fn">SetLeft</span>(<span class="st">"Ln 12, Col 8"</span>)
+status.<span class="fn">SetRight</span>(<span class="st">"Dark | UTF-8 | Go | LF | 100%"</span>)
+
+<span class="cm">// 渲染：占据窗口底部一行</span>
+status.<span class="fn">Render</span>(ctx, <span class="nu">0</span>, winH-status.Height, winW)</code></pre></div>
+
+  <h2>API</h2>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th>方法</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">NewStatusBar()</code></td><td>创建（Height 28）</td></tr>
+  <tr><td><code class="m">SetLeft(text) / SetRight(text)</code></td><td>更新左右文本</td></tr>
+  <tr><td><code class="m">Render(ctx, x, y, width)</code></td><td>渲染</td></tr>
+  </tbody></table></div>
+</section>
+
+<!-- ===== 页：画布 ===== -->
+<section class="docpage" id="canvas" data-title="画布 Canvas">
+  <h1>画布 <span style="color:var(--vp-c-text-3);font-weight:400;font-size:.95rem;font-family:var(--mono)">Canvas</span></h1>
+  <div class="pagemeta"><span class="vtag g">双模式</span><span class="vtag b">元素: canvas</span></div>
+  <p class="lead">自定义绘制与输入的保留模式组件：OnDraw 获得绘制权，OnEvent 接收输入，支持脏区局部重绘、嵌套裁剪、鼠标捕获与键盘焦点。</p>
+
+  <h2>使用</h2>
+<div class="codewrap"><div class="codehead"><span class="dots"><i></i><i></i><i></i></span>Go</div><button class="copy" onclick="cp(this)">Copy</button>
+<pre><code><span class="cm">// 命令式：全屏画布场景（编辑器主画布即此模式）</span>
+cv := components.<span class="fn">NewCanvas</span>()
+cv.<span class="fn">SetDraw</span>(<span class="kw">func</span>(ctx core.DrawingContext, b core.Rect) {
+    ctx.<span class="fn">DrawRect</span>(<span class="nu">0</span>, <span class="nu">0</span>, b.W, b.H, bg, <span class="kw">true</span>)
+    drawScene(ctx)
+})
+cv.Focusable = <span class="kw">true</span>   <span class="cm">// 键盘事件按焦点分发</span>
+cv.MouseCapture = <span class="kw">true</span> <span class="cm">// 拖拽期间持续接收 move/up</span>
+
+<span class="cm">// 声明式（editor/App.go 的用法）</span>
+runtime.<span class="fn">H</span>(<span class="st">"canvas"</span>, runtime.Props{
+    <span class="st">"flex"</span>:       <span class="nu">1</span>,
+    <span class="st">"focusable"</span>:  <span class="kw">true</span>,
+    <span class="st">"mouseCapture"</span>: <span class="kw">true</span>,
+    <span class="st">"onDraw"</span>:     session.draw,
+    <span class="st">"onEvent"</span>:    session.event,
+})
+
+<span class="cm">// 脏区局部重绘（静态画布优化）</span>
+cv2 := components.<span class="fn">NewCanvas</span>().<span class="fn">SetDirtyTracking</span>(<span class="kw">true</span>)
+cv2.<span class="fn">InvalidateRect</span>(core.Rect{X: <span class="nu">40</span>, Y: <span class="nu">20</span>, W: <span class="nu">30</span>, H: <span class="nu">25</span>}) <span class="cm">// 仅重绘该区域</span></code></pre></div>
+
+  <h2>API</h2>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th>成员</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">NewCanvas(bounds...)</code></td><td>创建；bounds 可省略由布局分配</td></tr>
+  <tr><td><code class="m">SetDraw(fn)</code></td><td><span class="t">func(ctx, bounds)</span> 安装绘制回调</td></tr>
+  <tr><td><code class="m">OnEvent / OnKeyDown / OnMouseDown…</code></td><td>通用与分类型事件回调</td></tr>
+  <tr><td><code class="m">SetDirtyTracking(b) / InvalidateRect(r)</code></td><td>脏区协议：无 Invalidate 的 Render 被跳过</td></tr>
+  <tr><td><code class="m">MouseCapture / Focusable</code></td><td>指针捕获 / 焦点参与</td></tr>
+  <tr><td><code class="m">Render(ctx) / HandleEvent(ev)</code></td><td>裁剪包装绘制 / 事件命中分发</td></tr>
+  </tbody></table></div>
+</section>
+
+<!-- ===== 页：编辑器 ===== -->
+<section class="docpage" id="editor" data-title="文本编辑器 Editor">
+  <h1>文本编辑器 <span style="color:var(--vp-c-text-3);font-weight:400;font-size:.95rem;font-family:var(--mono)">Editor</span></h1>
+  <div class="pagemeta"><span class="vtag g">命令式</span><span class="vtag o">核心</span></div>
+  <p class="lead">编辑器引擎：多光标、折叠、语法高亮、撤销重做、选择与滚动。行为组合自 ui/composables，自身保持绘制与输入原语。</p>
+
+  <h2>使用</h2>
+<div class="codewrap"><div class="codehead"><span class="dots"><i></i><i></i><i></i></span>Go</div><button class="copy" onclick="cp(this)">Copy</button>
+<pre><code>ed := components.<span class="fn">NewEditor</span>()
+
+<span class="cm">// 内容</span>
+ed.<span class="fn">SetText</span>(content)
+text := ed.<span class="fn">GetText</span>()
+
+<span class="cm">// 接入平台剪贴板</span>
+ed.<span class="fn">SetClipboardProvider</span>(
+    <span class="kw">func</span>() <span class="ty">string</span> { <span class="kw">return</span> windows.<span class="fn">ReadClipboardText</span>(h) },
+    <span class="kw">func</span>(v <span class="ty">string</span>) { windows.<span class="fn">WriteClipboardText</span>(h, v) },
+)
+
+<span class="cm">// 编辑与导航</span>
+ed.<span class="fn">InsertChar</span>(<span class="st">'x'</span>)
+ed.<span class="fn">MoveCursor</span>(<span class="nu">1</span>, <span class="nu">0</span>)
+ed.<span class="fn">Undo</span>() / ed.<span class="fn">Redo</span>()
+
+<span class="cm">// 多光标</span>
+ed.<span class="fn">AddCursorAt</span>(line, col, <span class="kw">true</span>)      <span class="cm">// Ctrl+Click</span>
+ed.<span class="fn">SelectNextOccurrence</span>()             <span class="cm">// Ctrl+D</span>
+
+<span class="cm">// 折叠</span>
+ed.<span class="fn">UpdateFoldRegions</span>(<span class="st">"auto"</span>)
+ed.<span class="fn">FoldAll</span>() / ed.<span class="fn">UnfoldAll</span>()
+
+<span class="cm">// 查找集成（配合 FindReplace）</span>
+ed.<span class="fn">GotoPosition</span>(line, col, selectLen) <span class="cm">// 跳转并选中</span>
+ed.<span class="fn">CenterLine</span>(line)                   <span class="cm">// 目标行居中（VSCode 行为）</span>
+
+<span class="cm">// 事件与渲染</span>
+ed.<span class="fn">HandleMouseDown</span>(x, y, btn, shift, ctrl, nowMs)
+ed.<span class="fn">Render</span>(ctx, x, y, w, h)</code></pre></div>
+
+  <h2>API — 内容与光标</h2>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th>方法</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">SetText(s) / GetText()</code></td><td>整段读写文本</td></tr>
+  <tr><td><code class="m">InsertChar / DeleteChar / DeleteCharForward / InsertNewLine</code></td><td>基础编辑原语（并入选区处理）</td></tr>
+  <tr><td><code class="m">MoveCursor / MoveCursorToLineStart/End / MoveCursorToDocStart/End</code></td><td>光标移动</td></tr>
+  <tr><td><code class="m">PageUp / PageDown / EnsureCursorVisible</code></td><td>翻页与滚动跟随</td></tr>
+  <tr><td><code class="m">Undo / Redo</code></td><td>历史（useHistory）</td></tr>
+  </tbody></table></div>
+
+  <h2>API — 选择与剪贴板</h2>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th>方法</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">StartSelection / UpdateSelection / ClearSelection / SelectAll</code></td><td>选择状态</td></tr>
+  <tr><td><code class="m">GetSelectedText / DeleteSelection / IsInSelection</code></td><td>选区读写</td></tr>
+  <tr><td><code class="m">Copy / Cut / Paste</code></td><td>剪贴板（经 SetClipboardProvider 接平台）</td></tr>
+  <tr><td><code class="m">SelectWord / SelectLine / MoveByWord</code></td><td>词/行粒度操作</td></tr>
+  </tbody></table></div>
+
+  <h2>API — 多光标与折叠</h2>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th>方法</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">AddCursorAt / SelectNextOccurrence / SelectAllOccurrences / ExitMultiCursorMode</code></td><td>Ctrl+Click / Ctrl+D / Ctrl+Shift+L / Esc</td></tr>
+  <tr><td><code class="m">UpdateFoldRegions(mode) / ToggleFoldAtCursor / FoldAll / UnfoldAll</code></td><td>折叠管理（useFolding）</td></tr>
+  <tr><td><code class="m">MapVisibleToActual / MapActualToVisible / GetVisibleLineCount</code></td><td>折叠视口映射</td></tr>
+  </tbody></table></div>
+
+  <h2>API — 查找集成与渲染</h2>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th>成员 / 方法</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">GotoPosition(line, col, selectLen) / CenterLine(line)</code></td><td>查找跳转（目标行居中）</td></tr>
+  <tr><td><code class="m">ReplaceRange(line, col, length, rep)</code></td><td>供 FindReplace 逐个替换</td></tr>
+  <tr><td><code class="m">FindMatches / CurrentMatch</code></td><td>宿主同步匹配列表用于高亮</td></tr>
+  <tr><td><code class="m">HandleMouseDown / HandleMouseDrag / HandleMouseWheel / HandleRightClick</code></td><td>输入处理（双击/三击/右键菜单/Shift 横滚）</td></tr>
+  <tr><td><code class="m">Render(ctx, x, y, w, h) / ToggleMinimap</code></td><td>渲染（含 minimap 联动）</td></tr>
+  </tbody></table></div>
+</section>
+
+<!-- ===== 页：查找替换 ===== -->
+<section class="docpage" id="findreplace" data-title="查找替换 FindReplace">
+  <h1>查找替换 <span style="color:var(--vp-c-text-3);font-weight:400;font-size:.95rem;font-family:var(--mono)">FindReplace</span></h1>
+  <div class="pagemeta"><span class="vtag g">命令式</span><span class="vtag o">回调解耦</span></div>
+  <p class="lead">悬浮查找替换面板：通过 getter/apply 回调接入任意文本宿主，可独立测试。实时高亮匹配、循环导航与全部替换。</p>
+
+  <h2>使用</h2>
+<div class="codewrap"><div class="codehead"><span class="dots"><i></i><i></i><i></i></span>Go</div><button class="copy" onclick="cp(this)">Copy</button>
+<pre><code><span class="cm">// 三个回调：取全文 / 执行替换 / 跳转高亮</span>
+fr := components.<span class="fn">NewFindReplace</span>(
+    <span class="kw">func</span>() <span class="ty">string</span> { <span class="kw">return</span> ed.<span class="fn">GetText</span>() },
+    <span class="kw">func</span>(line, col, length <span class="ty">int</span>, rep <span class="ty">string</span>) { ed.<span class="fn">ReplaceRange</span>(line, col, length, rep) },
+    <span class="kw">func</span>(line, col, length <span class="ty">int</span>) { ed.<span class="fn">GotoPosition</span>(line, col, length) },
+)
+
+<span class="cm">// 同步匹配高亮到编辑器 + 请求重绘</span>
+fr.OnChange = <span class="kw">func</span>() {
+    ed.FindMatches = fr.Matches
+    ed.CurrentMatch = fr.Current
+    invalidate()
+}
+
+<span class="cm">// 打开（Ctrl+F）/ 打开替换（Ctrl+H）</span>
+fr.<span class="fn">Show</span>(ed.<span class="fn">GetSelectedText</span>())
+fr.<span class="fn">ToggleReplace</span>()
+
+<span class="cm">// 绘制前锚定编辑器几何</span>
+fr.<span class="fn">SetPlacement</span>(editorX, editorY, editorW, editorH)
+<span class="kw">if</span> fr.<span class="fn">IsOpen</span>() { fr.<span class="fn">Render</span>(ctx) }</code></pre></div>
+
+  <h2>API</h2>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th>方法</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">NewFindReplace(getText, applyReplace, reveal)</code></td><td>回调解耦构造</td></tr>
+  <tr><td><code class="m">Show(seed) / Hide() / Toggle(seed) / IsOpen()</code></td><td>面板显隐</td></tr>
+  <tr><td><code class="m">ToggleReplace()</code></td><td>替换行展开/收起（Ctrl+H）</td></tr>
+  <tr><td><code class="m">Next() / Prev() / ReplaceCurrent() / ReplaceAll()</code></td><td>导航与替换（循环 / 返回替换数）</td></tr>
+  <tr><td><code class="m">Changed() / StatusText()</code></td><td>变化通知 / "n of m" 状态</td></tr>
+  <tr><td><code class="m">SetPlacement / Panel() / ContainsHit</code></td><td>几何锚定与命中</td></tr>
+  <tr><td><code class="m">HandleChar / HandleKeyDown / HandleMouseDown / HandleMouseMove</code></td><td>返回是否消费事件</td></tr>
+  <tr><td><code class="m">OnChange / OnNavigate</code></td><td>宿主接线钩子</td></tr>
+  </tbody></table></div>
+</section>
+
+<!-- ===== 页：行号列 ===== -->
+<section class="docpage" id="linenumbers" data-title="行号列 LineNumbers">
+  <h1>行号列 <span style="color:var(--vp-c-text-3);font-weight:400;font-size:.95rem;font-family:var(--mono)">LineNumbers</span></h1>
+  <div class="pagemeta"><span class="vtag g">命令式</span><span class="vtag n">配套件</span></div>
+  <p class="lead">编辑器左侧行号条：与滚动偏移联动，高亮光标行，折叠感知。</p>
+
+  <h2>使用</h2>
+<div class="codewrap"><div class="codehead"><span class="dots"><i></i><i></i><i></i></span>Go</div><button class="copy" onclick="cp(this)">Copy</button>
+<pre><code>ln := components.<span class="fn">NewLineNumbers</span>()
+
+<span class="cm">// 每帧同步编辑器可见行窗口（editor/App.go 的 draw 路径）</span>
+rows := <span class="ty">int</span>(editorH / ed.LineHeight) + <span class="nu">1</span>
+ln.<span class="fn">SetVisibleLines</span>(rows)
+ln.<span class="fn">SetLineIndices</span>(ed.<span class="fn">VisibleLineWindow</span>(rows))
+ln.<span class="fn">SetScroll</span>(ed.ScrollLine + <span class="nu">1</span>)
+ln.ScrollOffset = ed.ScrollOffset
+ln.<span class="fn">Render</span>(ctx, sidebarX, editorY, editorH)</code></pre></div>
+
+  <h2>API</h2>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th>方法</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">NewLineNumbers()</code></td><td>创建（Width 52）</td></tr>
+  <tr><td><code class="m">SetVisibleLines(rows) / SetLineIndices(idx)</code></td><td>同步可见行数与实际行号窗口</td></tr>
+  <tr><td><code class="m">SetScroll(scrollLine) / ScrollOffset</code></td><td>滚动位置（整数行 + 小数偏移）</td></tr>
+  <tr><td><code class="m">Render(ctx, x, y, h)</code></td><td>渲染</td></tr>
+  </tbody></table></div>
+</section>
+
+<!-- ===== 页：缩略图 ===== -->
+<section class="docpage" id="minimap" data-title="缩略图 Minimap">
+  <h1>缩略图 <span style="color:var(--vp-c-text-3);font-weight:400;font-size:.95rem;font-family:var(--mono)">Minimap</span></h1>
+  <div class="pagemeta"><span class="vtag g">命令式</span><span class="vtag n">配套件</span></div>
+  <p class="lead">右侧代码缩略图：字符密度渲染，视口矩形联动编辑器滚动。</p>
+
+  <h2>使用</h2>
+<div class="codewrap"><div class="codehead"><span class="dots"><i></i><i></i><i></i></span>Go</div><button class="copy" onclick="cp(this)">Copy</button>
+<pre><code><span class="cm">// 由 Editor.Render 内部联动调用；开关经编辑器控制</span>
+ed.<span class="fn">ToggleMinimap</span>()
+
+<span class="cm">// 直接使用时传入可见窗口与滚动偏移</span>
+mm := components.<span class="fn">NewMinimap</span>()
+mm.<span class="fn">Render</span>(ctx, x, height, lines,
+    scrollLine, visibleLines, scrollOffset)
+
+<span class="cm">// 视口拖拽：宿主在 MouseMove 中转发并独占指针</span>
+<span class="kw">if</span> ed.<span class="fn">HandleMinimapMouseMove</span>(ev.Y-editorY) {
+    <span class="kw">return true</span> <span class="cm">// minimap 拖拽优先于普通选择</span>
+}</code></pre></div>
+
+  <h2>API</h2>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th>方法</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">NewMinimap()</code></td><td>创建（Width 80）</td></tr>
+  <tr><td><code class="m">Render(ctx, x, h, lines, scrollLine, visible, offset...)</code></td><td>绘制（尾参为小数滚动偏移）</td></tr>
+  </tbody></table></div>
+</section>
+
+<!-- ===== 页：折叠侧栏 ===== -->
+<section class="docpage" id="foldgutter" data-title="折叠侧栏 FoldGutter">
+  <h1>折叠侧栏 <span style="color:var(--vp-c-text-3);font-weight:400;font-size:.95rem;font-family:var(--mono)">FoldGutter</span></h1>
+  <div class="pagemeta"><span class="vtag g">命令式</span><span class="vtag n">配套件</span></div>
+  <p class="lead">缩进区折叠箭头列：按 FoldingManager 状态渲染 chevron，点击切换。</p>
+
+  <h2>使用</h2>
+<div class="codewrap"><div class="codehead"><span class="dots"><i></i><i></i><i></i></span>Go</div><button class="copy" onclick="cp(this)">Copy</button>
+<pre><code>fg := components.<span class="fn">NewFoldGutter</span>(ed.FoldingManager)
+
+<span class="cm">// 方式一：按行号窗口渲染</span>
+fg.<span class="fn">Render</span>(ctx, x, y, height, ed.ScrollLine, ed.LineHeight, visibleRows)
+
+<span class="cm">// 方式二：完整行索引列表（含折叠跳行的像素偏移）</span>
+fg.<span class="fn">RenderVisible</span>(ctx, x, y, height, visibleLines, ed.LineHeight, pixelOffset)</code></pre></div>
+
+  <h2>API</h2>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th>方法</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">NewFoldGutter(manager)</code></td><td>绑定 FoldingManager（useFolding）</td></tr>
+  <tr><td><code class="m">Render(ctx, x, y, h, scrollLine, lh, visible)</code></td><td>行号窗口渲染</td></tr>
+  <tr><td><code class="m">RenderVisible(ctx, x, y, h, visible, lh, offset)</code></td><td>完整行索引渲染</td></tr>
+  </tbody></table></div>
+</section>
+
+<!-- ===== 页：文件树 ===== -->
+<section class="docpage" id="filetree" data-title="文件树 FileTree">
+  <h1>文件树 <span style="color:var(--vp-c-text-3);font-weight:400;font-size:.95rem;font-family:var(--mono)">FileTree</span></h1>
+  <div class="pagemeta"><span class="vtag g">命令式</span><span class="vtag n">声明式: 经 canvas 桥接</span></div>
+  <p class="lead">工作区资源管理器：平铺可见列表支撑大目录高性能渲染，展开态持久、状态着色、右键菜单、滚动条拖拽。</p>
+
+  <h2>使用</h2>
+<div class="codewrap"><div class="codehead"><span class="dots"><i></i><i></i><i></i></span>Go</div><button class="copy" onclick="cp(this)">Copy</button>
+<pre><code>tree := components.<span class="fn">NewFileTree</span>(workspaceRoot)
+
+<span class="cm">// 宿主接线</span>
+tree.OnOpen = <span class="kw">func</span>(path <span class="ty">string</span>) { openFile(path) }
+tree.OnContextMenu = buildTreeMenu <span class="cm">// 动态右键菜单</span>
+
+<span class="cm">// 外部变更（watcher 线程触发）刷新：保留用户展开的目录</span>
+tree.<span class="fn">RefreshPreservingExpansion</span>()
+
+<span class="cm">// Git 风格状态标记</span>
+tree.<span class="fn">SetStatus</span>(path, components.FileModified)
+
+<span class="cm">// 渲染与输入</span>
+tree.<span class="fn">Render</span>(ctx, <span class="nu">0</span>, <span class="nu">40</span>, sidebarW, winH-<span class="nu">40</span>-statusH)
+tree.<span class="fn">HandleMouseDown</span>(x, y, <span class="nu">0</span>, <span class="nu">40</span>, sidebarW, viewH)
+tree.<span class="fn">HandleWheel</span>(delta)</code></pre></div>
+
+  <h2>API</h2>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th>成员</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">NewFileTree(root)</code></td><td>创建并扫描根目录（RowHeight 28）</td></tr>
+  <tr><td><code class="m">SetRoot(root) / Refresh()</code></td><td>切换根目录 / 全量刷新</td></tr>
+  <tr><td><code class="m">RefreshPreservingExpansion()</code></td><td>刷新并保留展开状态（watcher 用）</td></tr>
+  <tr><td><code class="m">SetStatus(path, status)</code></td><td>文件状态标记（Git 色）</td></tr>
+  <tr><td><code class="m">Toggle(path)</code></td><td>展开/折叠</td></tr>
+  <tr><td><code class="m">OnOpen</code></td><td><span class="t">func(path)</span> 打开文件回调</td></tr>
+  <tr><td><code class="m">OnContextMenu(entry, x, y)</code></td><td>右键菜单构建（entry=nil 为空白区）</td></tr>
+  <tr><td><code class="m">HandleMouseDown / HandleRightClick / HandleWheel / TreeDragScrollbar</code></td><td>输入处理；拖拽滚动条期间独占指针</td></tr>
+  <tr><td><code class="m">Render(ctx, x, y, w, h)</code></td><td>渲染</td></tr>
+  </tbody></table></div>
+</section>
+
+<!-- ===== 页：标签页 ===== -->
+<section class="docpage" id="tabs" data-title="标签页 Tabs">
+  <h1>标签页 <span style="color:var(--vp-c-text-3);font-weight:400;font-size:.95rem;font-family:var(--mono)">Tabs</span></h1>
+  <div class="pagemeta"><span class="vtag g">命令式</span><span class="vtag n">声明式: 经 canvas 桥接</span></div>
+  <p class="lead">文档标签条：打开/关闭/激活，未保存圆点与 ⚠ 外部修改，拖拽重排，溢出滚动，右键批量关闭。</p>
+
+  <h2>使用</h2>
+<div class="codewrap"><div class="codehead"><span class="dots"><i></i><i></i><i></i></span>Go</div><button class="copy" onclick="cp(this)">Copy</button>
+<pre><code>tabs := components.<span class="fn">NewTabs</span>()
+
+<span class="cm">// 宿主接线</span>
+tabs.OnSelect = <span class="kw">func</span>(path <span class="ty">string</span>) { openFile(path) }
+tabs.OnClose = closeTab
+tabs.OnNew = newDoc
+
+<span class="cm">// 打开与状态</span>
+tabs.<span class="fn">Open</span>(path)                          <span class="cm">// 幂等：已打开则激活</span>
+tabs.<span class="fn">SetModified</span>(path, <span class="kw">true</span>)             <span class="cm">// 未保存圆点</span>
+tabs.<span class="fn">SetExternalChange</span>(path, <span class="kw">true</span>)       <span class="cm">// ⚠ 外部修改</span>
+
+<span class="cm">// 关闭后回落</span>
+tabs.<span class="fn">Close</span>(path)
+<span class="kw">if</span> active := tabs.<span class="fn">ActivePath</span>(); active != <span class="st">""</span> {
+    openFile(active)
+}
+
+<span class="cm">// 渲染与输入</span>
+tabs.<span class="fn">Render</span>(ctx, sidebarW, <span class="nu">40</span>, winW-sidebarW)
+tabs.<span class="fn">HandleWheel</span>(delta) <span class="cm">// 横向滚动标签</span></code></pre></div>
+
+  <h2>API</h2>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th>成员</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">NewTabs()</code></td><td>创建（Height 36，内置 ContextMenu）</td></tr>
+  <tr><td><code class="m">Open(path) / Close(path)</code></td><td>打开（幂等）/ 关闭</td></tr>
+  <tr><td><code class="m">SetModified / SetExternalChange / SetStatus</code></td><td>状态标记</td></tr>
+  <tr><td><code class="m">ActivePath()</code></td><td>当前激活路径</td></tr>
+  <tr><td><code class="m">OnSelect / OnClose / OnNew / OnContextMenu</code></td><td>宿主接线回调</td></tr>
+  <tr><td><code class="m">HandleMouseDown/Up/Move / HandleWheel / HandleRightClick</code></td><td>输入处理（含拖拽重排）</td></tr>
+  <tr><td><code class="m">Render(ctx, x, y, width)</code></td><td>渲染</td></tr>
+  </tbody></table></div>
+</section>
+
+<!-- ===== 页：图片预览 ===== -->
+<section class="docpage" id="imageview" data-title="图片预览 ImageView">
+  <h1>图片预览 <span style="color:var(--vp-c-text-3);font-weight:400;font-size:.95rem;font-family:var(--mono)">ImageView</span></h1>
+  <div class="pagemeta"><span class="vtag g">命令式</span><span class="vtag o">只读</span></div>
+  <p class="lead">PNG/JPEG/GIF 只读预览：魔数嗅探格式，等比缩放居中（最多 4 倍放大），Go 侧双线性缩放 + GDI 1:1 块传输，透明区棋盘格。</p>
+
+  <h2>使用</h2>
+<div class="codewrap"><div class="codehead"><span class="dots"><i></i><i></i><i></i></span>Go</div><button class="copy" onclick="cp(this)">Copy</button>
+<pre><code>iv := components.<span class="fn">NewImageView</span>()
+
+<span class="cm">// 加载：进入即 Reset，失败不残留旧像素</span>
+<span class="kw">if</span> err := iv.<span class="fn">Load</span>(path); err != <span class="kw">nil</span> {
+    status.<span class="fn">SetLeft</span>(<span class="st">"无法解码图片: "</span> + err.Error())
+    openBinary(path) <span class="cm">// 回退十六进制预览</span>
+    <span class="kw">return</span>
+}
+
+<span class="cm">// 状态栏元信息</span>
+status.<span class="fn">SetRight</span>(fmt.<span class="fn">Sprintf</span>(<span class="st">"%s | %d×%d | %s"</span>,
+    iv.Format, iv.SrcW, iv.SrcH, humanSize(iv.SizeBytes)))
+
+<span class="cm">// 渲染（宿主在 docKind == KindImage 时调用）</span>
+<span class="kw">if</span> iv.<span class="fn">Ready</span>() {
+    iv.<span class="fn">Render</span>(ctx, editorX, editorY, editorW, editorH)
+}
+
+<span class="cm">// 关闭标签页时释放内存（上限 128MB 的大图）</span>
+<span class="kw">if</span> closedPath == previewPath {
+    iv.<span class="fn">Reset</span>()
+}</code></pre></div>
+  <div class="tip"><b>实现要点</b>：缩放在 Go 侧双线性（预乘 alpha 域）完成后 1:1 BitBlt 上屏，规避真实窗口 DC 上 SetDIBitsToDevice 大位图（约 >1300×976）整块静默失败的驱动缺陷——这是"最大化后图片空白"问题的根因修复。</div>
+
+  <h2>API</h2>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th>成员</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">NewImageView()</code></td><td>创建</td></tr>
+  <tr><td><code class="m">Load(path)</code> <span class="t">error</span></td><td>读取解码（上限 128MB）；进入即 Reset</td></tr>
+  <tr><td><code class="m">Reset()</code></td><td>释放像素与合成缓存，回到未加载态</td></tr>
+  <tr><td><code class="m">Ready() / Path / Format / SrcW / SrcH / SizeBytes</code></td><td>状态与元信息</td></tr>
+  <tr><td><code class="m">Render(ctx, x, y, w, h)</code></td><td>背景 + 缩放合成绘制；无位图能力平台回退文字</td></tr>
+  </tbody></table></div>
+</section>
+
+<!-- ===== 页：十六进制预览 ===== -->
+<section class="docpage" id="hexviewer" data-title="十六进制预览 HexViewer">
+  <h1>十六进制预览 <span style="color:var(--vp-c-text-3);font-weight:400;font-size:.95rem;font-family:var(--mono)">HexViewer</span></h1>
+  <div class="pagemeta"><span class="vtag g">命令式</span><span class="vtag o">只读</span></div>
+  <p class="lead">二进制只读预览：偏移列 + hex 区 + ASCII 区，等宽字体渲染，选择复制。</p>
+
+  <h2>使用</h2>
+<div class="codewrap"><div class="codehead"><span class="dots"><i></i><i></i><i></i></span>Go</div><button class="copy" onclick="cp(this)">Copy</button>
+<pre><code>hv := components.<span class="fn">NewHexViewer</span>()
+
+<span class="cm">// 载入预览数据（建议 ≤1MB 截断）</span>
+data, total, truncated, err := fileops.<span class="fn">LoadPreview</span>(path, <span class="nu">1</span><<<span class="nu">20</span>)
+<span class="kw">if</span> err == <span class="kw">nil</span> {
+    hv.<span class="fn">Load</span>(path, data, total, truncated)
+}
+
+<span class="cm">// 选择复制（Ctrl+C 路径）</span>
+<span class="kw">if</span> hv.<span class="fn">HasSelection</span>() {
+    text := hv.<span class="fn">CopyText</span>() <span class="cm">// "4D 5A 90" 形式</span>
+    windows.<span class="fn">WriteClipboardText</span>(h, text)
+    status.<span class="fn">SetLeft</span>(hv.<span class="fn">SelectionInfo</span>()) <span class="cm">// 选择摘要</span>
+}
+
+<span class="cm">// 渲染与输入</span>
+hv.<span class="fn">Render</span>(ctx, x, y, w, h)
+hv.<span class="fn">HandleMouseDown</span>(x, y, ox, oy, w, h, ev.Shift)
+hv.<span class="fn">HandleWheel</span>(delta)</code></pre></div>
+
+  <h2>API</h2>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th>成员</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">NewHexViewer()</code></td><td>创建</td></tr>
+  <tr><td><code class="m">Load(path, data, total, truncated)</code></td><td>载入并重置状态</td></tr>
+  <tr><td><code class="m">Ready() / HasSelection()</code></td><td>状态查询</td></tr>
+  <tr><td><code class="m">CopyText() / SelectionInfo()</code></td><td>选中区 hex 文本 / 状态栏摘要</td></tr>
+  <tr><td><code class="m">HandleWheel / HandleMouseDown / HexDragScrollbar / HexScrollbarReleased</code></td><td>输入处理</td></tr>
+  <tr><td><code class="m">Render(ctx, x, y, w, h)</code></td><td>渲染</td></tr>
+  </tbody></table></div>
+</section>
+
+<!-- ===== 页：标题栏 ===== -->
+<section class="docpage" id="titlebar" data-title="标题栏 TitleBar">
+  <h1>标题栏 <span style="color:var(--vp-c-text-3);font-weight:400;font-size:.95rem;font-family:var(--mono)">EditorTitleBar</span></h1>
+  <div class="pagemeta"><span class="vtag g">命令式</span><span class="vtag b">元素: titlebar</span></div>
+  <p class="lead">无边框窗口自绘标题栏：标题 + 主题切换 + 窗口三按钮；托底合并版 TitleToolbar 提供工具按钮位。</p>
+
+  <h2>使用</h2>
+<div class="codewrap"><div class="codehead"><span class="dots"><i></i><i></i><i></i></span>Go</div><button class="copy" onclick="cp(this)">Copy</button>
+<pre><code>tb := components.<span class="fn">NewEditorTitleBar</span>(<span class="st">"Goed"</span>)
+
+<span class="cm">// 系统按钮回调：宿主接窗口操作</span>
+tb.OnClose = <span class="kw">func</span>() { persistSession(); win.<span class="fn">Close</span>() }
+tb.OnMinimize = win.Minimize
+tb.OnMaximize = win.ToggleFullscreen
+tb.OnTheme = <span class="kw">func</span>() {
+    th := theme.<span class="fn">Next</span>() <span class="cm">// Dark → Light → Tabby</span>
+    store.<span class="fn">Set</span>(<span class="st">"theme"</span>, th.Name)
+    invalidate()
+}
+
+<span class="cm">// 渲染（右缘避开窗口按钮区）</span>
+tb.<span class="fn">Render</span>(ctx, <span class="nu">0</span>, <span class="nu">0</span>, winW)
+
+<span class="cm">// 合并版（标题栏 + 工具按钮位）</span>
+tt := components.<span class="fn">NewTitleToolbar</span>(<span class="st">"Goed"</span>)</code></pre></div>
+
+  <h2>API</h2>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th>成员</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">NewEditorTitleBar(title) / NewTitleToolbar(title)</code></td><td>标题栏 / 合并工具栏版</td></tr>
+  <tr><td><code class="m">OnClose / OnMinimize / OnMaximize / OnTheme</code></td><td>按钮回调</td></tr>
+  <tr><td><code class="m">HandleMouseDown / HandleMouseUp / HandleMouseMove</code></td><td>按钮交互</td></tr>
+  <tr><td><code class="m">Render(ctx, x, y, width)</code></td><td>渲染（TitleBarButtonWidth × 4 右缘预留）</td></tr>
+  </tbody></table></div>
+</section>
+
+<!-- ===== 页：Application ===== -->
+<section class="docpage" id="application" data-title="Application ui/app">
+  <h1>Application <span style="color:var(--vp-c-text-3);font-weight:400;font-size:.95rem;font-family:var(--mono)">ui/app</span></h1>
+  <div class="pagemeta"><span class="vtag g">构建器</span><span class="vtag o">入口</span></div>
+  <p class="lead">应用 shell：挂载声明式根组件、配置窗口、启动事件循环。窗口创建与消息泵保持主线程亲和。</p>
+
+  <h2>使用</h2>
+<div class="codewrap"><div class="codehead"><span class="dots"><i></i><i></i><i></i></span>Go</div><button class="copy" onclick="cp(this)">Copy</button>
+<pre><code><span class="cm">// 完整启动流程（editor/main.go）</span>
+<span class="kw">func</span> <span class="fn">Run</span>(filePath <span class="ty">string</span>) <span class="ty">error</span> {
+    title := <span class="st">"Goed R1 - Text Editor"</span>
+    <span class="kw">if</span> filePath != <span class="st">""</span> {
+        title = filepath.<span class="fn">Base</span>(filePath) + <span class="st">" - Goed R1"</span>
+    }
+    <span class="kw">return</span> app.<span class="fn">CreateApp</span>().
+        <span class="fn">Mount</span>(App).          <span class="cm">// 声明式根组件</span>
+        <span class="fn">Prop</span>(<span class="st">"path"</span>, filePath). <span class="cm">// 传给 setup 的 props</span>
+        <span class="fn">Title</span>(title).
+        <span class="fn">Size</span>(<span class="nu">1200</span>, <span class="nu">800</span>).
+        <span class="fn">HideTitleBar</span>(<span class="kw">true</span>).  <span class="cm">// 卸载默认标题栏（自绘壳层）</span>
+        <span class="fn">Run</span>()
+}
+
+<span class="cm">// 根组件定义（声明式）</span>
+<span class="kw">var</span> App = runtime.<span class="fn">DefineComponent</span>(<span class="st">"Editor"</span>,
+    <span class="kw">func</span>(ctx *runtime.SetupContext) runtime.RenderFunc {
+        path := ctx.Props().<span class="fn">Str</span>(<span class="st">"path"</span>, <span class="st">""</span>)
+        session := newSession(path)
+        <span class="kw">return func</span>() []*runtime.VNode {
+            <span class="kw">return</span> []*runtime.VNode{
+                runtime.<span class="fn">H</span>(<span class="st">"canvas"</span>, runtime.Props{
+                    <span class="st">"flex"</span>: <span class="nu">1</span>, <span class="st">"focusable"</span>: <span class="kw">true</span>,
+                    <span class="st">"onDraw"</span>: session.draw, <span class="st">"onEvent"</span>: session.event,
+                }),
+            }
+        }
+    })</code></pre></div>
+
+  <h2>API</h2>
+  <div class="tablewrap"><table class="api">
+  <thead><tr><th>方法</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td><code class="m">CreateApp(root...)</code></td><td>创建（默认 800×600）</td></tr>
+  <tr><td><code class="m">Mount(def) / Prop(k, v)</code></td><td>挂载根组件 / 传参</td></tr>
+  <tr><td><code class="m">Title(s) / Size(w, h) / HideTitleBar(b) / WithOptions(opts)</code></td><td>窗口配置</td></tr>
+  <tr><td><code class="m">Run()</code> <span class="t">error</span></td><td>阻塞运行至窗口关闭</td></tr>
+  <tr><td><code class="m">Run(title, w, h, def) / RunWithOptions(...)</code></td><td>便捷函数</td></tr>
+  </tbody></table></div>
+</section>
+
+<!-- 上一页 / 下一页 -->
+<div class="pager" id="pager"></div>
+
+</main>
+
+<!-- ============ 右侧大纲 ============ -->
+<aside class="outline">
+  <div class="outline-title">本页目录</div>
+  <div id="outline-list"><div class="outline-empty">本页无小节标题</div></div>
+</aside>
+</div>
+
+<script>
+// ===== 页面清单（顺序即 上一页/下一页 顺序）=====
+const PAGES=['introduction','usage','architecture','button','dialog','inputdialog','contextmenu','menubar','scrollbar','statusbar','canvas','editor','findreplace','linenumbers','minimap','foldgutter','filetree','tabs','imageview','hexviewer','titlebar','application'];
+const PAGES_CN={introduction:'介绍',usage:'使用方式',architecture:'架构',button:'按钮',dialog:'对话框',inputdialog:'输入对话框',contextmenu:'上下文菜单',menubar:'菜单栏',scrollbar:'滚动条',statusbar:'状态栏',canvas:'画布',editor:'文本编辑器',findreplace:'查找替换',linenumbers:'行号列',minimap:'缩略图',foldgutter:'折叠侧栏',filetree:'文件树',tabs:'标签页',imageview:'图片预览',hexviewer:'十六进制预览',titlebar:'标题栏',application:'Application'};
+
+// 首页组件导航
+const ci=document.getElementById('comp-index');
+PAGES.filter(p=>p!=='introduction'&&p!=='usage'&&p!=='architecture').forEach(p=>{
+  const a=document.createElement('span');a.className='ci';
+  a.innerHTML='<b>'+PAGES_CN[p]+'</b><small>'+p+'</small>';
+  a.onclick=()=>go(p);ci.appendChild(a);
+});
+
+// ===== 侧栏 / 顶栏点击绑定（data-page 元素）=====
+document.querySelectorAll('[data-page]').forEach(a=>{
+  a.addEventListener('click',()=>go(a.dataset.page));
+});
+
+// ===== 路由：仅显示当前页，URL 用 ?menu=xxx =====
+let current='';
+function go(page,silent){
+  if(!PAGES.includes(page))page='introduction';
+  if(!silent){
+    const url=location.pathname+'?menu='+page;
+    history.pushState({menu:page},'',url);
+  }
+  show(page);
+}
+function show(page){
+  current=page;
+  document.querySelectorAll('.docpage').forEach(s=>{
+    s.classList.toggle('show',s.id===page);
+  });
+  // 侧栏
+  document.querySelectorAll('.side-item').forEach(a=>{
+    a.classList.toggle('active',a.dataset.page===page);
+  });
+  // 右侧大纲：从当前页提取 h2
+  const sec=document.getElementById(page);
+  const ol=document.getElementById('outline-list');
+  ol.innerHTML='';
+  const hs=sec.querySelectorAll('h2');
+  if(!hs.length){ol.innerHTML='<div class="outline-empty">本页无小节标题</div>';}
+  hs.forEach(h=>{
+    const key=page+'__'+h.textContent.trim();
+    h.id=h.id||'h-'+[...h.parentNode.children].indexOf(h)+'-'+page;
+    const a=document.createElement('a');
+    a.textContent=h.childNodes[0].textContent.trim();
+    a.href='#'+h.id;
+    a.onclick=(e)=>{e.preventDefault();h.scrollIntoView({behavior:'smooth',block:'start'});};
+    ol.appendChild(a);
+  });
+  // 上一页 / 下一页（点击走 go()，pushState 进历史）
+  const idx=PAGES.indexOf(page);
+  const prev=idx>0?PAGES[idx-1]:null;
+  const next=idx<PAGES.length-1?PAGES[idx+1]:null;
+  const pager=document.getElementById('pager');
+  pager.innerHTML=
+    (prev?'<a data-page="'+prev+'"><span class="dir">← 上一页</span><span class="pt">'+PAGES_CN[prev]+'</span></a>':'<span></span>')+
+    (next?'<a class="next" data-page="'+next+'"><span class="dir">下一页 →</span><span class="pt">'+PAGES_CN[next]+'</span></a>':'');
+  // 翻页链接绑定点击（innerHTML 重建后需重挂）
+  pager.querySelectorAll('[data-page]').forEach(a=>{
+    a.addEventListener('click',()=>go(a.dataset.page));
+  });
+  document.title=PAGES_CN[page]+' | Goed UI';
+  window.scrollTo({top:0});
+}
+
+// 浏览器前进/后退
+window.addEventListener('popstate',()=>{
+  const id=new URLSearchParams(location.search).get('menu');
+  show(PAGES.includes(id)?id:'introduction');
+});
+// 初始：?menu=xxx 优先，无参数显示介绍并回写 URL
+const init=new URLSearchParams(location.search).get('menu');
+const first=PAGES.includes(init)?init:'introduction';
+show(first);
+history.replaceState({menu:first},'',location.pathname+'?menu='+first);
+
+// 代码复制
+function cp(btn){
+  const pre=btn.parentElement.querySelector('pre');
+  navigator.clipboard.writeText(pre.innerText).then(()=>{
+    btn.textContent='Copied ✓';
+    setTimeout(()=>btn.textContent='Copy',1400);
+  });
+}
+// 顶栏阴影
+const nb=document.getElementById('navbar');
+window.addEventListener('scroll',()=>nb.classList.toggle('scrolled',scrollY>0),{passive:true});
+
+// 右侧大纲滚动联动
+const olLinks=()=>[...document.querySelectorAll('#outline-list a')];
+window.addEventListener('scroll',()=>{
+  if(!olLinks().length)return;
+  const sec=document.getElementById(current);
+  const hs=[...sec.querySelectorAll('h2')];
+  let cur=hs[0];
+  for(const h of hs){if(h.getBoundingClientRect().top<=120)cur=h;}
+  if(!cur)return;
+  olLinks().forEach(a=>a.classList.toggle('on',a.textContent===cur.childNodes[0].textContent.trim()));
+},{passive:true});
+</script>
+</body>
+</html>
