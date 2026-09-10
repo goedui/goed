@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/goedui/goed/editor/composables"
+	"github.com/goedui/goed/ui/composables"
 	"github.com/goedui/goed/ui/core"
 	"github.com/goedui/goed/ui/syntax"
 	"github.com/goedui/goed/ui/theme"

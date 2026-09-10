@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/goedui/goed/editor/composables"
+	"github.com/goedui/goed/ui/composables"
 	"github.com/goedui/goed/ui/core"
 	"github.com/goedui/goed/ui/theme"
 )
@@ -13,16 +13,16 @@ import (
 // 定位约定：锚定编辑器视口内右上角，位于文件页签栏之下。宿主在 Render/
 // 命中测试前先调用 SetPlacement 声明编辑器几何，组件据此计算自身边界。
 type FindReplace struct {
-	Visible bool
+	Visible     bool
 	ShowReplace bool // 展开替换输入行（Ctrl+H）
 
-	Query    string // 查找词
-	Replace  string // 替换词
-	MatchCase bool  // 区分大小写
+	Query     string // 查找词
+	Replace   string // 替换词
+	MatchCase bool   // 区分大小写
 
 	// 匹配状态：每次 Render 时基于宿主编辑器重算。
 	Matches []composables.SearchResult
-	Current int    // 当前聚焦的匹配下标；-1 表示无聚焦
+	Current int // 当前聚焦的匹配下标；-1 表示无聚焦
 
 	// OnChange 在查询/替换文本或选项变化后回调（宿主重绘高亮）。
 	OnChange func()
@@ -33,26 +33,26 @@ type FindReplace struct {
 	focus int
 	// ReplaceRow 控制替换行的可见性（与 ShowReplace 同步，由切换按钮驱动）
 	// 布局缓存（Render 时刷新，供命中测试使用）
-	panel      core.Rect
-	findBox    core.Rect
-	replaceBox core.Rect
-	btnPrev    core.Rect
-	btnNext    core.Rect
-	btnCase    core.Rect
+	panel            core.Rect
+	findBox          core.Rect
+	replaceBox       core.Rect
+	btnPrev          core.Rect
+	btnNext          core.Rect
+	btnCase          core.Rect
 	btnReplaceToggle core.Rect
-	btnClose   core.Rect
+	btnClose         core.Rect
 	btnReplaceOne    core.Rect
 	btnReplaceAll    core.Rect
-	hotClose   bool
-	hotPrev    bool
-	hotNext    bool
-	hotCase    bool
+	hotClose         bool
+	hotPrev          bool
+	hotNext          bool
+	hotCase          bool
 	hotReplaceToggle bool
 	hotReplaceOne    bool
 	hotReplaceAll    bool
 
 	// 宿主注入的编辑器操作（避免组件直接依赖 Editor 的未导出状态）
-	getText    func() string
+	getText func() string
 	// applyReplace 由宿主实现：替换 [line,col] 起 length 个字符为 rep。
 	applyReplace func(line, col, length int, rep string)
 	// reveal 由宿主实现：滚动确保匹配可见并按长度选中结果文本。
@@ -266,7 +266,7 @@ func (f *FindReplace) SetPlacement(editorX, editorY, editorW, editorH int32) {
 
 	// 左列：chevron 展开钮（宽 26），垂直居中于面板。
 	chevW := int32(26)
-	f.btnReplaceToggle = core.Rect{X: f.panel.X + 6, Y: f.panel.Y + (f.panel.H - 22) / 2, W: chevW - 4, H: 22}
+	f.btnReplaceToggle = core.Rect{X: f.panel.X + 6, Y: f.panel.Y + (f.panel.H-22)/2, W: chevW - 4, H: 22}
 
 	// 右列起点：chevron 之后。
 	colX := f.panel.X + 6 + chevW

@@ -3,7 +3,7 @@ package components
 import (
 	"testing"
 
-	"github.com/goedui/goed/editor/composables"
+	"github.com/goedui/goed/ui/composables"
 )
 
 func TestEditorContextMenuAndClipboardProvider(t *testing.T) {

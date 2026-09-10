@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/goedui/goed/editor/composables"
+	"github.com/goedui/goed/ui/composables"
 )
 
 func TestEditorWheelScrollUsesConfiguredSensitivity(t *testing.T) {
