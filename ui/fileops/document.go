@@ -1,5 +1,5 @@
 // Package fileops contains the platform-neutral document operations shared by
-// Goed's editor surfaces.
+// github.com/goedui/goed's editor surfaces.
 package fileops
 
 import (

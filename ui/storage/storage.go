@@ -1,6 +1,6 @@
 // Package storage provides a tiny localStorage-style key/value store backed
 // by a single JSON file in the platform user-config directory
-// (os.UserConfigDir()/goed/storage.json). Values are process-lifetime cached;
+// (os.UserConfigDir()/github.com/goedui/goed/storage.json). Values are process-lifetime cached;
 // every mutation rewrites the file atomically (tmp file + rename) so a crash
 // mid-write cannot corrupt the store.
 package storage
@@ -14,9 +14,9 @@ import (
 
 // Store is a persistent key/value map. It is safe for concurrent use.
 type Store struct {
-	mu    sync.Mutex
-	path  string
-	data  map[string]any
+	mu     sync.Mutex
+	path   string
+	data   map[string]any
 	loaded bool
 }
 
@@ -35,7 +35,7 @@ func Default() (*Store, error) {
 			defaultErr = err
 			return
 		}
-		defaultStore, defaultErr = Open(filepath.Join(dir, "goed", "storage.json"))
+		defaultStore, defaultErr = Open(filepath.Join(dir, "github.com/goedui/goed", "storage.json"))
 	})
 	return defaultStore, defaultErr
 }

@@ -19,13 +19,13 @@ var (
 )
 
 const (
-	fileListDirectory      = 0x00000001
-	fileShareRead          = 0x00000001
-	fileShareWrite         = 0x00000002
-	fileShareDelete        = 0x00000004
-	openExisting           = 3
+	fileListDirectory       = 0x00000001
+	fileShareRead           = 0x00000001
+	fileShareWrite          = 0x00000002
+	fileShareDelete         = 0x00000004
+	openExisting            = 3
 	fileFlagBackupSemantics = 0x02000000
-	invalidHandleValue     = ^uintptr(0)
+	invalidHandleValue      = ^uintptr(0)
 
 	fileNotifyChangeFileName  = 0x00000001
 	fileNotifyChangeLastWrite = 0x00000010
@@ -43,11 +43,11 @@ type fileNotifyInformation struct {
 }
 
 const (
-	fileActionAdded            = 1
-	fileActionRemoved          = 2
-	fileActionModified         = 3
-	fileActionRenamedOldName   = 4
-	fileActionRenamedNewName   = 5
+	fileActionAdded          = 1
+	fileActionRemoved        = 2
+	fileActionModified       = 3
+	fileActionRenamedOldName = 4
+	fileActionRenamedNewName = 5
 )
 
 // windowsWatcher 以同步阻塞的 ReadDirectoryChangesW 循环监视目录子树。

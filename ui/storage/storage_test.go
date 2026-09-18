@@ -7,7 +7,7 @@ import (
 
 func newTestStore(t *testing.T) *Store {
 	t.Helper()
-	s, err := Open(filepath.Join(t.TempDir(), "goed", "storage.json"))
+	s, err := Open(filepath.Join(t.TempDir(), "github.com/goedui/goed", "storage.json"))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -16,7 +16,7 @@ func newTestStore(t *testing.T) *Store {
 
 func TestStoreSetPersistsAndReloads(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "goed", "storage.json")
+	path := filepath.Join(dir, "github.com/goedui/goed", "storage.json")
 
 	s, err := Open(path)
 	if err != nil {

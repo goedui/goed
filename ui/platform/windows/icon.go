@@ -1,104 +1,66 @@
+//go:build windows
+
 package windows
 
 import (
-	"sync"
-	"syscall"
+	"runtime"
+	"unsafe"
 )
 
-const goedIconLogicalSize = 32
-
-type goedIconSet struct {
-	large syscall.Handle
-	small syscall.Handle
-}
-
-var (
-	goedIconsOnce sync.Once
-	goedIcons     goedIconSet
+const (
+	iconSmall      = 0
+	iconBig        = 1
+	lrDefaultColor = 0
 )
 
-// loadGoedIcons creates the application icon from pixels compiled into the
-// binary. Keeping the icon here avoids a runtime dependency on an .ico file.
-func loadGoedIcons() goedIconSet {
-	goedIconsOnce.Do(func() {
-		goedIcons.large = createGoedIcon(32)
-		goedIcons.small = createGoedIcon(16)
-	})
-	return goedIcons
-}
-
-func createGoedIcon(size int) syscall.Handle {
-	if size <= 0 {
+func createIcon(bits []byte, size int) uintptr {
+	if len(bits) == 0 || size <= 0 {
 		return 0
 	}
-	maskStride := ((size + 31) / 32) * 4
-	andBits := make([]byte, maskStride*size)
-	xorBits := make([]byte, size*size*4)
-
-	for y := 0; y < size; y++ {
-		// CreateIcon expects DIB rows bottom-up.
-		row := size - 1 - y
-		for x := 0; x < size; x++ {
-			logicalX := x * goedIconLogicalSize / size
-			logicalY := y * goedIconLogicalSize / size
-			r, g, b, transparent := goedIconPixel(logicalX, logicalY)
-			if transparent {
-				andBits[row*maskStride+x/8] |= 1 << uint(7-x%8)
-				continue
-			}
-			pixel := (row*size + x) * 4
-			xorBits[pixel] = b
-			xorBits[pixel+1] = g
-			xorBits[pixel+2] = r
-			xorBits[pixel+3] = 0xff
-		}
-	}
-
-	return createIcon(size, size, andBits, xorBits)
-}
-
-func goedIconPixel(x, y int) (r, g, b byte, transparent bool) {
-	const (
-		backgroundR = 28
-		backgroundG = 38
-		backgroundB = 53
-		accentR     = 69
-		accentG     = 211
-		accentB     = 194
-		cursorR     = 238
-		cursorG     = 242
-		cursorB     = 246
+	h, _, _ := procCreateIconFromResourceEx.Call(
+		uintptr(unsafe.Pointer(&bits[0])),
+		uintptr(len(bits)),
+		1,
+		0x00030000,
+		uintptr(size),
+		uintptr(size),
+		lrDefaultColor,
 	)
-
-	// Rounded corners keep the icon legible against light and dark taskbars.
-	const radius = 5
-	if (x < radius && y < radius && cornerOutside(radius-1-x, radius-1-y, radius)) ||
-		(x >= goedIconLogicalSize-radius && y < radius && cornerOutside(x-(goedIconLogicalSize-radius), radius-1-y, radius)) ||
-		(x < radius && y >= goedIconLogicalSize-radius && cornerOutside(radius-1-x, y-(goedIconLogicalSize-radius), radius)) ||
-		(x >= goedIconLogicalSize-radius && y >= goedIconLogicalSize-radius && cornerOutside(x-(goedIconLogicalSize-radius), y-(goedIconLogicalSize-radius), radius)) {
-		return 0, 0, 0, true
-	}
-
-	r, g, b = backgroundR, backgroundG, backgroundB
-	if x <= 2 || x >= goedIconLogicalSize-3 || y <= 2 || y >= goedIconLogicalSize-3 {
-		r, g, b = accentR, accentG, accentB
-	}
-
-	// A blocky G mark mirrors the editor's document-and-caret identity.
-	dx, dy := x-15, y-15
-	distance := dx*dx + dy*dy
-	if distance >= 49 && distance <= 100 && !(x > 18 && y < 15) {
-		r, g, b = accentR, accentG, accentB
-	}
-	if x >= 15 && x <= 23 && y >= 14 && y <= 17 {
-		r, g, b = accentR, accentG, accentB
-	}
-	if x >= 24 && x <= 26 && y >= 9 && y <= 22 {
-		r, g, b = cursorR, cursorG, cursorB
-	}
-	return r, g, b, false
+	runtime.KeepAlive(bits)
+	return h
 }
 
-func cornerOutside(dx, dy, radius int) bool {
-	return dx*dx+dy*dy > radius*radius
+func destroyIcon(h uintptr) {
+	if h != 0 {
+		procDestroyIcon.Call(h)
+	}
+}
+
+func (h *host) applyIcons() {
+	if h.hwnd == 0 {
+		return
+	}
+	if h.iconSm == 0 {
+		h.iconSm = createIcon(h.opts.Icon16, 16)
+	}
+	if h.iconBg == 0 {
+		h.iconBg = createIcon(h.opts.Icon32, 32)
+	}
+	if h.iconSm != 0 {
+		procSendMessageW.Call(h.hwnd, wmSetIcon, iconSmall, h.iconSm)
+	}
+	if h.iconBg != 0 {
+		procSendMessageW.Call(h.hwnd, wmSetIcon, iconBig, h.iconBg)
+	}
+}
+
+func (h *host) releaseIcons() {
+	if h.iconSm != 0 {
+		destroyIcon(h.iconSm)
+		h.iconSm = 0
+	}
+	if h.iconBg != 0 {
+		destroyIcon(h.iconBg)
+		h.iconBg = 0
+	}
 }

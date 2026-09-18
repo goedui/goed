@@ -1,7 +1,11 @@
-# goed/ui
+## github.com/goedui/goed/ui
+a native app framework wrriten by go. 
+- windows via direct2d.
+- linux via libx11
+- web via wasm
 
-- A native ui framework written with go. 
-- And it's for building windows10/11 native exe, without any webview.
-
-## examples
-- refer to helloworld/
+## support platform
+- win10/win11
+- linux(testing)
+- web(later)
+- macos(later)

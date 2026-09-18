@@ -3,7 +3,7 @@ package composables
 import (
 	"log"
 
-	"github.com/goedui/goed/ui/reactive"
+	"github.com/goedui/goed/ui/runtime"
 	"github.com/goedui/goed/ui/storage"
 )
 
@@ -16,17 +16,18 @@ import (
 //	store, _ := storage.Default()
 //	themeName, setThemeName := UseStorage(store, "theme", "Dark")
 //	setThemeName("Light") // persists + notifies watchers
-func UseStorage[T any](store *storage.Store, key string, def T) (*reactive.RefValue[T], func(T)) {
-	value := reactive.Ref(def)
+func UseStorage[T any](store *storage.Store, key string, def T) (*runtime.Ref[T], func(T)) {
+	initial := def
 	if store != nil {
 		if raw, ok := store.Get(key); ok {
 			if typed, ok := raw.(T); ok {
-				value.SetSilent(typed)
+				initial = typed
 			}
 		}
 	}
+	value := runtime.NewRef(initial)
 	set := func(next T) {
-		value.Set(next) // notifies watchers / schedules UI flush
+		value.Set(next)
 		if store != nil {
 			if err := store.Set(key, next); err != nil {
 				log.Printf("storage: persist %q: %v", key, err)

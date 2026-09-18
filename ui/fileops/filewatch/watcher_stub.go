@@ -13,6 +13,10 @@ func New() (FileWatcher, error) {
 	return stubWatcher{}, nil
 }
 
-func (stubWatcher) WatchDir(string) error  { return errors.New("filewatch: not supported on this platform") }
-func (stubWatcher) WatchFile(string) error { return errors.New("filewatch: not supported on this platform") }
-func (stubWatcher) Close() error           { return nil }
+func (stubWatcher) WatchDir(string) error {
+	return errors.New("filewatch: not supported on this platform")
+}
+func (stubWatcher) WatchFile(string) error {
+	return errors.New("filewatch: not supported on this platform")
+}
+func (stubWatcher) Close() error { return nil }

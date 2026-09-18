@@ -8,7 +8,7 @@ import (
 )
 
 func TestUseStorageReadsInitialAndWritesThrough(t *testing.T) {
-	store, err := storage.Open(filepath.Join(t.TempDir(), "goed", "storage.json"))
+	store, err := storage.Open(filepath.Join(t.TempDir(), "github.com/goedui/goed", "storage.json"))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -48,7 +48,7 @@ func TestUseStorageNilStoreFallsBackToMemoryOnly(t *testing.T) {
 }
 
 func TestUseStorageTypeMismatchFallsBackToDefault(t *testing.T) {
-	store, err := storage.Open(filepath.Join(t.TempDir(), "goed", "storage.json"))
+	store, err := storage.Open(filepath.Join(t.TempDir(), "github.com/goedui/goed", "storage.json"))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}

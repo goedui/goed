@@ -1,19 +1,17 @@
 package main
-import (
-	"github.com/goedui/goed/ui/app"
-	"github.com/goedui/goed/ui/runtime"
-)
-var HelloWorld = runtime.DefineComponent("HelloWorld", func(_ *runtime.SetupContext) runtime.RenderFunc{
-    return func() []*runtime.VNode{
-        return []*runtime.VNode{
-		   runtime.Text("HelloWorld"),
-		}
+
+import "github.com/goedui/goed/ui"
+
+var HelloWorld = ui.Component(func(_ *ui.SetupContext) func() *ui.VNode {
+	return func() *ui.VNode {
+		return ui.VStack(
+			ui.Text("HelloWorld"),
+		)
 	}
 })
 
-func main(){
-	newApp := app.CreateApp(HelloWorld).Title("HelloWorld").Size(800,600)
-	if err := newApp.Run();err!=nil {
+func main() {
+	if err := ui.CreateApp(HelloWorld).Title("HelloWorld").Theme("dark").Size(800, 600).Run(); err != nil {
 		panic(err)
 	}
 }

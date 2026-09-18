@@ -1,321 +1,255 @@
 package components
 
 import (
-	"strings"
-
-	"github.com/goedui/goed/ui/core"
+	"github.com/goedui/goed/ui/renderer"
+	"github.com/goedui/goed/ui/runtime"
 	"github.com/goedui/goed/ui/theme"
 )
 
-// Dialog is a modal overlay drawn inside the application window.
-type Dialog struct {
-	Title   string
-	Message string
-	Width   int32
-	Height  int32
-	Visible bool
-	Confirm bool // 确认模式：双按钮（确认/取消），Enter 确认、Esc 取消
-	Triple  bool // 三按钮模式（Save/Don't Save/Cancel）：保存/不保存并继续/取消
-
-	OnConfirm func() // 确认模式下的确认回调 / 三按钮模式的"保存"回调
-	OnDiscard func() // 三按钮模式下的"不保存"回调
-	OnCancel  func() // 确认/三按钮模式下的取消回调（X 按钮等同取消）
-
-	onClose func()
-
-	// 通用按钮组件：渲染（含文字居中）与命中委托给 Button，
-	// Dialog 只保留模态关闭语义（单事件点击、Enter/Esc、X）。
-	saveBtn    *Button
-	cancelBtn  *Button
-	discardBtn *Button
-	saveLabel    string
-	discardLabel string
-	closeHot     bool
-	buttonsInited bool
+func init() {
+	renderer.Register("dialog", renderer.Widget{
+		Measure: measureDialog,
+		Layout:  layoutDialog,
+		Paint:   paintDialog,
+	})
 }
 
-func NewDialog(title, message string) *Dialog {
-	return &Dialog{
-		Title:        title,
-		Message:      message,
-		Width:        480,
-		Height:       220,
-		saveLabel:    "保存",
-		discardLabel: "不保存",
+const (
+	dialogDefaultW = float32(400)
+	dialogMinW     = float32(240)
+	dialogPad      = float32(20)
+	dialogGap      = float32(12)
+	dialogRadius   = float32(8)
+)
+
+// Dialog 居中悬浮对话框：铺满父级的半透明遮罩 + 居中卡片。
+//
+// Attrs:
+//
+//	title        标题
+//	message      正文（可含换行）
+//	onClose      Esc / 点击遮罩时回调
+//	onEnter      Enter 回调（确认框用来「保存」）
+//	dismiss      点击遮罩是否关闭，默认 true；确认框可设 false
+//	closeOnEnter Enter 是否关闭，默认 false
+//	width        卡片宽度，默认 400
+func Dialog(parts ...any) *runtime.VNode {
+	n := runtime.H("dialog", parts...)
+	if n.Attrs == nil {
+		n.Attrs = runtime.Attrs{}
 	}
-}
-
-// syncButtons 把当前弹出的按钮布局（位置/标签/可见性）同步到通用
-// Button 组件。Render/事件处理前调用，保证命中与绘制一致。
-func (d *Dialog) syncButtons(panel core.Rect) {
-	if !d.buttonsInited {
-		d.saveBtn = NewButton(d.saveLabel, 0, 0, 72, 30)
-		d.cancelBtn = NewButton("取消", 0, 0, 72, 30)
-		d.discardBtn = NewButton(d.discardLabel, 0, 0, 72, 30)
-		d.buttonsInited = true
+	if n.Style.Flex == 0 {
+		n.Style.Flex = 1
 	}
-	save := d.buttonBounds(panel)
-	d.saveBtn.X, d.saveBtn.Y = save.X, save.Y
-	d.saveBtn.Width, d.saveBtn.Height = save.W, save.H
-	// 主按钮标签随模式变化：普通="确定"、确认="确认"、三按钮=自定义保存标签。
-	switch {
-	case d.Confirm && d.Triple:
-		d.saveBtn.Text = d.saveLabel
-	case d.Confirm:
-		d.saveBtn.Text = "确认"
-	default:
-		d.saveBtn.Text = "确定"
-	}
-	cancel := d.cancelBounds(panel)
-	d.cancelBtn.X, d.cancelBtn.Y = cancel.X, cancel.Y
-	d.cancelBtn.Width, d.cancelBtn.Height = cancel.W, cancel.H
-	discard := d.discardBounds(panel)
-	d.discardBtn.X, d.discardBtn.Y = discard.X, discard.Y
-	d.discardBtn.Width, d.discardBtn.Height = discard.W, discard.H
-	d.discardBtn.Text = d.discardLabel
-	d.discardBtn.Enabled = d.Confirm && d.Triple
-	d.cancelBtn.Enabled = d.Confirm
-}
-
-func (d *Dialog) Show() {
-	d.Confirm = false // 普通消息框语义：单按钮
-	d.Triple = false
-	d.Visible = true
-}
-
-// ShowConfirm 以确认/取消双按钮模式弹出；onConfirm 在用户确认后调用。
-func (d *Dialog) ShowConfirm(title, message string, onConfirm func()) {
-	d.Title = title
-	d.Message = message
-	d.Confirm = true
-	d.Triple = false
-	d.OnConfirm = onConfirm
-	d.Visible = true
-}
-
-// ShowTriple 以三按钮模式弹出（VS Code 保存确认语义：保存 / 不保存 / 取消）。
-// onSave 确认保存；onDiscard 放弃修改并继续；X 按钮、面板外点击或 Esc 取消。
-func (d *Dialog) ShowTriple(title, message, saveLabel, discardLabel string, onSave, onDiscard func()) {
-	d.Title = title
-	d.Message = message
-	d.Confirm = true
-	d.Triple = true
-	d.OnConfirm = onSave
-	d.OnDiscard = onDiscard
-	d.saveLabel = saveLabel
-	d.discardLabel = discardLabel
-	d.Visible = true
-}
-
-func (d *Dialog) Close() {
-	if !d.Visible {
-		return
-	}
-	d.Visible = false
-	if d.onClose != nil {
-		d.onClose()
-	}
-}
-
-func (d *Dialog) IsOpen() bool {
-	return d.Visible
-}
-
-func (d *Dialog) SetOnClose(fn func()) {
-	d.onClose = fn
-}
-
-func (d *Dialog) Bounds(viewWidth, viewHeight int32) core.Rect {
-	width, height := d.Width, d.Height
-	if width <= 0 {
-		width = 440
-	}
-	if height <= 0 {
-		height = 220
-	}
-	return core.Rect{
-		X: (viewWidth - width) / 2,
-		Y: (viewHeight - height) / 2,
-		W: width,
-		H: height,
-	}
-}
-
-func (d *Dialog) buttonBounds(panel core.Rect) core.Rect {
-	return core.Rect{
-		X: panel.X + panel.W - 96,
-		Y: panel.Y + panel.H - 52,
-		W: 72,
-		H: 30,
-	}
-}
-
-// cancelBounds 返回确认/三按钮模式下"取消"按钮的命中区域（最左侧）。
-func (d *Dialog) cancelBounds(panel core.Rect) core.Rect {
-	if d.Triple {
-		// 三按钮：取消 | 不保存 | 保存。
-		return core.Rect{
-			X: panel.X + panel.W - 260,
-			Y: panel.Y + panel.H - 52,
-			W: 72,
-			H: 30,
+	n.Attrs["onKeyDown"] = runtime.KeyHandler(func(e runtime.KeyEvent) bool {
+		if !e.Down {
+			return false
+		}
+		if e.Key == runtime.KeyEscape {
+			if fn := onVoid(n, "onClose"); fn != nil {
+				fn()
+			}
+			return true
+		}
+		if e.Key == runtime.KeyEnter {
+			if fn := onVoid(n, "onEnter"); fn != nil {
+				fn()
+				return true
+			}
+			if renderer.AttrBool(n, "closeOnEnter") {
+				if fn := onVoid(n, "onClose"); fn != nil {
+					fn()
+				}
+				return true
+			}
+		}
+		return true
+	})
+	if n.OnClick == nil {
+		if dialogDismiss(n) {
+			n.OnClick = func() {
+				if fn := onVoid(n, "onClose"); fn != nil {
+					fn()
+				}
+			}
+		} else {
+			n.OnClick = func() {}
 		}
 	}
-	return core.Rect{
-		X: panel.X + panel.W - 178,
-		Y: panel.Y + panel.H - 52,
-		W: 72,
-		H: 30,
-	}
+	return n
 }
 
-// discardBounds 返回三按钮模式下"不保存"按钮的命中区域（中间）。
-func (d *Dialog) discardBounds(panel core.Rect) core.Rect {
-	return core.Rect{
-		X: panel.X + panel.W - 178,
-		Y: panel.Y + panel.H - 52,
-		W: 72,
-		H: 30,
+func dialogDismiss(n *runtime.VNode) bool {
+	if n == nil || n.Attrs == nil {
+		return true
 	}
-}
-
-// closeBounds 返回面板右上角 X 按钮的命中区域。
-func (d *Dialog) closeBounds(panel core.Rect) core.Rect {
-	return core.Rect{X: panel.X + panel.W - 32, Y: panel.Y + 8, W: 24, H: 24}
-}
-
-func contains(rect core.Rect, x, y int32) bool {
-	return x >= rect.X && x < rect.X+rect.W && y >= rect.Y && y < rect.Y+rect.H
-}
-
-func (d *Dialog) HandleMouseMove(x, y, viewWidth, viewHeight int32) bool {
-	if !d.Visible {
-		return false
-	}
-	panel := d.Bounds(viewWidth, viewHeight)
-	d.syncButtons(panel)
-	oldClose := d.closeHot
-	d.closeHot = contains(d.closeBounds(panel), x, y)
-	d.saveBtn.HandleMouseMove(x, y)
-	d.cancelBtn.HandleMouseMove(x, y)
-	d.discardBtn.HandleMouseMove(x, y)
-	return oldClose != d.closeHot
-}
-
-func (d *Dialog) HandleMouseDown(x, y, viewWidth, viewHeight int32) bool {
-	if !d.Visible {
-		return false
-	}
-	panel := d.Bounds(viewWidth, viewHeight)
-	d.syncButtons(panel)
-	// 单事件点击：命中按钮立即触发回调并关闭（模态对话框只收到
-	// MouseDown，无完整 Down/Up 流；复用 Button 的命中判定）。
-	switch {
-	case d.saveBtn.HandleClick(x, y):
-		confirmed := d.Confirm
-		d.Close()
-		if confirmed && d.OnConfirm != nil {
-			d.OnConfirm()
-		}
-	case d.Confirm && d.Triple && d.discardBtn.HandleClick(x, y):
-		discard := d.OnDiscard
-		d.Close()
-		if discard != nil {
-			discard()
-		}
-	case d.Confirm && d.cancelBtn.HandleClick(x, y):
-		d.Close()
-		if d.OnCancel != nil {
-			d.OnCancel()
-		}
-	case contains(d.closeBounds(panel), x, y):
-		cancelled := d.Confirm
-		d.Close()
-		if cancelled && d.OnCancel != nil {
-			d.OnCancel()
-		}
-	}
-	// Consume all clicks while modal, including clicks outside the panel.
-	return true
-}
-
-func (d *Dialog) HandleKeyDown(key int32) bool {
-	if !d.Visible {
-		return false
-	}
-	switch key {
-	case 0x1B: // Escape：普通模式关闭；确认/三按钮模式等同取消
-		cancelled := d.Confirm
-		d.Close()
-		if cancelled && d.OnCancel != nil {
-			d.OnCancel()
-		}
-	case 0x0D: // Enter：确认/三按钮模式下提交主按钮（确认/保存）
-		confirmed := d.Confirm
-		d.Close()
-		if confirmed && d.OnConfirm != nil {
-			d.OnConfirm()
-		}
+	if v, ok := n.Attrs["dismiss"].(bool); ok {
+		return v
 	}
 	return true
 }
 
-func (d *Dialog) Render(ctx core.DrawingContext, x, y, width, height int32) {
-	if !d.Visible {
-		return
+func dialogCardWidth(n *runtime.VNode, maxW float32) float32 {
+	w := dialogDefaultW
+	switch v := renderer.Attr(n, "width").(type) {
+	case float32:
+		if v > 0 {
+			w = v
+		}
+	case int:
+		if v > 0 {
+			w = float32(v)
+		}
 	}
-	th := theme.GetTheme()
-	panel := d.Bounds(width, height)
-	panel.X += x
-	panel.Y += y
-
-	// 遮罩：支持 alpha 的平台做半透明混合（VS Code 风格，背景可见但被
-	// 压暗），否则回退主题定义的不透明遮罩色保持模态语义。
-	if alphaCtx, ok := ctx.(core.AlphaDrawingContext); ok {
-		alphaCtx.DrawRectAlpha(x, y, width, height, 0x000000, 110)
-	} else {
-		ctx.DrawRect(x, y, width, height, th.DialogOverlayBg, true)
+	if maxW > 32 && w > maxW-32 {
+		w = maxW - 32
 	}
-	ctx.DrawRoundedRect(panel.X, panel.Y, panel.W, panel.H, 6, th.DialogPanelBg, true)
-	ctx.DrawRoundedRect(panel.X, panel.Y, panel.W, panel.H, 6, th.MenuBorder, false)
-
-	// 字体阶梯（字体规范.md 第 4 节）：标题 Display 档。
-	ctx.SetFont(th.UIFontFamily, th.FontDisplay())
-
-	// 右上角 X 关闭按钮（hover 高亮，点击或 Esc/Enter 均可关闭）。
-	closeBtn := d.closeBounds(panel)
-	if d.closeHot {
-		ctx.DrawRect(closeBtn.X, closeBtn.Y, closeBtn.W, closeBtn.H, th.TitleBarBtnHover, true)
+	if w < dialogMinW {
+		if maxW > 0 && maxW < dialogMinW {
+			return maxW
+		}
+		w = dialogMinW
 	}
-	cx, cy := closeBtn.X+closeBtn.W/2, closeBtn.Y+closeBtn.H/2
-	DrawCloseIcon(ctx, cx, cy, th.TextPrimary)
-	ctx.DrawText(panel.X+24, panel.Y+24, d.Title, th.TextPrimary)
-	ctx.DrawRect(panel.X+24, panel.Y+56, panel.W-48, 1, th.WindowBorder, true)
-
-	// 正文 Secondary 档。
-	ctx.SetFont(th.UIFontFamily, th.FontSecondary())
-	lineY := panel.Y + 78
-	for _, line := range strings.Split(d.Message, "\n") {
-		ctx.DrawText(panel.X+24, lineY, line, th.TextSecondary)
-		lineY += 24
-	}
-
-	d.syncButtons(panel)
-	// 三按钮模式：取消 | 不保存 | 保存；确认模式：取消 + 确认；否则单"确定"按钮。
-	// 渲染委托通用 Button（含文字居中与悬停态）。
-	if d.Confirm {
-		d.cancelBtn.Render(ctx)
-	}
-	if d.Confirm && d.Triple {
-		d.discardBtn.Render(ctx)
-	}
-	d.saveBtn.Render(ctx)
+	return w
 }
 
-// renderPanelButton 以临时 Button 绘制面板内圆角按钮（InputDialog 等
-// 无状态场景复用）：文字居中与悬停态由通用 Button 组件负责。
-func renderPanelButton(ctx core.DrawingContext, rect core.Rect, label string, hot bool) {
-	btn := NewButton(label, rect.X, rect.Y, rect.W, rect.H)
-	btn.SetHovered(hot)
-	btn.Render(ctx)
+func measureDialog(ctx renderer.Context, n *runtime.VNode, maxW, maxH float32, style renderer.TextStyle, th theme.Theme) (float32, float32) {
+	w, h := maxW, maxH
+	if w <= 0 && ctx != nil {
+		w = ctx.Width()
+	}
+	if h <= 0 && ctx != nil {
+		h = ctx.Height()
+	}
+	_ = n
+	_ = style
+	_ = th
+	return w, h
+}
+
+func layoutDialog(ctx renderer.Context, n *runtime.VNode, x, y, w, h float32, style renderer.TextStyle, th theme.Theme) {
+	if ctx != nil {
+		if w <= 0 {
+			w = ctx.Width()
+		}
+		if bottom := ctx.Height() - y; bottom > 0 {
+			h = bottom
+		}
+	}
+	n.X, n.Y, n.W, n.H = x, y, w, h
+
+	if n.Attrs == nil {
+		n.Attrs = runtime.Attrs{}
+	}
+	if _, ok := n.Attrs["_body"]; !ok {
+		body := make([]*runtime.VNode, 0, len(n.Children))
+		for _, c := range n.Children {
+			if c != nil {
+				body = append(body, c)
+			}
+		}
+		n.Attrs["_body"] = body
+	}
+	user, _ := n.Attrs["_body"].([]*runtime.VNode)
+
+	cardW := dialogCardWidth(n, w)
+	kids := make([]*runtime.VNode, 0, 4)
+	if title := renderer.AttrString(n, "title"); title != "" {
+		kids = append(kids, runtime.Text(runtime.Props{
+			Style: runtime.Style{FontSize: 16, Weight: 600, Color: dialogTitleColor(th)},
+		}, title))
+	}
+	if msg := renderer.AttrString(n, "message"); msg != "" {
+		kids = append(kids, runtime.Text(runtime.Props{
+			Style: runtime.Style{FontSize: 13, Color: dialogMuted(th)},
+		}, msg))
+	}
+	if len(user) > 0 {
+		if len(user) == 1 && user[0].Tag == "hstack" {
+			kids = append(kids, user[0])
+		} else {
+			kids = append(kids, HStack(runtime.Props{
+				Style: runtime.Style{Gap: 8, Justify: runtime.End, Align: runtime.Center},
+			}, user))
+		}
+	}
+
+	cardID := n.ID()
+	if cardID != "" {
+		cardID += "-card"
+	}
+	card := VStack(runtime.Props{
+		Style: runtime.Style{
+			Width:      cardW,
+			Padding:    dialogPad,
+			Gap:        dialogGap,
+			Radius:     dialogRadius,
+			Background: dialogCardBG(th),
+			Border:     dialogCardBorder(th),
+		},
+		OnClick: func() {},
+		ID:      cardID,
+	}, kids)
+
+	cw, ch := renderer.MeasureNode(ctx, card, cardW, 0, style, th)
+	if cw < cardW {
+		cw = cardW
+	}
+	cx := x + (w-cw)/2
+	cy := y + (h-ch)/2
+	if cx < x {
+		cx = x
+	}
+	if cy < y {
+		cy = y
+	}
+	renderer.LayoutNode(ctx, card, cx, cy, cw, ch, style, th)
+	n.Children = []*runtime.VNode{card}
+}
+
+func paintDialog(ctx renderer.Context, n *runtime.VNode, style renderer.TextStyle, th theme.Theme) {
+	if ctx == nil || n == nil {
+		return
+	}
+	bg := renderer.RGBA(0, 0, 0, 72)
+	if renderer.ColorSet(n.Style.Background) {
+		bg = renderer.ColorFrom(n.Style.Background)
+	}
+	ctx.FillRect(n.X, n.Y, n.W, n.H, bg)
+	_ = th
+	renderer.PaintChildren(ctx, n, style, th)
+}
+
+func dialogTitleColor(th theme.Theme) runtime.Color {
+	if renderer.ColorSet(th.Foreground) {
+		return th.Foreground
+	}
+	return runtime.RGB(20, 20, 20)
+}
+
+func dialogMuted(th theme.Theme) runtime.Color {
+	if th.Dark {
+		return runtime.RGB(180, 184, 190)
+	}
+	return runtime.RGB(96, 100, 108)
+}
+
+func dialogCardBG(th theme.Theme) runtime.Color {
+	if th.Dark {
+		if renderer.ColorSet(th.Titlebar) {
+			return th.Titlebar
+		}
+		return runtime.RGB(32, 32, 36)
+	}
+	if renderer.ColorSet(th.Background) {
+		return th.Background
+	}
+	return runtime.RGB(255, 255, 255)
+}
+
+func dialogCardBorder(th theme.Theme) runtime.Color {
+	if renderer.ColorSet(th.Separator) {
+		return th.Separator
+	}
+	return runtime.RGB(210, 210, 210)
 }
