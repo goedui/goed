@@ -82,3 +82,44 @@ func TestEmptyIconKindsPaint(t *testing.T) {
 		}
 	}
 }
+
+// TestMeasureEmptyPassesThroughParentWidth 守的是 empty.go 里那段注释写明的
+// **已修 bug 的回归点**：
+//
+//	测量阶段父级 HStack 会传 maxW=0。不能回退到窗口全宽，否则 empty
+//	会按 1180 布局，内容看起来偏到右栏右侧。宽度交给 layout 按父级拉伸。
+//
+// 也就是说 `w <= 0 → w = 1` 里的那个 1 是**故意的**，不是偷懒。窗口宽度故意给到
+// 1180：一旦有人把它「顺手改成」ctx.Width()（看着更合理），第二条子用例就会红，
+// 而且报错信息直接点出症状。高度没有这条约束，退到固定 180。
+func TestMeasureEmptyPassesThroughParentWidth(t *testing.T) {
+	ctx := &mockContext{w: 1180, h: 700}
+	n := Empty(runtime.Props{ID: "e-narrow"})
+	st := renderer.TextStyle{FontSize: 13}
+
+	t.Run("有父级宽度就原样传下去", func(t *testing.T) {
+		w, h := measureEmpty(ctx, n, 320, 240, st, theme.Light)
+		if w != 320 || h != 240 {
+			t.Fatalf("测得 %gx%g，期望 320x240", w, h)
+		}
+	})
+	t.Run("父级宽度为 0 时退到 1，而不是窗口全宽", func(t *testing.T) {
+		w, _ := measureEmpty(ctx, n, 0, 240, st, theme.Light)
+		if w == ctx.Width() {
+			t.Fatalf("宽度回退到了窗口全宽 %g —— 注释里写明这会让 empty 内容偏到右栏右侧", w)
+		}
+		if w != 1 {
+			t.Fatalf("宽度 = %g，期望 1（宽度交给 layout 按父级拉伸）", w)
+		}
+	})
+	t.Run("父级宽度为负时同样退到 1", func(t *testing.T) {
+		if w, _ := measureEmpty(ctx, n, -10, 240, st, theme.Light); w != 1 {
+			t.Fatalf("宽度 = %g，期望 1", w)
+		}
+	})
+	t.Run("高度为 0 时退到固定 180", func(t *testing.T) {
+		if _, h := measureEmpty(ctx, n, 320, 0, st, theme.Light); h != 180 {
+			t.Fatalf("高度 = %g，期望 180", h)
+		}
+	})
+}

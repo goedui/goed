@@ -10,8 +10,8 @@ import (
 	"unsafe"
 )
 
-// com 是原生 COM 接口指针。必须用 uintptr 而不能用带指针字段的 Go 结构体，
-// 否则 GC 会把 Direct2D 对象当成 Go 堆来扫描。
+// com 是原生 COM 接口指针：必须用 uintptr 而不是带指针字段的 Go 结构体，
+// 否则 GC 会把 Direct2D 对象当 Go 堆来扫描。
 type com uintptr
 
 func (obj com) slot(idx int) uintptr {
@@ -108,7 +108,9 @@ func createSolidColorBrush(rt com) (com, error) {
 	return brush, nil
 }
 
-func createTextFormat(dwrite com, family *uint16, size float32, weight int, locale *uint16) (com, error) {
+// createTextFormat 建一个 IDWriteTextFormat。fontStyle 取 dwriteFontStyleNormal /
+// dwriteFontStyleItalic —— 斜体在**建 format 时**决定，建完改不了。
+func createTextFormat(dwrite com, family *uint16, size float32, weight, fontStyle int, locale *uint16) (com, error) {
 	if weight <= 0 {
 		weight = dwriteFontWeightNormal
 	}
@@ -120,7 +122,7 @@ func createTextFormat(dwrite com, family *uint16, size float32, weight int, loca
 		uintptr(unsafe.Pointer(family)),
 		0,
 		uintptr(uint32(weight)),
-		uintptr(dwriteFontStyleNormal),
+		uintptr(uint32(fontStyle)),
 		uintptr(dwriteFontStretchNormal),
 		uintptr(math.Float32bits(size)),
 		uintptr(unsafe.Pointer(locale)),

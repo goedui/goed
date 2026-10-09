@@ -1,4 +1,4 @@
-//go:build !windows
+//go:build !windows && !js
 
 package platform
 
@@ -9,6 +9,7 @@ func init() {
 }
 
 func init() {
+	SaveBytes = func(string, string, []byte) (string, bool, error) { return "", false, nil }
 	SaveImage = func(string, string) (string, bool, error) { return "", false, nil }
 	OpenImage = func() (string, bool, error) { return "", false, nil }
 	OpenFile = func(string, string) (string, bool, error) { return "", false, nil }

@@ -7,18 +7,20 @@ import "github.com/goedui/goed/ui/platform/linux"
 // Run 启动 X11 宿主窗口并进入消息循环。
 func Run(opts Options) error {
 	return linux.Run(linux.Options{
-		Title:       opts.Title,
-		Width:       opts.Width,
-		Height:      opts.Height,
-		Dark:        opts.Dark,
-		Icon16:      opts.Icon16,
-		Icon32:      opts.Icon32,
-		Paint:       opts.Paint,
-		Pointer:     opts.Pointer,
-		Key:         opts.Key,
-		Wheel:       opts.Wheel,
-		Composition: opts.Composition,
-		Caret:       opts.Caret,
+		Title:            opts.Title,
+		Width:            opts.Width,
+		Height:           opts.Height,
+		Dark:             opts.Dark,
+		Icon16:           opts.Icon16,
+		Icon32:           opts.Icon32,
+		Paint:            opts.Paint,
+		Pointer:          opts.Pointer,
+		RightPointer:     opts.RightPointer,
+		Key:              opts.Key,
+		Wheel:            opts.Wheel,
+		Composition:      opts.Composition,
+		Caret:            opts.Caret,
+		Close:            opts.Close,
 		BindRequestFrame: bindRequestFrame,
 		SetWindowTitle: func(title string) {
 			if HWND != 0 {
@@ -30,6 +32,12 @@ func Run(opts Options) error {
 		},
 		BindHWND: func(hwnd uintptr) {
 			HWND = hwnd
+		},
+		ToggleMaximize: func(fn func() bool) {
+			ToggleMaximize = fn
+		},
+		CloseWindow: func(fn func()) {
+			CloseWindow = fn
 		},
 		FrameUpdate: func(maximized, active bool, hover, pressed int) {
 			st := Frame()

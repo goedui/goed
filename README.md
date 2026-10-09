@@ -7,5 +7,5 @@ a native app framework wrriten by go.
 ## support platform
 - win10/win11
 - linux(testing)
-- web(later)
+- web(testing)
 - macos(later)

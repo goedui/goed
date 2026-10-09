@@ -22,17 +22,20 @@ func VStack(parts ...any) *runtime.VNode {
 func measureVStack(ctx renderer.Context, n *runtime.VNode, maxW, maxH float32, style renderer.TextStyle, th theme.Theme) (float32, float32) {
 	pad := n.Style.Padding
 	gap := n.Style.Gap
-	innerW := maxW - 2*pad
-	if innerW < 0 {
-		innerW = 0
-	}
+	// 同 hstack：用「自己最终会拿到的宽度」度量子节点，而不是父级给的 maxW。
+	innerW := renderer.InnerWidth(n, maxW)
 	var contentH, contentW float32
 	first := true
 	for _, c := range n.Children {
 		if c == nil {
 			continue
 		}
+		if runtime.IsAbsolute(c) {
+			continue
+		}
 		cw, ch := renderer.MeasureNode(ctx, c, innerW, 0, style, th)
+		cw += 2 * c.Style.Margin
+		ch += 2 * c.Style.Margin
 		if cw > contentW {
 			contentW = cw
 		}
@@ -74,7 +77,13 @@ func layoutVStack(ctx renderer.Context, n *runtime.VNode, x, y, w, h float32, st
 		if c == nil {
 			continue
 		}
+		if runtime.IsAbsolute(c) {
+			continue
+		}
 		iw, ih := renderer.MeasureNode(ctx, c, innerW, 0, style, th)
+		m := 2 * c.Style.Margin
+		iw += m
+		ih += m
 		if len(items) > 0 {
 			contentH += gap
 		}
@@ -115,7 +124,15 @@ func layoutVStack(ctx renderer.Context, n *runtime.VNode, x, y, w, h float32, st
 		if it.flex > 0 && align != runtime.Center && align != runtime.End {
 			cw = innerW
 		}
-		renderer.LayoutNode(ctx, it.n, cx, cy, cw, ch, style, th)
+		m := it.n.Style.Margin
+		boxW := cw - 2*m
+		if align == runtime.Stretch || (it.flex > 0 && align != runtime.Center && align != runtime.End) {
+			boxW = innerW - 2*m
+		}
+		if boxW < 0 {
+			boxW = 0
+		}
+		renderer.LayoutNode(ctx, it.n, cx+m, cy+m, boxW, ch-2*m, style, th)
 		cy += ch + gap
 	}
 }

@@ -51,3 +51,30 @@ func requestClientSize(fn func(w, h int) bool, w, h int) bool {
 	Post(func() { fn(w, h) })
 	return true
 }
+
+func requestClose(fn func()) {
+	if fn == nil {
+		return
+	}
+	if onUIThread() {
+		fn()
+		return
+	}
+	if Post != nil {
+		Post(fn)
+	}
+}
+
+func requestToggleMaximize(fn func() bool) bool {
+	if fn == nil {
+		return false
+	}
+	if onUIThread() {
+		return fn()
+	}
+	if Post == nil {
+		return false
+	}
+	Post(func() { fn() })
+	return true
+}

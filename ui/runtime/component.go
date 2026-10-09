@@ -30,7 +30,25 @@ type SetupContext struct {
 	invalidate func()
 	props      Props
 	slots      []*VNode
+	mount      []func()
 	unmount    []func()
+	mounted    bool
+}
+
+// OnMounted 注册挂载回调，对应 Vue 的 onMounted。
+//
+// 时机是实例第一次渲染完成之后（子树已建好、子组件已挂载完），子先父后。要等布局结果
+// （X/Y/W/H）得用 ui.SetAfterPaint —— 布局发生在 PaintTree 里，比这里更晚。在已挂载
+// 的实例上注册会立即执行。
+func (c *SetupContext) OnMounted(fn func()) {
+	if c == nil || fn == nil {
+		return
+	}
+	if c.mounted {
+		fn()
+		return
+	}
+	c.mount = append(c.mount, fn)
 }
 
 // OnUnmounted 注册卸载回调，对应 Vue 的 onUnmounted。
@@ -117,6 +135,8 @@ type Instance struct {
 	Render RenderFunc
 	ctx    *SetupContext
 	kids   map[string]*Instance
+	// dead 表示已经卸载：卸载后再渲染（例如拿旧 vnode 复用）不该再触发 onMounted。
+	dead bool
 }
 
 func newInstance(def *ComponentDef, invalidate func()) *Instance {
@@ -161,7 +181,24 @@ func (inst *Instance) setup() {
 	inst.Render = func() []*VNode {
 		nodes := user()
 		inst.patch(nodes, "r")
+		inst.mountOnce()
 		return nodes
+	}
+}
+
+// mountOnce 在首次渲染之后跑 onMounted，只跑一次。
+//
+// 放在 patch 之后是为了拿到「子先父后」的顺序：子实例是在 patch 里挂载并渲染的，
+// 轮到父组件这里时它们的回调已经跑完了，和 Vue 一致。
+func (inst *Instance) mountOnce() {
+	if inst == nil || inst.ctx == nil || inst.dead || inst.ctx.mounted {
+		return
+	}
+	inst.ctx.mounted = true
+	fns := inst.ctx.mount
+	inst.ctx.mount = nil
+	for _, fn := range fns {
+		fn()
 	}
 }
 
@@ -184,6 +221,7 @@ func (inst *Instance) Unmount() {
 	if inst == nil {
 		return
 	}
+	inst.dead = true
 	for _, child := range inst.kids {
 		child.Unmount()
 	}
@@ -191,6 +229,7 @@ func (inst *Instance) Unmount() {
 	if inst.ctx == nil {
 		return
 	}
+	inst.ctx.mount = nil
 	fns := inst.ctx.unmount
 	inst.ctx.unmount = nil
 	for _, fn := range fns {

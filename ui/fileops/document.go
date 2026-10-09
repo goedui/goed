@@ -39,20 +39,20 @@ func Load(path string) (Document, error) {
 // Save writes an existing document while retaining its current file mode when
 // possible. SaveAs creates a regular user file with mode 0644.
 func Save(path, content string) error {
+	_, err := SaveAs(path, content)
+	return err
+}
+
+func SaveAs(path, content string) (Document, error) {
 	path = normalizePath(path)
 	if path == "" {
-		return ErrPathRequired
+		return Document{}, ErrPathRequired
 	}
 	mode := os.FileMode(0644)
 	if info, err := os.Stat(path); err == nil {
 		mode = info.Mode().Perm()
 	}
-	return os.WriteFile(path, []byte(content), mode)
-}
-
-func SaveAs(path, content string) (Document, error) {
-	path = normalizePath(path)
-	if err := Save(path, content); err != nil {
+	if err := os.WriteFile(path, []byte(content), mode); err != nil {
 		return Document{}, err
 	}
 	modTime := time.Time{}

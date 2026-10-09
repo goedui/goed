@@ -4,7 +4,13 @@ package windows
 
 // hitTest 把客户区像素坐标映射成 WM_NCHITTEST 返回值。
 // 边框用于缩放；标题栏右侧三块分别是最小化 / 最大化 / 关闭。
-func hitTest(px, py, cw, ch, border, titleH, btnW int32, maximized bool) uintptr {
+//
+// clientHit 与 dpi 是为「应用自绘标题栏」准备的：顶部那条默认整条都是标题栏，
+// 应用把标签条画在那里时点击就全被 HTCAPTION 吃掉了。clientHit 非 nil 时，
+// 系统按钮之外的每个点都先问它一句「这里是不是应用自己的控件」，是就返回
+// htClient 交回客户区。nil 时这条分支不生效，行为与以前完全一致。
+func hitTest(px, py, cw, ch, border, titleH, btnW int32, maximized bool,
+	clientHit func(x, y float32) bool, dpi float32) uintptr {
 	if cw <= 0 || ch <= 0 {
 		return htClient
 	}
@@ -42,6 +48,14 @@ func hitTest(px, py, cw, ch, border, titleH, btnW int32, maximized bool) uintptr
 			}
 			if px >= cw-3*btnW {
 				return htMinButton
+			}
+		}
+		if clientHit != nil {
+			if dpi <= 0 {
+				dpi = 96
+			}
+			if clientHit(float32(px)*96/dpi, float32(py)*96/dpi) {
+				return htClient
 			}
 		}
 		return htCaption

@@ -2,8 +2,7 @@
 
 package windows
 
-// 文本格式与位图缓存上限。超出后按 LRU 释放 COM 对象，
-// 避免 formats / images 随运行时间单向增长。
+// 文本格式与位图缓存上限。超出后按 LRU 释放 COM 对象，避免 formats / images 单向增长。
 var (
 	maxTextFormats = 64
 	maxBitmaps     = 16

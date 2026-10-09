@@ -195,14 +195,16 @@ func paintSelect(ctx renderer.Context, n *runtime.VNode, style renderer.TextStyl
 		border = renderer.ColorFrom(n.Style.Border)
 	}
 	if !enabled {
-		bg = renderer.RGB(232, 234, 238)
-		fg = renderer.RGB(95, 102, 115)
+		// 与 button 同一对值，走主题（见 theme.DisabledColors）。
+		dbg, dfg := th.DisabledColors()
+		bg = renderer.ColorFrom(dbg)
+		fg = renderer.ColorFrom(dfg)
 	}
 	r := n.Style.Radius
 	if r <= 0 {
 		r = 8
 	}
-	if border.A > 0 && n.W > 2 && n.H > 2 {
+	if enabled && border.A > 0 && n.W > 2 && n.H > 2 {
 		ctx.FillRoundedRect(n.X, n.Y, n.W, n.H, r, border)
 		inner := r - 1
 		if inner < 0 {
@@ -232,17 +234,10 @@ func paintSelect(ctx renderer.Context, n *runtime.VNode, style renderer.TextStyl
 	}
 	arrow := fg
 	arrow.A *= 0.7
-	align := renderer.AlignEnd
+	aw := float32(12)
+	ax := n.X + n.W - pad - aw
 	if renderer.AttrBool(n, "compact") {
-		align = renderer.AlignCenter
-		pad = 0
+		ax = n.X + (n.W-aw)/2
 	}
-	ctx.DrawText("▼", n.X+pad, n.Y, n.W-2*pad, n.H, renderer.TextStyle{
-		FontFamily: style.FontFamily,
-		FontSize:   style.FontSize * 0.7,
-		Color:      arrow,
-		Align:      align,
-		VAlign:     renderer.AlignCenter,
-		NoWrap:     true,
-	})
+	PaintGlyph(ctx, "chevron", ax, n.Y+(n.H-aw)/2, aw, arrow)
 }

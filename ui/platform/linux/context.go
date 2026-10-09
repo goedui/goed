@@ -8,6 +8,7 @@ import (
 	"image/draw"
 	_ "image/jpeg"
 	_ "image/png"
+	"math"
 
 	"github.com/goedui/goed/ui/renderer"
 )
@@ -219,7 +220,7 @@ func (c *swContext) DrawText(text string, x, y, maxW, maxH float32, style render
 		case renderer.AlignEnd:
 			startX = x + maxW - lw
 		}
-		c.blitLine(line, c.toPx(startX), c.toPx(startY)+i*ch, cw, ch, style.Color)
+		c.blitLine(line, c.toPx(startX), c.toPx(startY)+i*ch, cw, ch, style.Color, style.Italic)
 	}
 }
 
@@ -246,6 +247,20 @@ func (c *swContext) MeasureText(text string, maxW float32, style renderer.TextSt
 }
 
 func (c *swContext) DrawImage(data []byte, x, y, w, h float32) {
+	c.blitImage(data, x, y, w, h, 0)
+}
+
+// DrawImageRounded 把图片画进 (x,y,w,h) 并按半径 r 切圆角，实现
+// renderer.ImagePainter。
+//
+// 软件后端没有图层和几何遮罩，直接在目的像素上算：只有四个角方块里的像素要判距离，
+// 中间整块照贴；边界按 1 像素算覆盖率，硬切的话在 1.25 倍这类非整数缩放下会看出台阶。
+func (c *swContext) DrawImageRounded(data []byte, x, y, w, h, r float32) {
+	c.blitImage(data, x, y, w, h, r)
+}
+
+// blitImage 把图片按目的矩形缩放贴上去。r > 0 时切圆角（单位 DIP）。
+func (c *swContext) blitImage(data []byte, x, y, w, h, r float32) {
 	if len(data) == 0 || w <= 0 || h <= 0 {
 		return
 	}
@@ -265,6 +280,12 @@ func (c *swContext) DrawImage(data []byte, x, y, w, h float32) {
 	if sw < 1 || sh < 1 {
 		return
 	}
+	// 圆角半径换算到设备像素。图片等比缩放，用 x 方向的就够；半径超过一半时
+	// 圆角矩形本身退化，直接不切。
+	rad := float32(0)
+	if r > 0 && r*2 <= w && r*2 <= h {
+		rad = float32(dw) * r / w
+	}
 	cl := c.clip()
 	for py := max(dy0, cl.y0); py < min(dy1, cl.y1); py++ {
 		sy := (py - dy0) * sh / dh
@@ -272,14 +293,54 @@ func (c *swContext) DrawImage(data []byte, x, y, w, h float32) {
 			sy = sh - 1
 		}
 		for px := max(dx0, cl.x0); px < min(dx1, cl.x1); px++ {
+			cov := cornerCoverage(px, py, dx0, dy0, dx1, dy1, rad)
+			if cov <= 0 {
+				continue
+			}
 			sx := (px - dx0) * sw / dw
 			if sx >= sw {
 				sx = sw - 1
 			}
 			off := sy*rgba.Stride + sx*4
-			c.blend(px, py, rgba.Pix[off+0], rgba.Pix[off+1], rgba.Pix[off+2], rgba.Pix[off+3])
+			a := rgba.Pix[off+3]
+			if cov < 1 {
+				a = byte(float32(a) * cov)
+			}
+			c.blend(px, py, rgba.Pix[off+0], rgba.Pix[off+1], rgba.Pix[off+2], a)
 		}
 	}
+}
+
+// cornerCoverage 返回目的像素 (px,py) 落在圆角矩形内的覆盖率（0..1）。
+// rad <= 0 时恒为 1。只有四个角方块里的像素需要算距离，其余直接放行。
+func cornerCoverage(px, py, dx0, dy0, dx1, dy1 int, rad float32) float32 {
+	if rad <= 0 {
+		return 1
+	}
+	cx, cy := float32(px)+0.5, float32(py)+0.5
+	inXBand := cx < float32(dx0)+rad || cx > float32(dx1)-rad
+	inYBand := cy < float32(dy0)+rad || cy > float32(dy1)-rad
+	if !inXBand || !inYBand {
+		return 1
+	}
+	// 角心：x 方向取近的那一侧，y 方向同理，两者一交就是最近的那个角。
+	ccx := float32(dx0) + rad
+	if cx > float32(dx1)-rad {
+		ccx = float32(dx1) - rad
+	}
+	ccy := float32(dy0) + rad
+	if cy > float32(dy1)-rad {
+		ccy = float32(dy1) - rad
+	}
+	dx, dy := cx-ccx, cy-ccy
+	d := float32(math.Sqrt(float64(dx*dx + dy*dy)))
+	if cov := rad + 0.5 - d; cov < 1 {
+		if cov < 0 {
+			return 0
+		}
+		return cov
+	}
+	return 1
 }
 
 func (c *swContext) DrawPixels(pix []byte, pw, ph int, x, y, w, h float32) {
@@ -424,12 +485,19 @@ func (c *swContext) bresenham(x0, y0, x1, y1 int, col renderer.Color) {
 	}
 }
 
-func (c *swContext) blitLine(text string, x, y, cw, ch int, col renderer.Color) {
+func (c *swContext) blitLine(text string, x, y, cw, ch int, col renderer.Color, italic bool) {
 	r, g, b, a := packBGRA(col)
 	cl := c.clip()
 	scale := cw / glyphW
 	if scale < 1 {
 		scale = 1
+	}
+	// 斜体：软件后端只有正体 8x8 点阵，没有 italic 面可切，按行做几何倾斜 ——
+	// 底行不动、越靠上右移越多。倾斜只动形状不动步进，与 DirectWrite 那条路径
+	// （italic 不改 advance）保持同一度量。
+	shear := float32(0)
+	if italic {
+		shear = glyphH * 0.22
 	}
 	cx := x
 	for _, ru := range text {
@@ -443,11 +511,12 @@ func (c *swContext) blitLine(text string, x, y, cw, ch int, col renderer.Color) 
 			} else {
 				rowBits = 0x42
 			}
+			rowShift := int(float32(glyphH-1-row) / glyphH * shear * float32(scale))
 			for colx := 0; colx < glyphW; colx++ {
 				if rowBits&(1<<colx) == 0 {
 					continue
 				}
-				px0 := cx + colx*scale
+				px0 := cx + colx*scale + rowShift
 				py0 := y + row*scale
 				for oy := 0; oy < scale; oy++ {
 					py := py0 + oy

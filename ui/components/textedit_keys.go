@@ -257,7 +257,7 @@ func handleEditKey(n *runtime.VNode, e runtime.KeyEvent, multiline bool) bool {
 				st.value = ""
 				st.caret = 0
 				st.anchor = 0
-				st.layout = nil
+				st.dropLayout()
 				onInput()
 			}
 			return true
@@ -271,6 +271,9 @@ func handleEditKey(n *runtime.VNode, e runtime.KeyEvent, multiline bool) bool {
 			}
 			return true
 		}
+	}
+	if e.Ctrl {
+		return false
 	}
 	return e.Char != 0
 }
@@ -324,6 +327,33 @@ func (st *editState) moveLine(delta int, extend bool) {
 	if st.layout == nil {
 		return
 	}
+	if st.layout.sparse() {
+		curLine := st.layout.lineForOffset(st.caretOffset())
+		target := curLine + delta
+		if target < 0 {
+			target = 0
+		}
+		if target > st.layout.maxLine {
+			target = st.layout.maxLine
+		}
+		curStart := st.layout.lineStart(curLine)
+		column := st.caretOffset() - curStart
+		targetStart := st.layout.lineStart(target)
+		targetEnd := len(st.value)
+		if target < st.layout.maxLine {
+			targetEnd = st.layout.lineStart(target+1) - 1
+		}
+		if targetStart+column > targetEnd {
+			st.caret = targetEnd
+		} else {
+			st.caret = targetStart + column
+		}
+		if !extend {
+			st.anchor = st.caret
+		}
+		st.scrollSync = true
+		return
+	}
 	cur := st.layout.pointAt(st.caretOffset())
 	target := cur.line + delta
 	if target < 0 {
@@ -352,6 +382,15 @@ func (st *editState) moveLine(delta int, extend bool) {
 // 布局尚未建立时退化为按硬换行切分。
 func (st *editState) lineBounds() (start, end int, ok bool) {
 	at := st.caretOffset()
+	if st.layout != nil && st.layout.sparse() {
+		line := st.layout.lineForOffset(at)
+		start = st.layout.lineStart(line)
+		end = len(st.value)
+		if line < st.layout.maxLine {
+			end = st.layout.lineStart(line+1) - 1
+		}
+		return start, end, true
+	}
 	if st.layout != nil && len(st.layout.points) > 0 {
 		p := st.layout.pointAt(at)
 		start, end = -1, -1
@@ -382,7 +421,41 @@ func (st *editState) lineBounds() (start, end int, ok bool) {
 
 // movePage 上下翻页：按视口能放下的行数移动，保持列位置。
 func (st *editState) movePage(dir int, extend bool, viewH float32) {
-	if st.layout == nil || len(st.layout.points) == 0 {
+	if st.layout == nil || (len(st.layout.points) == 0 && !st.layout.sparse()) {
+		return
+	}
+	if st.layout.sparse() {
+		lines := 1
+		if st.layout.lineH > 0 && viewH > 0 {
+			lines = int(viewH / st.layout.lineH)
+			if lines < 1 {
+				lines = 1
+			}
+		}
+		curLine := st.layout.lineForOffset(st.caretOffset())
+		target := curLine + dir*lines
+		if target < 0 {
+			target = 0
+		}
+		if target > st.layout.maxLine {
+			target = st.layout.maxLine
+		}
+		column := st.caretOffset() - st.layout.lineStart(curLine)
+		st.alignScrollByPage(dir, lines)
+		targetStart := st.layout.lineStart(target)
+		targetEnd := len(st.value)
+		if target < st.layout.maxLine {
+			targetEnd = st.layout.lineStart(target+1) - 1
+		}
+		if targetStart+column > targetEnd {
+			st.caret = targetEnd
+		} else {
+			st.caret = targetStart + column
+		}
+		if !extend {
+			st.anchor = st.caret
+		}
+		st.scrollSync = false
 		return
 	}
 	cur := st.layout.pointAt(st.caretOffset())
@@ -396,8 +469,10 @@ func (st *editState) movePage(dir int, extend bool, viewH float32) {
 	target := cur.line + dir*lines
 	switch {
 	case target < 0:
+		target = 0
 		st.caret = 0
 	case target > st.layout.maxLine:
+		target = st.layout.maxLine
 		st.caret = len(st.value)
 	default:
 		p := st.layout.pointAtXY(cur.x, (float32(target)+0.5)*st.layout.lineH)
@@ -406,7 +481,22 @@ func (st *editState) movePage(dir int, extend bool, viewH float32) {
 	if !extend {
 		st.anchor = st.caret
 	}
-	st.scrollSync = true
+	// 翻页把目标行顶到视口顶，而不是只把光标露出来（那样视口几乎不动）。
+	st.alignScrollByPage(dir, lines)
+	st.scrollSync = false
+}
+
+// alignScrollByPage 按翻过的行数移动滚动偏移。scrollSync 留给上下键的最小跟随。
+func (st *editState) alignScrollByPage(dir, lines int) {
+	if st == nil || st.layout == nil || st.layout.lineH <= 0 || lines == 0 {
+		return
+	}
+	st.scrollY += float32(dir*lines) * st.layout.lineH
+	if st.viewH > 0 {
+		st.scrollY = clampScrollY(st, st.viewH)
+	} else if st.scrollY < 0 {
+		st.scrollY = 0
+	}
 }
 
 // handleComposition 更新输入法组合串。返回 true 表示组合串由控件自己绘制，
@@ -420,7 +510,7 @@ func handleComposition(n *runtime.VNode, text string, cursor int) bool {
 		st.comp = ""
 		st.compAt = 0
 		st.compCu = 0
-		st.layout = nil
+		st.dropLayout()
 		resetBlink()
 		return true
 	}
@@ -434,7 +524,7 @@ func handleComposition(n *runtime.VNode, text string, cursor int) bool {
 	}
 	st.comp = text
 	st.compCu = cursor
-	st.layout = nil
+	st.dropLayout()
 	resetBlink()
 	return true
 }
@@ -536,12 +626,119 @@ func beginPointerSelect(n *runtime.VNode) {
 	if n == nil || !renderer.Enabled(n) {
 		return
 	}
+	if beginBarDrag(n) {
+		return
+	}
 	runtime.SetFocus(n.ID())
 	extendCaretFromPointer(n, false)
 }
 
+// beginBarDrag 指针落在滚动条上时开始拖动。竖条在右边，横条在下边。
+func beginBarDrag(n *runtime.VNode) bool {
+	x, y, ok := renderer.Pointer()
+	if !ok {
+		return false
+	}
+	st := stateFor(n)
+	if x >= n.X+n.W-8 && x <= n.X+n.W && y >= n.Y && y <= n.Y+n.H {
+		contentH := float32(0)
+		if st.layout != nil {
+			contentH = float32(st.layout.maxLine+1)*st.layout.lineH + 2*inputTopPad
+		}
+		if contentH > n.H+1 {
+			barH := n.H * n.H / contentH
+			if barH < 24 {
+				barH = 24
+			}
+			barY := n.Y
+			if contentH > n.H {
+				barY = n.Y + (n.H-barH)*(st.scrollY/(contentH-n.H))
+			}
+			if y >= barY && y <= barY+barH {
+				st.barDrag = 1
+				st.barGrab = y - barY
+				return true
+			}
+		}
+	}
+	viewW := n.W - 2*inputPad
+	if y >= n.Y+n.H-8 && y <= n.Y+n.H && st.contentW > viewW+1 && viewW > 0 {
+		barW := viewW * viewW / st.contentW
+		if barW < 24 {
+			barW = 24
+		}
+		barX := n.X + inputPad + (viewW-barW)*(st.scrollX/(st.contentW-viewW))
+		if x >= barX && x <= barX+barW {
+			st.barDrag = 2
+			st.barGrab = x - barX
+			return true
+		}
+	}
+	st.barDrag = 0
+	return false
+}
+
+func dragEditorBar(n *runtime.VNode) bool {
+	st := stateFor(n)
+	if st == nil || st.barDrag == 0 {
+		return false
+	}
+	x, y, ok := renderer.Pointer()
+	if !ok {
+		return true
+	}
+	switch st.barDrag {
+	case 1:
+		contentH := float32(0)
+		if st.layout != nil {
+			contentH = float32(st.layout.maxLine+1)*st.layout.lineH + 2*inputTopPad
+		}
+		if contentH <= n.H {
+			return true
+		}
+		barH := n.H * n.H / contentH
+		if barH < 24 {
+			barH = 24
+		}
+		track := n.H - barH
+		if track <= 0 {
+			return true
+		}
+		st.scrollY = (y - st.barGrab - n.Y) / track * (contentH - n.H)
+		st.scrollY = clampScrollY(st, n.H)
+	case 2:
+		viewW := n.W - 2*inputPad
+		if st.contentW <= viewW || viewW <= 0 {
+			return true
+		}
+		barW := viewW * viewW / st.contentW
+		if barW < 24 {
+			barW = 24
+		}
+		track := viewW - barW
+		if track <= 0 {
+			return true
+		}
+		st.scrollX = (x - st.barGrab - n.X - inputPad) / track * (st.contentW - viewW)
+		if st.scrollX < 0 {
+			st.scrollX = 0
+		}
+		if st.scrollX > st.contentW-viewW {
+			st.scrollX = st.contentW - viewW
+		}
+	}
+	st.scrollSync = false
+	return true
+}
+
 func dragPointerSelect(n *runtime.VNode) {
-	if n == nil || !renderer.Enabled(n) || !runtime.IsFocused(n) {
+	if n == nil || !renderer.Enabled(n) {
+		return
+	}
+	if dragEditorBar(n) {
+		return
+	}
+	if !runtime.IsFocused(n) {
 		return
 	}
 	extendCaretFromPointer(n, true)
@@ -549,6 +746,10 @@ func dragPointerSelect(n *runtime.VNode) {
 
 func finishPointerSelect(n *runtime.VNode) {
 	if n == nil || !renderer.Enabled(n) {
+		return
+	}
+	if st := stateFor(n); st.barDrag != 0 {
+		st.barDrag = 0
 		return
 	}
 	runtime.SetFocus(n.ID())

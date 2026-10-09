@@ -22,6 +22,9 @@ type Menu struct {
 }
 
 // MenuItem 是一条下拉项。Sep 为 true 时画分隔线。
+//
+// 菜单栏的下拉和右键面板（ContextMenu）共用这一种菜单项 —— 两处的排版与
+// 「选中哪一项」的判定（menuItemLabel）都是同一份代码。
 type MenuItem struct {
 	Label    string
 	Shortcut string
@@ -46,6 +49,28 @@ func menusFrom(v any) []Menu {
 		for _, x := range t {
 			if m, ok := x.(Menu); ok {
 				out = append(out, m)
+			}
+		}
+		return out
+	default:
+		return nil
+	}
+}
+
+// menuItemsFrom 把 Attrs["items"] 归一成 []MenuItem。
+//
+// MenuBar 和 ContextMenu 共用同一套菜单项（MenuItem / menuItemLabel / 分隔线
+// "---"），差别只在菜单从哪儿展开：菜单栏从锚点往下掉，右键面板跟着指针走。
+// 归一化放在这儿，两边的「标签怎么拼、动作怎么查」就不会长成两套。
+func menuItemsFrom(v any) []MenuItem {
+	switch t := v.(type) {
+	case []MenuItem:
+		return t
+	case []any:
+		out := make([]MenuItem, 0, len(t))
+		for _, x := range t {
+			if it, ok := x.(MenuItem); ok {
+				out = append(out, it)
 			}
 		}
 		return out
@@ -223,7 +248,17 @@ func layoutMenuBar(ctx renderer.Context, n *runtime.VNode, x, y, w, h float32, s
 	layoutHStack(ctx, n, x, y, w, h, style, th)
 	n.Children = saved
 	if pop != nil {
-		cw, ch := renderer.MeasureNode(ctx, pop, w, h, style, th)
+		// popover 是浮层，上限是画布，不是菜单栏自己的盒子。
+		//
+		// 曾经把菜单栏的 w/h 当 maxW/maxH 传下去，而 renderer.applySize 会把子节点高度
+		// 夹到 maxH —— 菜单栏高 32 DIP，弹出层就被夹成 32：底色只盖住第一项，分隔线那
+		// 8 DIP 的空档透出底下的界面。不容易发现是因为菜单项是 ghost 按钮、底色恰好与
+		// 弹出层同色，只有空档露馅。
+		maxW, maxH := w, h
+		if ctx != nil {
+			maxW, maxH = ctx.Width(), ctx.Height()
+		}
+		cw, ch := renderer.MeasureNode(ctx, pop, maxW, maxH, style, th)
 		renderer.LayoutNode(ctx, pop, x, y, cw, ch, style, th)
 	}
 }

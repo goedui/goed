@@ -1,3 +1,5 @@
+//go:build windows
+
 package windows
 
 import (
@@ -9,16 +11,13 @@ import (
 
 // 输入法（IMM32）支持。
 //
-// 自定义绘制的文本框必须自己处理 WM_IME_* 消息，否则会出现三个典型毛病：
-//   - 拼音/日文等预编辑串看不到：系统把组合窗画在窗口左上角，位置完全不对；
-//   - 候选窗不跟着光标走；
-//   - 上屏字符丢失或者重复。
+// 自定义绘制的文本框必须自己处理 WM_IME_* 消息，否则：预编辑串看不见（系统把组合窗
+// 画在窗口左上角）、候选窗不跟光标走、上屏字符丢失或重复。
 //
-// 这里的做法：
-//   - 预编辑串从 IME 上下文读出来交给应用自己画（应用消费了就不再让系统画组合窗）；
-//   - 每次组合变化都用 ImmSetCompositionWindow(CFS_POINT) 把候选窗钉在光标右下角；
-//   - 上屏（GCS_RESULTSTR）不自己插入，交给 DefWindowProc 继续翻成 WM_IME_CHAR → WM_CHAR，
-//     这样走的是引擎已有的 WM_CHAR 通路，不会出现「自己插一次、系统再送一次」的重复。
+// 做法：预编辑串从 IME 上下文读出来交给应用自己画（应用消费了就不再让系统画组合窗）；
+// 每次组合变化用 ImmSetCompositionWindow(CFS_POINT) 把候选窗钉在光标右下角；上屏
+// （GCS_RESULTSTR）不自己插入，交给 DefWindowProc 翻成 WM_IME_CHAR → WM_CHAR，
+// 走引擎已有的 WM_CHAR 通路，避免「自己插一次、系统再送一次」的重复。
 const (
 	wmImeSetContext       = 0x0281
 	wmImeStartComposition = 0x010D
@@ -101,8 +100,8 @@ func immCompositionCursor(himc uintptr) int {
 	return int(pos)
 }
 
-// immPlaceComposition 把候选窗贴到客户区物理坐标 (x, y)。
-// 用 CFS_POINT 时系统只显示候选窗、不画内联组合串，内联部分由应用绘制。
+// immPlaceComposition 把候选窗贴到客户区物理坐标 (x, y)。用 CFS_POINT 时系统只
+// 显示候选窗、不画内联组合串（内联部分由应用绘制）。
 func immPlaceComposition(himc uintptr, x, y int32) {
 	if himc == 0 {
 		return

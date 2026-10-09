@@ -5,6 +5,7 @@ package platform
 import "github.com/goedui/goed/ui/platform/windows"
 
 func init() {
+	SaveBytes = windows.SaveBytes
 	SaveImage = func(name, format string) (string, bool, error) {
 		return windows.SaveImageDialog(HWND, name, format)
 	}

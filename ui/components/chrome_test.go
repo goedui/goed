@@ -22,6 +22,103 @@ func TestDividerSizes(t *testing.T) {
 	}
 }
 
+// TestDividerFallsBackToPxWhenNoSpace 可用空间也是 0 时退到 1px：
+// 否则会量出 0 宽 / 0 高的线，1px 分隔线直接变成不可见。
+func TestDividerFallsBackToPxWhenNoSpace(t *testing.T) {
+	ctx := &mockContext{w: 0, h: 0}
+	st := renderer.TextStyle{}
+
+	h := Divider()
+	if w, hh := measureDivider(ctx, h, 0, 0, st, theme.Light); w != 1 || hh != 1 {
+		t.Fatalf("水平线在零空间下 = %gx%g，期望 1x1", w, hh)
+	}
+	v := Divider(true)
+	if w, hh := measureDivider(ctx, v, 0, 0, st, theme.Light); w != 1 || hh != 1 {
+		t.Fatalf("竖直线在零空间下 = %gx%g，期望 1x1", w, hh)
+	}
+}
+
+// TestDividerVerticalHeuristic 竖直判定有两条来源：显式 Divider(true) /
+// Attrs["vertical"]，以及「只给了 Width、没给 Height」这条启发式
+// （注释里写的「Divider(props) 用 Style.Width/Height」指的就是它）。
+// 启发式只认 Height **恰好为 0**，宽高都给时仍是水平线。
+func TestDividerVerticalHeuristic(t *testing.T) {
+	ctx := &mockContext{w: 400, h: 200}
+	st := renderer.TextStyle{}
+
+	// 只给宽 → 当竖直：宽 1，高吃满可用高度。
+	byStyle := Divider(runtime.Props{Style: runtime.Style{Width: 1}})
+	if w, h := measureDivider(ctx, byStyle, 400, 200, st, theme.Light); w != 1 || h != 200 {
+		t.Fatalf("只给 Width 应判为竖直：%gx%g，期望 1x200", w, h)
+	}
+
+	// 宽高都给 → 启发式不触发，按水平线走（宽 1、高 50）。
+	both := Divider(runtime.Props{Style: runtime.Style{Width: 1, Height: 50}})
+	if w, h := measureDivider(ctx, both, 400, 200, st, theme.Light); w != 1 || h != 50 {
+		t.Fatalf("宽高都给应判为水平：%gx%g，期望 1x50", w, h)
+	}
+}
+
+// TestDividerLayoutWritesRect layout 只做一件事：把矩形写进节点。
+func TestDividerLayoutWritesRect(t *testing.T) {
+	n := Divider()
+	layoutDivider(&mockContext{w: 400, h: 200}, n, 4, 8, 392, 1, renderer.TextStyle{}, theme.Light)
+	if n.X != 4 || n.Y != 8 || n.W != 392 || n.H != 1 {
+		t.Fatalf("布局后矩形 (%g,%g,%g,%g)，期望 (4,8,392,1)", n.X, n.Y, n.W, n.H)
+	}
+}
+
+// TestDividerPaintColorLadder 取色阶梯：主题分隔色 → Style.Background → Style.Color
+// → A==0 时兜底浅灰。四级缺一不可 —— 1px 画成透明就等于这条线看不见。
+func TestDividerPaintColorLadder(t *testing.T) {
+	cases := []struct {
+		name  string
+		style runtime.Style
+		th    theme.Theme
+		want  renderer.Color
+	}{
+		{"默认用主题分隔色", runtime.Style{}, theme.Dark,
+			renderer.ColorFrom(theme.Dark.Separator)},
+		{"Style.Background 压过主题色", runtime.Style{Background: runtime.RGB(1, 2, 3)}, theme.Dark,
+			renderer.ColorFrom(runtime.RGB(1, 2, 3))},
+		{"没有 Background 时 Style.Color 次之", runtime.Style{Color: runtime.RGB(4, 5, 6)}, theme.Dark,
+			renderer.ColorFrom(runtime.RGB(4, 5, 6))},
+		{"主题分隔色透明 → 兜底浅灰", runtime.Style{}, theme.Theme{},
+			renderer.RGB(228, 231, 236)},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			n := Divider(runtime.Props{Style: c.style})
+			layoutDivider(nil, n, 0, 0, 100, 1, renderer.TextStyle{}, c.th)
+			ctx := &mockContext{w: 400, h: 200}
+			paintDivider(ctx, n, renderer.TextStyle{}, c.th)
+
+			if len(ctx.fills) != 1 {
+				t.Fatalf("应画 1 条线，实际 %d 条", len(ctx.fills))
+			}
+			if got := ctx.fills[0].c; got != c.want {
+				t.Fatalf("颜色 %+v，期望 %+v", got, c.want)
+			}
+			if f := ctx.fills[0]; f.w != 100 || f.h != 1 {
+				t.Fatalf("线几何 %gx%g，期望 100x1", f.w, f.h)
+			}
+		})
+	}
+}
+
+// TestDividerPaintNilGuardsAreLoadBearing paint 开头的守卫是承重的：
+// 去掉之后 paintDivider(ctx, nil, …) 会在 renderer.ColorSet(n.Style.Background)
+// 上解引用空指针（ColorFrom(th.Separator) 那一步不碰 n，挡不住它）。
+func TestDividerPaintNilGuardsAreLoadBearing(t *testing.T) {
+	n := Divider()
+	layoutDivider(nil, n, 0, 0, 100, 1, renderer.TextStyle{}, theme.Dark)
+
+	// ctx 为 nil：静默返回，不该把 nil 上下文递给下游。
+	paintDivider(nil, n, renderer.TextStyle{}, theme.Dark)
+	// n 为 nil：不能 panic（ColorSet(n.Style.Background) 会解引用它）。
+	paintDivider(&mockContext{w: 400, h: 200}, nil, renderer.TextStyle{}, theme.Dark)
+}
+
 func TestSelectOpensPopoverAndChooses(t *testing.T) {
 	SetSelectOpen("size", false)
 	t.Cleanup(func() { SetSelectOpen("size", false) })

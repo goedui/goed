@@ -22,6 +22,10 @@ type Theme struct {
 	ButtonForeground   runtime.Color
 	ButtonHover        runtime.Color
 	ButtonPressed      runtime.Color
+	// Disabled / DisabledForeground 是禁用控件的填充与文字色。零值表示未设置，
+	// 取用时走 DisabledColors 的内置回退（按 Dark 分两侧）。
+	Disabled           runtime.Color
+	DisabledForeground runtime.Color
 	FontFamily         string
 	FontSize           float32
 	Padding            float32
@@ -81,4 +85,41 @@ func SetDefault(t Theme) {
 // DarkMode 报告是否应按深色窗口边框处理。
 func (t Theme) DarkMode() bool {
 	return t.Dark
+}
+
+// 内置的禁用态默认值。不是「随便挑的灰」，两个约束都是可验的：
+//
+//   - 填充要和卡片底（light 的 #FFFFFF / dark 的 #1E1E1E）分得出来，
+//     否则「灰掉」这件事根本看不见；
+//   - 文字要在填充上过 WCAG AA 正文的 4.5:1 —— 生成过程中的计时文案
+//     就是禁用态文字，读不清就是缺陷。
+var (
+	disabledLightBG = hex("#E0E3E8")
+	disabledLightFG = hex("#5C6370") // on #E0E3E8 = 4.70:1
+	disabledDarkBG  = hex("#2A2D33")
+	disabledDarkFG  = hex("#96A0AF") // on #2A2D33 = 5.22:1
+)
+
+// DisabledColors 返回禁用控件该用的填充色与文字色。
+//
+// 单列一个方法而不是让 button / select / textedit 各自回退：「禁用态长什么样」是三处
+// 共用的语义。以前三处各抄一份字面量（#E8EAEE / #5F6673），暗色主题下那块近白色叠在
+// #1E1E1E 上（13.84:1）像在发光，而三处都以为别处会跟主题走，谁也没改。
+//
+// 回退按 Dark 分两侧：手写主题只要声明了 Dark 就能拿到对的一侧，不必逐个补色。
+func (t Theme) DisabledColors() (bg, fg runtime.Color) {
+	bg, fg = t.Disabled, t.DisabledForeground
+	if bg.A == 0 {
+		bg = disabledLightBG
+		if t.Dark {
+			bg = disabledDarkBG
+		}
+	}
+	if fg.A == 0 {
+		fg = disabledLightFG
+		if t.Dark {
+			fg = disabledDarkFG
+		}
+	}
+	return bg, fg
 }

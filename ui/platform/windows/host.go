@@ -23,26 +23,33 @@ type Options struct {
 	Icon32  []byte
 	Paint   func(ctx renderer.Context)
 	Pointer func(x, y float32, down, click bool)
-	Key     func(key int, char rune, down, ctrl, shift, alt bool)
-	Wheel   func(x, y, delta float32)
+	// RightPointer 报告右键（WM_RBUTTONDOWN / UP），与 platform.Options 同名同义。
+	RightPointer func(x, y float32, down bool)
+	Key          func(key int, char rune, down, ctrl, shift, alt bool)
+	Wheel        func(x, y, delta float32)
 	// Composition 报告输入法组合串（预编辑）：text 为组合中的文本，
 	// cursor 为组合串内的字符偏移。返回 true 表示应用自己绘制组合串。
 	Composition func(text string, cursor int) bool
 	// Caret 报告当前焦点的光标矩形（客户区 DIP），用来定位输入法候选窗。
-	Caret            func() (x, y, w, h float32, ok bool)
+	Caret func() (x, y, w, h float32, ok bool)
+	// ClientHitTest 报告标题栏区里的某个点是不是应用自己的可点击控件（客户区 DIP）。
+	// 非 nil 时标题栏区不再整条判成 HTCAPTION，见 hitTest。nil = 不占用。
+	ClientHitTest    func(x, y float32) bool
+	// Close 返回 false 时吞掉这次关闭，窗口留着。nil 表示照常关。
+	Close            func() bool
 	BindRequestFrame func(fn func())
 	BindPost         func(fn func(func()))
 	BindHWND         func(hwnd uintptr)
 	FrameUpdate      func(maximized, active bool, hover, pressed int)
-	// SetWindowTitle 由平台层注入，用来在运行期改窗口标题。
+	// 以下几个回调都由平台层注入（宿主不认识平台层）：SetWindowTitle 运行期改标题；
+	// SetWindowSize / GetWindowSize / ToggleMaximize 把对应能力交出去，平台层负责
+	// 把 fn 投递回 UI 线程、宿主只执行；UIThreadID 建窗后回报宿主线程 id。
 	SetWindowTitle func(title string)
-	// SetWindowSize 由平台层注入，宿主用它把「改客户区尺寸」的能力交出去。
-	// 平台层负责把调用投递回 UI 线程，宿主这里只管执行。
-	SetWindowSize func(fn func(w, h int) bool)
-	// GetWindowSize 由平台层注入，宿主用它把「读客户区尺寸」的能力交出去。
-	GetWindowSize func(fn func() (w, h int, ok bool))
-	// UIThreadID 由平台层注入，宿主建窗后回报自己的线程 id。
-	UIThreadID func(id uint32)
+	SetWindowSize  func(fn func(w, h int) bool)
+	GetWindowSize  func(fn func() (w, h int, ok bool))
+	ToggleMaximize func(fn func() bool)
+	CloseWindow    func(fn func())
+	UIThreadID     func(id uint32)
 }
 
 var (
@@ -56,11 +63,9 @@ var (
 
 type host struct {
 	opts Options
-	// hwndMu 保护 hwnd。它由 UI 线程在创建 / 销毁时写（wmDestroy 里的
-	// `h.hwnd = 0`），而**后台 goroutine** 会通过 requestFrame / post 读它
-	// （光标闪烁、加载动画这类循环，以及业务侧从别的线程投递）。不加锁就是
-	// 「后台 goroutine 读、UI 线程写」，-race 直接判数据竞争。
-	// 只给这两条跨 goroutine 的路径加锁；UI 线程内部的读写同线程，不需要。
+	// hwndMu 保护 hwnd：UI 线程在创建 / 销毁时写，后台 goroutine 经
+	// requestFrame / post 读（光标闪烁、动画、业务侧跨线程投递）。不加锁就是
+	// 「后台读、UI 线程写」，-race 判数据竞争；只有这两条跨 goroutine 路径要锁。
 	hwndMu sync.RWMutex
 	hwnd   uintptr
 	class  *uint16
@@ -72,8 +77,8 @@ type host struct {
 	ctx    d2dContext
 	pixelW uint32
 	pixelH uint32
-	// threadID 是创建窗口的 OS 线程 id（被 runtime.LockOSThread 钉住的那条）。
-	// 窗口消息循环、SetWindowPos、Direct2D 资源都只在这条线程上。
+	// threadID 是建窗的 OS 线程 id（runtime.LockOSThread 钉住的那条）：
+	// 消息循环、SetWindowPos、Direct2D 资源都只在这条线程上。
 	threadID       uint32
 	dpi            float32
 	instance       uintptr
@@ -133,8 +138,13 @@ func Run(opts Options) error {
 	if opts.GetWindowSize != nil {
 		opts.GetWindowSize(h.clientSize)
 	}
-	// 窗口已经建好（就在这条被 LockOSThread 钉住的线程上），把线程 id 报上去，
-	// 平台层才知道哪些调用已经在 UI 线程、哪些需要投递回来。
+	if opts.ToggleMaximize != nil {
+		opts.ToggleMaximize(h.toggleMaximize)
+	}
+	if opts.CloseWindow != nil {
+		opts.CloseWindow(h.closeWindow)
+	}
+	// 报上 UI 线程 id，平台层才知道哪些调用已在 UI 线程、哪些需要投递回来。
 	if opts.UIThreadID != nil {
 		opts.UIThreadID(h.threadID)
 	}
@@ -157,6 +167,8 @@ func (h *host) create() error {
 		return err
 	}
 	h.ctx.dwrite = h.dwrite
+	// 工厂也交给上下文：圆角图片的遮罩几何体得用工厂建（见 DrawImageRounded）。
+	h.ctx.d2d = h.d2d
 	h.ctx.locale = userLocale()
 	h.ctx.formats = make(map[formatKey]com)
 
@@ -194,8 +206,8 @@ func (h *host) create() error {
 		clientH = 1
 	}
 
-	// 保留 WS_OVERLAPPEDWINDOW，系统仍处理最小化 / 最大化 / 关闭。
-	// 视觉非客户区由 WM_NCCALCSIZE 去掉，改由自定义 TitleBar 绘制。
+	// 保留 WS_OVERLAPPEDWINDOW（系统仍处理最小化 / 最大化 / 关闭）；视觉非客户区
+	// 由 WM_NCCALCSIZE 去掉，改由自定义 TitleBar 绘制。
 	style := uint32(wsOverlappedWindow | wsClipChildren | wsClipSiblings)
 	winW, winH := clientW, clientH
 
@@ -272,8 +284,8 @@ func (h *host) loop() error {
 	}
 }
 
-// handleID 读窗口句柄。**可跨 goroutine 调用**（见 host.hwndMu 的说明）：
-// requestFrame / post 会被后台循环和别的线程调到，那时 UI 线程可能正在销毁窗口。
+// handleID 读窗口句柄，**可跨 goroutine 调用**（见 host.hwndMu）：requestFrame /
+// post 会被后台循环和别的线程调到，那时 UI 线程可能正在销毁窗口。
 func (h *host) handleID() uintptr {
 	h.hwndMu.RLock()
 	v := h.hwnd
@@ -346,7 +358,11 @@ func (h *host) borderPx() int32 {
 func (h *host) hitFromLParam(lParam uintptr) uintptr {
 	pt := point{x: signedLOWORD(lParam), y: signedHIWORD(lParam)}
 	procScreenToClient.Call(h.hwnd, uintptr(unsafe.Pointer(&pt)))
-	return hitTest(pt.x, pt.y, int32(h.pixelW), int32(h.pixelH), h.borderPx(), h.titleBarPx(), h.captionBtnPx(), h.maximized)
+	dpi := h.dpi
+	if dpi <= 0 {
+		dpi = 96
+	}
+	return hitTest(pt.x, pt.y, int32(h.pixelW), int32(h.pixelH), h.borderPx(), h.titleBarPx(), h.captionBtnPx(), h.maximized, h.opts.ClientHitTest, dpi)
 }
 
 func (h *host) clientDIP(lParam uintptr) (float32, float32) {
@@ -358,10 +374,8 @@ func (h *host) clientDIP(lParam uintptr) (float32, float32) {
 }
 
 // clientDIPFromScreen 把「屏幕坐标」的 lParam 换成客户区 DIP。
-//
-// 滚轮消息（WM_MOUSEWHEEL）的 lParam 是屏幕坐标，和鼠标移动 / 按键消息不一样；
-// 直接当客户区用会让命中判定落到错误位置 —— 表现就是「滚十几下才响应一次」
-// （只有当窗口恰好贴在屏幕原点附近时才碰巧对上）。
+// WM_MOUSEWHEEL 的 lParam 是屏幕坐标，与鼠标移动 / 按键消息不同；直接当客户区用
+// 会让命中落到错位 —— 症状是「滚十几下才响应一次」（窗口贴着屏幕原点时才碰巧对上）。
 func (h *host) clientDIPFromScreen(lParam uintptr) (float32, float32) {
 	origin := point{} // 客户区 (0,0) 对应的屏幕坐标
 	procClientToScreen.Call(h.hwnd, uintptr(unsafe.Pointer(&origin)))
@@ -369,8 +383,8 @@ func (h *host) clientDIPFromScreen(lParam uintptr) (float32, float32) {
 	return wheelClientDIP(signedLOWORD(lParam), signedHIWORD(lParam), origin.x, origin.y, h.dpi)
 }
 
-// wheelClientDIP 由「滚轮消息的屏幕坐标 + 客户区原点 + DPI」算出客户区 DIP。
-// 单独抽出来是为了能测：把屏幕坐标当客户区用正是「滚轮时灵时不灵」的根因。
+// wheelClientDIP 由滚轮消息的屏幕坐标 + 客户区原点 + DPI 算出客户区 DIP；
+// 单独抽出来是为了能测（把屏幕坐标当客户区用正是「滚轮时灵时不灵」的根因）。
 func wheelClientDIP(screenX, screenY, originX, originY int32, dpi float32) (float32, float32) {
 	if dpi <= 0 {
 		dpi = 96
@@ -383,6 +397,20 @@ func (h *host) emitPointer(x, y float32, down, click bool) {
 		h.opts.Pointer(x, y, down, click)
 	}
 	if click || down {
+		h.requestFrame()
+	}
+}
+
+// emitRightPointer 上报右键。
+//
+// 刻意**不动 h.pointerDown**：左键按住拖动（编辑器拖选）与右键是两条互不相干的通道，
+// 右键按下不能把左键的按下状态搅了，否则拖选中途点右键会当场断掉；也不 SetCapture
+// —— 菜单开在按下那一刻，不需要后续移动事件。
+func (h *host) emitRightPointer(x, y float32, down bool) {
+	if h.opts.RightPointer != nil {
+		h.opts.RightPointer(x, y, down)
+	}
+	if down {
 		h.requestFrame()
 	}
 }
@@ -443,8 +471,8 @@ func (h *host) clientSize() (int, int, bool) {
 	return w, ht, true
 }
 
-// dipToPixels 把逻辑尺寸（DIP）换算成物理像素。dpi <= 0 时按 96 处理。
-// 单独抽出来是为了能测：高 DPI 下少乘一次缩放，窗口就会比预期小一圈。
+// dipToPixels 把逻辑尺寸（DIP）换算成物理像素。dpi <= 0 时按 96 处理；
+// 单独抽出来是为了能测（高 DPI 下少乘一次缩放，窗口就小一圈）。
 func dipToPixels(dip float32, dpi float32) int32 {
 	if dpi <= 0 {
 		dpi = 96
@@ -484,9 +512,8 @@ func fitToScreen(x, y, w, h, screenW, screenH int32) (int32, int32) {
 
 // setClientSize 把客户区改成逻辑尺寸 w x h（DIP），窗口左上角保持不动。
 //
-// 用「客户区矩形」反推窗口矩形，而不是直接 SetWindowPos 到某个猜测尺寸：
-// 窗口有无边框由 WM_NCCALCSIZE 自己决定（自定义标题栏把非客户区去掉了），
-// 按客户区算才不会差出标题栏的高度。
+// 用「客户区矩形」反推窗口矩形，而不是直接 SetWindowPos 到某个猜测尺寸：非客户区
+// 大小由 WM_NCCALCSIZE 自己决定（自定义标题栏把它去掉了），按客户区算才不差标题栏高度。
 func (h *host) setClientSize(w, ht int) bool {
 	if h.hwnd == 0 || w <= 0 || ht <= 0 {
 		return false
@@ -517,8 +544,8 @@ func (h *host) setClientSize(w, ht int) bool {
 	if r == 0 {
 		return false
 	}
-	// WM_SIZE 里已经跟过一遍，这里再同步一次：SetWindowPos 的窗口调整是同步的，
-	// 但 DWM 的边框重算可能晚一拍，重采能保证 ctx 尺寸与 rt 一致。
+	// WM_SIZE 里已经跟过一遍；这里重采是因为 DWM 的边框重算可能晚一拍，
+	// 保证 ctx 尺寸与 rt 一致。
 	h.syncClientSize()
 	h.requestFrame()
 	return true
@@ -617,6 +644,8 @@ func (h *host) paint() {
 }
 
 func (h *host) releaseTarget() {
+	h.ctx.releaseStroke()
+	h.ctx.releaseShadows()
 	h.ctx.releaseImages()
 	if h.brush != 0 {
 		release(h.brush)
@@ -669,6 +698,20 @@ func (h *host) handleNcCalcSize(wParam, lParam uintptr) uintptr {
 		r.bottom -= b
 	}
 	return 0
+}
+
+func (h *host) closeWindow() {
+	if h.hwnd != 0 {
+		procPostMessageW.Call(h.hwnd, wmClose, 0, 0)
+	}
+}
+
+func (h *host) toggleMaximize() bool {
+	if h.hwnd == 0 {
+		return false
+	}
+	h.runCaption(2)
+	return true
 }
 
 func (h *host) runCaption(btn int) {
@@ -754,6 +797,14 @@ func (h *host) handle(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr 
 		x, y := h.clientDIP(lParam)
 		h.emitPointer(x, y, false, wasDown)
 		return 0
+	case wmRButtonDown:
+		x, y := h.clientDIP(lParam)
+		h.emitRightPointer(x, y, true)
+		return 0
+	case wmRButtonUp:
+		x, y := h.clientDIP(lParam)
+		h.emitRightPointer(x, y, false)
+		return 0
 	case wmMouseLeave:
 		h.clientTracking = false
 		h.pointerDown = false
@@ -787,7 +838,7 @@ func (h *host) handle(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr 
 			return 0
 		}
 		// 带 GCS_RESULTSTR 的那次继续交给 DefWindowProc：
-		// 它会生成 WM_IME_CHAR → WM_CHAR，上屏文本走正常输入通路。
+		// 它生成 WM_IME_CHAR → WM_CHAR，上屏文本走正常输入通路。
 	case wmImeEndComposition:
 		h.endComposition()
 		return 0
@@ -841,11 +892,15 @@ func (h *host) handle(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr 
 		h.paint()
 		procEndPaint.Call(hwnd, uintptr(unsafe.Pointer(&ps[0])))
 		return 0
+	case wmClose:
+		if h.opts.Close != nil && !h.opts.Close() {
+			return 0
+		}
 	case wmDestroy:
 		h.releaseTarget()
 		delete(hosts, hwnd)
-		// 走 setHandle：这一步之后后台循环（光标闪烁 / 动画）还会再调一两次
-		// requestFrame，那里读的就是这个字段。
+		// 走 setHandle：这步之后后台循环（光标闪烁 / 动画）还会再调一两次
+		// requestFrame，读的就是这个字段。
 		h.setHandle(0)
 		procPostQuitMessage.Call(0)
 		return 0

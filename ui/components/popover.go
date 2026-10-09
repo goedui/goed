@@ -24,8 +24,15 @@ func init() {
 	})
 }
 
-// Popover 锚定下拉。Attrs: anchor, items []string, onSelect, onClose。
+// Popover 菜单/下拉本体。Attrs: anchor, alignX, items []string, onSelect, onClose。
 // items 里 "---" / "-" 画成分隔线。
+//
+// 它自己会：按 anchor 找锚点、靠边时夹回画布并上下翻转、Esc 关闭。三处菜单
+// （MenuBar 的下拉、Select 的选项、ContextMenu 的右键面板）都是它在画，区别只在
+// 「摆在哪」由谁决定。
+//
+// anchor 为空时它**继承父级给的盒子**（ax,ay,aw,ah = x,y,w,0），也就是「按坐标
+// 摆」——ContextMenu 就是这么用的：把卡片放在指针位置，靠边夹取照样生效。
 func Popover(parts ...any) *runtime.VNode {
 	n := runtime.H("popover", parts...)
 	if n.Attrs == nil {
@@ -192,11 +199,13 @@ func paintPopover(ctx renderer.Context, n *runtime.VNode, style renderer.TextSty
 	if th.Dark {
 		bg = renderer.ColorFrom(th.Titlebar)
 	}
-	border := renderer.ColorFrom(th.Separator)
-	if border.A == 0 {
-		border = renderer.RGB(200, 200, 200)
+	border := renderer.RGB(150, 158, 172)
+	if th.Dark {
+		border = renderer.RGB(92, 92, 92)
 	}
-	ctx.FillRoundedRect(n.X, n.Y, n.W, n.H, 6, bg)
+	shadow := renderer.RGBA(20, 24, 32, 48)
+	ctx.FillRoundedRect(n.X+3, n.Y+4, n.W, n.H, 8, shadow)
+	ctx.FillRoundedRect(n.X, n.Y, n.W, n.H, 8, bg)
 	ctx.DrawRect(n.X, n.Y, n.W, n.H, border, 1)
 	renderer.PaintChildren(ctx, n, style, th)
 }

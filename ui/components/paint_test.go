@@ -20,13 +20,27 @@ type mockRound struct {
 	c             renderer.Color
 }
 
+// mockStroke 记录一次描边（DrawRect）。焦点环这类「只看颜色」的行为要靠它：
+// 只数次数看不出画的是什么色，禁用输入框有没有留焦点环就查不出来。
+type mockStroke struct {
+	x, y, w, h float32
+	c          renderer.Color
+	width      float32
+}
+
 type mockContext struct {
 	w, h   float32
 	clears []renderer.Color
 	texts  []string
 	rects  int
+	lines  int
 	draws  []mockTextDraw
 	rounds []mockRound
+	// fills 记下每个 FillRect 的矩形。只数次数看不出「画在哪儿」，
+	// 标题栏按钮这类靠位置区分的行为需要几何。
+	fills []mockRound
+	// strokes 记下每个 DrawRect 的颜色与线宽。
+	strokes []mockStroke
 }
 
 func (m *mockContext) Width() float32  { return m.w }
@@ -35,15 +49,20 @@ func (m *mockContext) DPI() float32    { return 96 }
 func (m *mockContext) Clear(c renderer.Color) {
 	m.clears = append(m.clears, c)
 }
-func (m *mockContext) FillRect(float32, float32, float32, float32, renderer.Color) {
+func (m *mockContext) FillRect(x, y, w, h float32, c renderer.Color) {
 	m.rects++
+	m.fills = append(m.fills, mockRound{x: x, y: y, w: w, h: h, c: c})
 }
 func (m *mockContext) FillRoundedRect(x, y, w, h, r float32, c renderer.Color) {
 	m.rects++
 	m.rounds = append(m.rounds, mockRound{x: x, y: y, w: w, h: h, r: r, c: c})
 }
-func (m *mockContext) DrawRect(float32, float32, float32, float32, renderer.Color, float32) {}
-func (m *mockContext) DrawLine(float32, float32, float32, float32, renderer.Color, float32) {}
+func (m *mockContext) DrawRect(x, y, w, h float32, c renderer.Color, width float32) {
+	m.strokes = append(m.strokes, mockStroke{x: x, y: y, w: w, h: h, c: c, width: width})
+}
+func (m *mockContext) DrawLine(float32, float32, float32, float32, renderer.Color, float32) {
+	m.lines++
+}
 func (m *mockContext) DrawText(text string, x, y, w, h float32, style renderer.TextStyle) {
 	m.texts = append(m.texts, text)
 	m.draws = append(m.draws, mockTextDraw{text: text, x: x, y: y, w: w, h: h, style: style})
@@ -51,10 +70,38 @@ func (m *mockContext) DrawText(text string, x, y, w, h float32, style renderer.T
 func (m *mockContext) MeasureText(text string, _ float32, style renderer.TextStyle) (float32, float32) {
 	return float32(len(text)) * style.FontSize * 0.5, style.FontSize * 1.25
 }
-func (m *mockContext) DrawImage([]byte, float32, float32, float32, float32) {}
+func (m *mockContext) DrawImage([]byte, float32, float32, float32, float32)            {}
 func (m *mockContext) DrawPixels([]byte, int, int, float32, float32, float32, float32) {}
-func (m *mockContext) PushClip(float32, float32, float32, float32)          {}
-func (m *mockContext) PopClip()                                             {}
+func (m *mockContext) PushClip(float32, float32, float32, float32)                     {}
+func (m *mockContext) PopClip()                                                        {}
+
+type countingMeasure struct {
+	w, h float32
+	n    int
+}
+
+func (m *countingMeasure) Width() float32                                              { return m.w }
+func (m *countingMeasure) Height() float32                                             { return m.h }
+func (m *countingMeasure) DPI() float32                                                { return 96 }
+func (m *countingMeasure) Clear(renderer.Color)                                        {}
+func (m *countingMeasure) FillRect(float32, float32, float32, float32, renderer.Color) {}
+func (m *countingMeasure) FillRoundedRect(float32, float32, float32, float32, float32, renderer.Color) {
+}
+func (m *countingMeasure) DrawRect(float32, float32, float32, float32, renderer.Color, float32)    {}
+func (m *countingMeasure) DrawLine(float32, float32, float32, float32, renderer.Color, float32)    {}
+func (m *countingMeasure) DrawText(string, float32, float32, float32, float32, renderer.TextStyle) {}
+func (m *countingMeasure) MeasureText(text string, _ float32, style renderer.TextStyle) (float32, float32) {
+	m.n++
+	size := style.FontSize
+	if size <= 0 {
+		size = 13
+	}
+	return float32(len([]rune(text))) * size * 0.5, size * 1.25
+}
+func (m *countingMeasure) DrawImage([]byte, float32, float32, float32, float32)            {}
+func (m *countingMeasure) DrawPixels([]byte, int, int, float32, float32, float32, float32) {}
+func (m *countingMeasure) PushClip(float32, float32, float32, float32)                     {}
+func (m *countingMeasure) PopClip()                                                        {}
 
 func TestPaintTreeWithTitleBar(t *testing.T) {
 	ctx := &mockContext{w: 800, h: 600}

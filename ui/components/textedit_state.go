@@ -1,37 +1,33 @@
 // 共享的文本编辑核心：Input（单行）与 Textarea（多行）都基于它。
 //
-// 编辑状态（文本 / 光标 / 选区 / 输入法组合串 / 撤销历史）不放在 props 里，
-// 而是按 id 存在 editState：节点每帧都会重建，若拿 props 里的 value 当编辑基准，
-// 同一帧里到达的多个字符会互相覆盖 —— 快速连打、输入法整串上屏都会丢字。
-// props 只用于「外部改值」：value 真的变化（发送后清空、回填）时才让位。
+// 编辑状态（文本 / 光标 / 选区 / 组合串 / 撤销）不放在 props 里，而是按 id 存在
+// editState：节点每帧重建，拿 props 的 value 当编辑基准的话，同一帧里到达的多个
+// 字符会互相覆盖 —— 快速连打、输入法整串上屏都会丢字。props 只负责「外部改值」。
 //
-// 核心按职责拆在几个文件里（同包，互相直接调用）：
-//
-//	textedit_state.go   状态本体、按 id 取状态、基础编辑操作、光标闪烁
-//	textedit_layout.go  可视行切分与「坐标 ↔ 字节偏移」换算
-//	textedit_keys.go    按键 / 输入法 / 指针交互
-//	textedit_paint.go   绘制
-//	textedit_api.go     供应用层调用的导出入口（光标读写、编辑命令）
+// 按职责拆在同包的几个文件里：state（状态本体、取状态、基础编辑、闪烁）、layout
+// （可视行与「坐标 ↔ 字节偏移」）、keys（按键 / 输入法 / 指针）、paint（绘制）、
+// api（应用层入口）。
 package components
 
 import (
 	"sync"
-	"time"
 	"unicode/utf8"
 
-	"github.com/goedui/goed/ui/platform"
+	"github.com/goedui/goed/ui/caret"
 	"github.com/goedui/goed/ui/renderer"
 	"github.com/goedui/goed/ui/runtime"
 )
 
 // 各文件共用的大小常量。
+// LayoutDebug 记录每帧请求过的换行宽度（测试用）。
+var LayoutDebug []float32
+
 const (
 	inputPad     = float32(10)
 	inputTopPad  = float32(6)
-	caretBlink   = 530 * time.Millisecond
 	caretWidth   = float32(1.6)
 	minCaretH    = float32(12)
-	maxLayoutRun = 4000 // 参与布局缓存的 rune 上限
+	maxLayoutRun = 4000 // 超过此 rune 数改走可视行稀疏布局，不再截断文本
 	undoLimit    = 50
 )
 
@@ -54,12 +50,24 @@ type editState struct {
 	caretOK   bool
 	// 多行时的滚动偏移（px，向下为正）
 	scrollY float32
+	viewH   float32
+	// notifiedScrollY 是 onScroll 上一次报过的偏移，没变就不打扰应用。
+	notifiedScrollY float32
 	// scrollSync 表示刚发生过编辑或光标移动，下一次绘制要把光标滚进可视
 	// 范围。用户用滚轮浏览时不能被强行拉回光标处（记事本行为）。
 	scrollSync bool
 	// scrollX 是不换行模式下的横向滚动偏移（px，向右为正）。
 	scrollX float32
-	layout  *inputLayout
+	// contentW 是最长行宽，横向滚动条按它算。文本没变就复用，不每帧重量。
+	contentW    float32
+	contentWFor string
+	// 滚动条拖动：0 没拖，1 竖，2 横。grab 是按下时指针相对滑块起点的距离。
+	barDrag int
+	barGrab float32
+	layout     *inputLayout
+	layouts    [2]*inputLayout
+	glyphW     map[rune]float32
+	glyphLineH float32
 }
 
 type editSnap struct {
@@ -69,14 +77,38 @@ type editSnap struct {
 }
 
 var (
-	editMu     sync.Mutex
-	editStates = map[string]*editState{}
+	editMu         sync.Mutex
+	editStates     = map[string]*editState{}
+	editInputHooks = map[string]func(string){}
 )
+
+func rememberInput(id string, fn func(string)) {
+	if id == "" {
+		return
+	}
+	editMu.Lock()
+	if fn == nil {
+		delete(editInputHooks, id)
+	} else {
+		editInputHooks[id] = fn
+	}
+	editMu.Unlock()
+}
+
+func (st *editState) dropLayout() {
+	if st == nil {
+		return
+	}
+	st.layout = nil
+	st.layouts[0] = nil
+	st.layouts[1] = nil
+}
 
 // ResetInputState 丢弃某个编辑框的内部状态（切换会话等场景可用）。
 func ResetInputState(id string) {
 	editMu.Lock()
 	delete(editStates, id)
+	delete(editInputHooks, id)
 	editMu.Unlock()
 }
 
@@ -106,7 +138,7 @@ func stateFor(n *runtime.VNode) *editState {
 			st.anchor = st.caret
 			st.undo = nil
 			st.redo = nil
-			st.layout = nil
+			st.dropLayout()
 			st.scrollY = 0
 		}
 	}
@@ -201,7 +233,7 @@ func (st *editState) undoStep() bool {
 	st.undo = st.undo[:len(st.undo)-1]
 	st.redo = append(st.redo, editSnap{value: st.value, caret: st.caret, anchor: st.anchor})
 	st.apply(snap)
-	st.layout = nil
+	st.dropLayout()
 	return true
 }
 
@@ -213,7 +245,7 @@ func (st *editState) redoStep() bool {
 	st.redo = st.redo[:len(st.redo)-1]
 	st.undo = append(st.undo, editSnap{value: st.value, caret: st.caret, anchor: st.anchor})
 	st.apply(snap)
-	st.layout = nil
+	st.dropLayout()
 	return true
 }
 
@@ -243,7 +275,7 @@ func (st *editState) insert(text string) {
 	st.value = st.value[:at] + text + st.value[at:]
 	st.caret = at + len(text)
 	st.anchor = st.caret
-	st.layout = nil
+	st.dropLayout()
 	st.scrollSync = true
 }
 
@@ -259,7 +291,7 @@ func (st *editState) deleteSelection() bool {
 	}
 	st.value = st.value[:from] + st.value[to:]
 	st.collapse(from)
-	st.layout = nil
+	st.dropLayout()
 	return true
 }
 
@@ -277,7 +309,7 @@ func (st *editState) backspace() bool {
 		st.comp = ""
 		st.compAt = 0
 		st.compCu = 0
-		st.layout = nil
+		st.dropLayout()
 		return true
 	}
 	if _, _, has := st.selRange(); has {
@@ -291,7 +323,7 @@ func (st *editState) backspace() bool {
 	st.value = st.value[:start] + st.value[st.caret:]
 	st.caret = start
 	st.anchor = st.caret
-	st.layout = nil
+	st.dropLayout()
 	st.scrollSync = true
 	return true
 }
@@ -307,7 +339,7 @@ func (st *editState) deleteForward() bool {
 	st.snapshot()
 	_, size := utf8.DecodeRuneInString(st.value[st.caret:])
 	st.value = st.value[:st.caret] + st.value[st.caret+size:]
-	st.layout = nil
+	st.dropLayout()
 	st.scrollSync = true
 	return true
 }
@@ -354,6 +386,14 @@ func (st *editState) selectAll() {
 	st.scrollSync = true
 }
 
+// selectAllStay 全选，但不把视口拉到文末。scrollSync 会在下一帧把光标滚进
+// 可视区，长文档里那就是跳到最后一行。
+func (st *editState) selectAllStay() {
+	st.anchor = 0
+	st.caret = len(st.value)
+	st.scrollSync = false
+}
+
 // compCursorBytes 把组合串内的字符偏移换算成字节偏移。
 func compCursorBytes(st *editState) int {
 	if st.comp == "" || st.compCu <= 0 {
@@ -367,47 +407,11 @@ func compCursorBytes(st *editState) int {
 }
 
 // ===== 光标闪烁 ========================================================
+//
+// 相位本体在 ui/caret：屏幕上同时只有一个可见光标，输入框和代码编辑区（editor 的
+// mcode）共用同一份相位，才不会一快一慢地各闪各的。这里只留两个薄封装，
+// textedit_keys.go / textedit_paint.go 里那一堆调用点不用动。
 
-var (
-	blinkMu      sync.Mutex
-	blinkOn      = true
-	blinkUsed    = time.Now()
-	blinkRunning bool
-)
+func blinkVisible() bool { return caret.Visible() }
 
-func blinkVisible() bool {
-	blinkMu.Lock()
-	blinkUsed = time.Now()
-	on := blinkOn
-	start := !blinkRunning
-	blinkRunning = true
-	blinkMu.Unlock()
-	if start {
-		go blinkLoop()
-	}
-	return on
-}
-
-func blinkLoop() {
-	for {
-		time.Sleep(caretBlink)
-		blinkMu.Lock()
-		if time.Since(blinkUsed) > 2*caretBlink {
-			blinkRunning = false
-			blinkMu.Unlock()
-			return
-		}
-		blinkOn = !blinkOn
-		blinkMu.Unlock()
-		// 这里是后台 goroutine（光标闪烁），必须走 platform.RequestFrame 这个
-		// 带锁入口——宿主在 Run 里绑定钩子，直接读全局变量会与它构成数据竞争。
-		platform.RequestFrame()
-	}
-}
-
-func resetBlink() {
-	blinkMu.Lock()
-	blinkOn = true
-	blinkUsed = time.Now()
-	blinkMu.Unlock()
-}
+func resetBlink() { caret.Reset() }

@@ -40,20 +40,23 @@ type TextStyle struct {
 	FontSize   float32
 	Color      Color
 	Weight     int
-	Align      Align
-	VAlign     Align
-	NoWrap     bool
+	// Italic 走字体的 italic 面（没有则后端合成倾斜）。
+	//
+	// 它不是「把正体斜过来」那么单纯：字体有 italic 面就换一套字形，步进会跟着
+	// 变几个百分点。所以量宽与画字必须用同一个 TextStyle —— 后端按 TextStyle 缓存
+	// 文本格式，同一条样式量出来的宽度与画出来的宽度才会一致。
+	Italic bool
+	Align  Align
+	VAlign Align
+	NoWrap bool
+	// LineSpacing 是强制行距（DIP）。0 表示用字体自己的行距。
+	// 编辑器把它收成整数：文字和光标共用这一格，换行不会越积越偏。
+	LineSpacing float32
 }
 
-// Context 是平台无关的 2D 绘制接口。Windows 后端用 Direct2D + DirectWrite 实现。
-//
-// 选择 Direct2D 而不是 GDI 的原因：
-//   - GPU 加速，后续动画、半透明、复杂场景不会被 CPU blit 卡住
-//   - DirectWrite 的字形、ClearType/灰度抗锯齿、度量远好于 GDI TextOut
-//   - 坐标是 DIP，高 DPI / 每监视器感知是一等公民
-//   - Fill、裁剪、变换、几何体都是原生能力，GDI 需要自己堆双缓冲和 AlphaBlend
-//
-// GDI 只适合极老的兼容层。本引擎的目标平台是 Windows 10+，没有这条包袱。
+// Context 是平台无关的 2D 绘制接口。Windows 后端是 Direct2D + DirectWrite：
+// GPU 加速、ClearType 抗锯齿、DIP 坐标与原生裁剪/几何都是现成的，GDI 得自己堆
+// 双缓冲和 AlphaBlend，只适合极老的兼容层（本引擎目标是 Windows 10+）。
 type Context interface {
 	// Width / Height 返回绘制表面尺寸，单位 DIP。
 	Width() float32
@@ -76,6 +79,32 @@ type Context interface {
 	PopClip()
 }
 
+// FontMetrics 是字体在给定字号下的纵向度量，单位 DIP，原点在**行盒顶**。
+//
+// 为什么必须由后端给：行内文字的落笔位置由基线决定，而基线是取「上伸部」
+// （ascent）。这个数只有拿到真实字体度量才知道 —— Arial 的上伸是 0.905em、
+// Microsoft YaHei UI 是 1.06em，猜一个常数（比如 0.85em）会让所有文字整体
+// 偏上或偏下几个像素，而且不同字体的偏差还不一样。
+type FontMetrics struct {
+	// Ascent 是基线到行盒顶的距离（DIP，正数）。
+	Ascent float32
+	// Descent 是基线到行盒底的距离（DIP，正数）。
+	Descent float32
+	// LineGap 是字体自带的额外行距（DIP，通常为 0）。
+	LineGap float32
+}
+
+// LineHeight 返回字体推荐的行高（ascent + descent + lineGap）。
+func (m FontMetrics) LineHeight() float32 { return m.Ascent + m.Descent + m.LineGap }
+
+// FontMetricsProvider 由能报告真实字体度量的后端实现（Windows 上是 DirectWrite）。
+//
+// 未实现时排版退回按字号估算基线（见 layout 包的 textMetricsOf），画面仍能出来，
+// 但文字纵向会错几个像素。
+type FontMetricsProvider interface {
+	FontMetrics(style TextStyle) (FontMetrics, bool)
+}
+
 // TextPoint 是一段文本在布局里的一个插入点：UTF-8 字节偏移、可视行、水平位置。
 // 选区、光标、点击落点都用它，必须和 DrawText 的折行一致。
 type TextPoint struct {
@@ -95,4 +124,34 @@ type TextLayout struct {
 // 未实现时编辑框退回按字符宽度折行。
 type TextLayouter interface {
 	LayoutText(text string, maxW float32, style TextStyle) TextLayout
+}
+
+// ImagePainter 由能自己画圆角图片的后端实现。
+//
+// 为什么要单独一个接口、而不是给 Context 加方法：Context 是公开接口，加一个方法
+// 就把所有外部实现（以及测试里的假后端）全打断了。圆角图片属于「有更好、没有也能
+// 看」的能力，做成可选接口，后端按自己的条件实现，调用方走 DrawImageRounded
+// 自动降级。
+type ImagePainter interface {
+	// DrawImageRounded 把图片解码后画进 (x,y,w,h)，四个角按半径 r 切圆角。
+	// r <= 0 时等价于 DrawImage。
+	DrawImageRounded(data []byte, x, y, w, h, r float32)
+}
+
+// DrawImageRounded 画一张圆角图片：后端实现了 ImagePainter 就走它，
+// 否则退回 DrawImage 画直角——不会因为后端不支持就什么都不画。
+//
+// 圆角是「占位框 → 真图」这段过渡里唯一会跳变的视觉特征：占位框一直是圆角的
+// （FillRoundedRect + 描边），图片要是直角，图一到位的瞬间四个角会方一下。
+func DrawImageRounded(ctx Context, data []byte, x, y, w, h, r float32) {
+	if ctx == nil || len(data) == 0 || w <= 0 || h <= 0 {
+		return
+	}
+	if r > 0 {
+		if ip, ok := ctx.(ImagePainter); ok {
+			ip.DrawImageRounded(data, x, y, w, h, r)
+			return
+		}
+	}
+	ctx.DrawImage(data, x, y, w, h)
 }

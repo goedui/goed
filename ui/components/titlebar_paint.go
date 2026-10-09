@@ -1,19 +1,27 @@
 package components
 
 import (
+	"github.com/goedui/goed/ui/platform"
 	"github.com/goedui/goed/ui/renderer"
 	"github.com/goedui/goed/ui/runtime"
 	"github.com/goedui/goed/ui/theme"
 )
 
 func paintTitleBar(ctx renderer.Context, n *runtime.VNode, style renderer.TextStyle, th theme.Theme) {
-	_ = style
 	if ctx == nil {
 		return
 	}
 	w := ctx.Width()
 	h := float32(renderer.TitleBarHeight)
 	if w <= 0 {
+		return
+	}
+
+	// 应用自绘标题栏：这一条整个归应用（标签条就画在这儿），框架什么都不画 ——
+	// 连右侧系统按钮也不画，因为那三个位置的颜色要与应用自己的标签条底色相配。
+	// 宿主仍然把那三个位置判成 HTMINBUTTON / HTMAXBUTTON / HTCLOSE，所以应用只要
+	// 把图形画在对齐的位置上，点击照样由系统执行。
+	if appTitleBarNode(n) {
 		return
 	}
 
@@ -24,6 +32,9 @@ func paintTitleBar(ctx renderer.Context, n *runtime.VNode, style renderer.TextSt
 	if !activeTitle(n) && renderer.ColorSet(th.TitlebarInactive) {
 		bg = renderer.ColorFrom(th.TitlebarInactive)
 	}
+	if n != nil && renderer.ColorSet(n.Style.Background) {
+		bg = renderer.ColorFrom(n.Style.Background)
+	}
 	ctx.FillRect(0, 0, w, h, bg)
 
 	btnW := float32(renderer.CaptionButtonWidth)
@@ -31,22 +42,33 @@ func paintTitleBar(ctx renderer.Context, n *runtime.VNode, style renderer.TextSt
 	maxX := closeX - btnW
 	minX := maxX - btnW
 	titleX := float32(12)
+	// 没有系统标题栏按钮的宿主（浏览器）上，右侧那三个位置不该占着：
+	// 按钮画出来是死的，标题还会被挤掉一截。
+	titleRight := minX
+	if !platform.CaptionButtons {
+		minX, maxX, closeX = w, w, w
+		titleRight = w
+	}
 
 	hover := renderer.AttrInt(n, "hover")
 	pressed := renderer.AttrInt(n, "pressed")
 	maximized := renderer.AttrBool(n, "maximized")
 	active := activeTitle(n)
 
-	paintCaptionButton(ctx, minX, 0, btnW, h, hover == 1, pressed == 1, false, th, bg, captionMin)
-	paintCaptionButton(ctx, maxX, 0, btnW, h, hover == 2, pressed == 2, false, th, bg, captionMaxRestore(maximized))
-	paintCaptionButton(ctx, closeX, 0, btnW, h, hover == 3, pressed == 3, true, th, bg, captionClose)
-
 	fg := renderer.ColorFrom(th.TitlebarForeground)
 	if fg.A == 0 {
 		fg = renderer.ColorFrom(th.Foreground)
 	}
+	if n != nil && renderer.ColorSet(n.Style.Color) {
+		fg = renderer.ColorFrom(n.Style.Color)
+	}
 	if !active {
 		fg = renderer.Color{R: fg.R, G: fg.G, B: fg.B, A: fg.A * 0.6}
+	}
+	if platform.CaptionButtons {
+		paintCaptionButton(ctx, minX, 0, btnW, h, hover == 1, pressed == 1, false, th, bg, fg, captionMin)
+		paintCaptionButton(ctx, maxX, 0, btnW, h, hover == 2, pressed == 2, false, th, bg, fg, captionMaxRestore(maximized))
+		paintCaptionButton(ctx, closeX, 0, btnW, h, hover == 3, pressed == 3, true, th, bg, fg, captionClose)
 	}
 
 	if paint := titleBarIcon(n); paint != nil {
@@ -58,15 +80,27 @@ func paintTitleBar(ctx renderer.Context, n *runtime.VNode, style renderer.TextSt
 
 	title := renderer.AttrString(n, "title")
 	if title != "" {
-		maxTitleW := minX - titleX - 8
+		maxTitleW := titleRight - titleX - 8
 		if maxTitleW < 0 {
 			maxTitleW = 0
 		}
+		font := th.FontFamily
+		if style.FontFamily != "" {
+			font = style.FontFamily
+		}
+		size := float32(12)
+		if style.FontSize > 0 {
+			size = style.FontSize
+		}
+		weight := 600
+		if style.Weight > 0 {
+			weight = style.Weight
+		}
 		ctx.DrawText(title, titleX, 0, maxTitleW, h, renderer.TextStyle{
-			FontFamily: th.FontFamily,
-			FontSize:   12,
+			FontFamily: font,
+			FontSize:   size,
 			Color:      fg,
-			Weight:     600,
+			Weight:     weight,
 			Align:      renderer.AlignStart,
 			VAlign:     renderer.AlignCenter,
 			NoWrap:     true,
@@ -90,6 +124,11 @@ func activeTitle(n *runtime.VNode) bool {
 	return true
 }
 
+// appTitleBarNode 报告应用自绘标题栏（platform.AppTitleBar）。
+func appTitleBarNode(n *runtime.VNode) bool {
+	return n != nil && renderer.AttrBool(n, "apptitle")
+}
+
 func titleBarIcon(n *runtime.VNode) renderer.IconPaint {
 	v, _ := renderer.Attr(n, "icon").(renderer.IconPaint)
 	return v
@@ -111,7 +150,7 @@ func captionMaxRestore(maximized bool) captionKind {
 	return captionMax
 }
 
-func paintCaptionButton(ctx renderer.Context, x, y, w, h float32, hover, pressed, isClose bool, th theme.Theme, barBg renderer.Color, kind captionKind) {
+func paintCaptionButton(ctx renderer.Context, x, y, w, h float32, hover, pressed, isClose bool, th theme.Theme, barBg, fg renderer.Color, kind captionKind) {
 	bg := barBg
 	if hover || pressed {
 		bg = renderer.ColorFrom(th.TitlebarHover)
@@ -125,7 +164,9 @@ func paintCaptionButton(ctx renderer.Context, x, y, w, h float32, hover, pressed
 		}
 		ctx.FillRect(x, y, w, h, bg)
 	}
-	fg := renderer.ColorFrom(th.TitlebarForeground)
+	if fg.A == 0 {
+		fg = renderer.ColorFrom(th.TitlebarForeground)
+	}
 	if fg.A == 0 {
 		fg = renderer.ColorFrom(th.Foreground)
 	}

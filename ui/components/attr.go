@@ -70,6 +70,16 @@ func onBool(n *runtime.VNode, key string) func(bool) {
 	return nil
 }
 
+func onFloat(n *runtime.VNode, key string) func(float32) {
+	if n == nil || n.Attrs == nil {
+		return nil
+	}
+	if fn, ok := n.Attrs[key].(func(float32)); ok {
+		return fn
+	}
+	return nil
+}
+
 func onVoid(n *runtime.VNode, key string) func() {
 	if n == nil || n.Attrs == nil {
 		return nil

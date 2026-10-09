@@ -154,13 +154,6 @@ func paintEmpty(ctx renderer.Context, n *runtime.VNode, style renderer.TextStyle
 	if renderer.ColorSet(n.Style.Background) {
 		fill = renderer.ColorFrom(n.Style.Background)
 	}
-	ctx.FillRoundedRect(n.X+1, n.Y+1, n.W-2, n.H-2, radius, fill)
-	if renderer.AttrBool(n, "dashed") {
-		drawDashedRoundedRect(ctx, n.X+1, n.Y+1, n.W-2, n.H-2, radius, border)
-	} else {
-		strokeRoundedRect(ctx, n.X+8, n.Y+8, n.W-16, n.H-16, radius-4, 1, border)
-	}
-
 	title := renderer.AttrString(n, "title")
 	hint := renderer.AttrString(n, "hint")
 	iconKind := renderer.AttrString(n, "icon")
@@ -169,18 +162,36 @@ func paintEmpty(ctx renderer.Context, n *runtime.VNode, style renderer.TextStyle
 		fg = renderer.ColorFrom(th.Foreground)
 	}
 	muted, iconFg, badge := emptyPalette(th)
+	accent := renderer.ColorFrom(th.Button)
+	if accent.A == 0 {
+		accent = renderer.RGB(47, 107, 242)
+	}
+	// Accent 不铺实心主色：徽章是底色上的浅染，图标用主色，虚线也带同一色相。
+	// 实心圆和灰框会变成两套颜色。缺省仍是灰度。
+	decor := false
+	if n.Props.Accent || iconKind == "spinner" {
+		badge = blendTint(accent, fill, 0.16, th.Dark)
+		iconFg = accent
+		border = blendTint(accent, border, 0.42, th.Dark)
+		decor = n.Props.Accent
+	}
+	ctx.FillRoundedRect(n.X+1, n.Y+1, n.W-2, n.H-2, radius, fill)
+	if renderer.AttrBool(n, "dashed") {
+		drawDashedRoundedRect(ctx, n.X+1, n.Y+1, n.W-2, n.H-2, radius, border)
+	} else {
+		strokeRoundedRect(ctx, n.X+8, n.Y+8, n.W-16, n.H-16, radius-4, 1, border)
+	}
 	if iconKind == "spinner" {
-		accent := renderer.ColorFrom(th.Button)
-		if accent.A == 0 {
-			accent = renderer.RGB(59, 166, 235)
-		}
-		ctx.FillRoundedRect(n.X+radius*0.35, n.Y+1, n.W-radius*0.7, 3, 1.5, accent)
 		kickSpinner()
 	}
 
 	_, childH := measureEmptyChildren(ctx, n, style, th)
 	cy := emptyContentTop(n, childH)
 	cx := n.X + (n.W-emptyBadge)/2
+	if decor {
+		paintEmptyHalo(ctx, cx, cy, accent)
+		paintEmptyDecor(ctx, cx, cy, accent)
+	}
 	ctx.FillRoundedRect(cx, cy, emptyBadge, emptyBadge, emptyBadge/2, badge)
 	iconSize := float32(28)
 	paintEmptyGlyph(ctx, iconKind, cx+(emptyBadge-iconSize)/2, cy+(emptyBadge-iconSize)/2, iconSize, iconFg, th)
@@ -229,7 +240,24 @@ func paintEmptyGlyph(ctx renderer.Context, kind string, x, y, size float32, fg r
 		}
 		paintSpinnerGlyph(ctx, x, y, size, fg, accent, spinnerPhase())
 	default:
-		paintImageGlyph(ctx, x, y, size, fg)
+		// 优先走通用图标集（应用可 RegisterGlyph 覆盖 "image"），没有再回引擎内置。
+		if !HasGlyph(kind) || !PaintGlyph(ctx, kind, x, y, size, fg) {
+			paintImageGlyph(ctx, x, y, size, fg)
+		}
+	}
+}
+
+// blendTint 把 c 向底色 tint 混合 alpha 份：徽章底是「主色 15% 染在浅底上」。
+// 暗色主题把 tint 换成深蓝灰，避免亮蓝块在暗底上刺眼。
+func blendTint(c, tint renderer.Color, alpha float32, dark bool) renderer.Color {
+	if dark {
+		tint = renderer.RGB(24, 34, 52)
+	}
+	return renderer.Color{
+		R: c.R*alpha + tint.R*(1-alpha),
+		G: c.G*alpha + tint.G*(1-alpha),
+		B: c.B*alpha + tint.B*(1-alpha),
+		A: 1,
 	}
 }
 
@@ -286,123 +314,6 @@ func paintSpinnerGlyph(ctx renderer.Context, x, y, size float32, fg, accent rend
 		px := cx + float32(math.Cos(float64(a)))*ring
 		py := cy + float32(math.Sin(float64(a)))*ring
 		ctx.FillRoundedRect(px-dot/2, py-dot/2, dot, dot, dot/2, c)
-	}
-}
-
-func strokeRoundedRect(ctx renderer.Context, x, y, w, h, r, s float32, c renderer.Color) {
-	if ctx == nil || w <= 0 || h <= 0 || s <= 0 {
-		return
-	}
-	if r < s {
-		r = s
-	}
-	if r > w/2 {
-		r = w / 2
-	}
-	if r > h/2 {
-		r = h / 2
-	}
-	ctx.FillRect(x+r, y, w-2*r, s, c)
-	ctx.FillRect(x+r, y+h-s, w-2*r, s, c)
-	ctx.FillRect(x, y+r, s, h-2*r, c)
-	ctx.FillRect(x+w-s, y+r, s, h-2*r, c)
-	paintCornerArc(ctx, x+r, y+r, r, s, math.Pi, math.Pi*1.5, c)
-	paintCornerArc(ctx, x+w-r, y+r, r, s, -math.Pi/2, 0, c)
-	paintCornerArc(ctx, x+w-r, y+h-r, r, s, 0, math.Pi/2, c)
-	paintCornerArc(ctx, x+r, y+h-r, r, s, math.Pi/2, math.Pi, c)
-}
-
-func paintCornerArc(ctx renderer.Context, cx, cy, r, s, a0, a1 float32, c renderer.Color) {
-	steps := int(r)
-	if steps < 5 {
-		steps = 5
-	}
-	for i := 0; i <= steps; i++ {
-		t := float32(i) / float32(steps)
-		a := a0 + (a1-a0)*t
-		px := cx + float32(math.Cos(float64(a)))*r
-		py := cy + float32(math.Sin(float64(a)))*r
-		ctx.FillRoundedRect(px-s/2, py-s/2, s, s, s/2, c)
-	}
-}
-
-// drawDashedRoundedRect 沿圆角矩形周长画 1px 虚线。
-func drawDashedRoundedRect(ctx renderer.Context, x, y, w, h, r float32, c renderer.Color) {
-	if w <= 2 || h <= 2 {
-		ctx.DrawRect(x, y, w, h, c, 1)
-		return
-	}
-	if r < 1 {
-		drawDashedRect(ctx, x, y, w, h, c)
-		return
-	}
-	if r > w/2 {
-		r = w / 2
-	}
-	if r > h/2 {
-		r = h / 2
-	}
-	pen := dashPen{ctx: ctx, c: c, on: emptyDashOn, off: emptyDashOff}
-	pen.line(x+r, y, x+w-r, y)
-	pen.arc(x+w-r, y+r, r, -math.Pi/2, 0)
-	pen.line(x+w-1, y+r, x+w-1, y+h-r)
-	pen.arc(x+w-r, y+h-r, r, 0, math.Pi/2)
-	pen.line(x+w-r, y+h-1, x+r, y+h-1)
-	pen.arc(x+r, y+h-r, r, math.Pi/2, math.Pi)
-	pen.line(x, y+h-r, x, y+r)
-	pen.arc(x+r, y+r, r, math.Pi, math.Pi*1.5)
-}
-
-// drawDashedRect 直角虚线，给半径为 0 的回退路径用。
-func drawDashedRect(ctx renderer.Context, x, y, w, h float32, c renderer.Color) {
-	pen := dashPen{ctx: ctx, c: c, on: emptyDashOn, off: emptyDashOff}
-	pen.line(x, y, x+w, y)
-	pen.line(x+w-1, y, x+w-1, y+h)
-	pen.line(x+w, y+h-1, x, y+h-1)
-	pen.line(x, y+h, x, y)
-}
-
-type dashPen struct {
-	ctx     renderer.Context
-	c       renderer.Color
-	on, off float32
-	phase   float32
-}
-
-func (p *dashPen) plot(x, y float32) {
-	if p.phase < p.on {
-		p.ctx.FillRect(x, y, 1, 1, p.c)
-	}
-	p.phase++
-	if p.phase >= p.on+p.off {
-		p.phase = 0
-	}
-}
-
-func (p *dashPen) line(x0, y0, x1, y1 float32) {
-	dx := x1 - x0
-	dy := y1 - y0
-	steps := int(math.Max(math.Abs(float64(dx)), math.Abs(float64(dy))))
-	if steps < 1 {
-		p.plot(x0, y0)
-		return
-	}
-	for i := 0; i <= steps; i++ {
-		t := float32(i) / float32(steps)
-		p.plot(x0+dx*t, y0+dy*t)
-	}
-}
-
-func (p *dashPen) arc(cx, cy, r, a0, a1 float32) {
-	length := math.Abs(float64(a1-a0)) * float64(r)
-	steps := int(length)
-	if steps < 4 {
-		steps = 4
-	}
-	for i := 0; i <= steps; i++ {
-		t := float32(i) / float32(steps)
-		a := a0 + (a1-a0)*t
-		p.plot(cx+r*float32(math.Cos(float64(a))), cy+r*float32(math.Sin(float64(a))))
 	}
 }
 

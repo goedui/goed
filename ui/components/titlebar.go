@@ -18,19 +18,28 @@ func init() {
 // 系统非客户区已去掉；最小化 / 最大化 / 关闭由 WM_NCHITTEST
 // 映射到 HTMINBUTTON / HTMAXBUTTON / HTCLOSE，交给 Windows 执行。
 // 左侧绘制默认应用图标 App。
-var TitleBar = runtime.DefineComponent("TitleBar", func(_ *runtime.SetupContext) runtime.RenderFunc {
+//
+// Style.Background / Color 覆盖主题标题栏底色和文字色；未设置时仍走主题。
+// platform.AppTitleBar 为 true 时（应用自绘标题栏）只把 apptitle 传下去：
+// 框架不画这一条，也不占它的高度，见 renderer.paintFrame / paintTitleBar。
+var TitleBar = runtime.DefineComponent("TitleBar", func(ctx *runtime.SetupContext) runtime.RenderFunc {
 	return func() []*runtime.VNode {
 		st := platform.Frame()
-		return []*runtime.VNode{
-			runtime.Tag("titlebar", runtime.Attrs{
-				"title":     st.Title,
-				"maximized": st.Maximized,
-				"active":    st.Active,
-				"hover":     int(st.Hover),
-				"pressed":   int(st.Pressed),
-				"icon":      App.Paint,
-			}),
+		style := runtime.Style{}
+		if ctx != nil {
+			style = ctx.Props().Style
 		}
+		n := runtime.Tag("titlebar", runtime.Attrs{
+			"title":     st.Title,
+			"maximized": st.Maximized,
+			"active":    st.Active,
+			"hover":     int(st.Hover),
+			"pressed":   int(st.Pressed),
+			"icon":      App.Paint,
+			"apptitle":  platform.AppTitleBar,
+		})
+		n.Style = style
+		return []*runtime.VNode{n}
 	}
 })
 

@@ -25,17 +25,19 @@ type Props struct {
 	Style Style
 	Key   string
 
-	ID, Label, Placeholder, Variant, Title, Hint, Icon, Name, Badge string
+	ID, Label, Placeholder, Variant, Title, Hint, Icon, Name, Badge   string
 	Message, Path, Open, PopupId, Anchor, AlignX, Shortcut, TextAlign string
 
-	Disabled, Selected, Password, Compact, Multiline, Readonly bool
+	Disabled, Selected, Password, Compact, Multiline, Readonly       bool
 	Nowrap, Borderless, Dashed, Vertical, CloseOnEnter, Modal, Focus bool
+	WideBar                                                          bool
 
 	OnClick       func()
 	Value         any
 	OnChange      any
 	OnInput       func(string)
 	OnSubmit      func(string)
+	OnBlur        func()
 	OnKeyDown     KeyHandler
 	OnClose       any
 	OnOpen        any
@@ -43,8 +45,20 @@ type Props struct {
 	OnEmpty       func()
 	OnEnter       func()
 	OnWheel       any
-	OnPaint       any
+	// OnScroll 在编辑框纵向滚动偏移变化时回调（滚轮、光标跟随、外部设置都会
+	// 经绘制出口统一通知），供「编辑区滚动 → 预览同步」这类联动使用。
+	OnScroll  func(float32)
+	OnPaint   any
 	OnPointerDown func()
+	// OnContextMenu 在指针按下右键、且按在这个节点上时回调，x/y 是客户区指针位置
+	// （DIP）。
+	//
+	// 和 OnClick 一样「谁在最上面就归谁」，不做冒泡 —— 冒泡会让「右键点在编辑区」和
+	// 「右键点在编辑区的空白处」分不清，而这两处想要的菜单不一样。
+	//
+	// 带坐标是因为菜单要长在指针那儿：右键面板只有坐标这一个锚点（下拉菜单有个按钮
+	// 可以当锚），宿主拿不到坐标就得自己再问「指针在哪」，凭空多一份要跟事件对齐的状态。
+	OnContextMenu func(x, y float32)
 	Items         any
 	Menus         any
 	Data          []byte
@@ -57,6 +71,21 @@ type Props struct {
 	ItemBackground, ItemColor, ItemBorder, CloseColor Color
 	OpenBackground, OpenColor                         Color
 	OnBG, OffBG, Knob                                 any
+
+	// Gradient 让节点背景走线性渐变填充（按钮、强调底）。nil 表示不用渐变，
+	// 走 Style.Background 纯色。方向由 Vertical 决定，端点色 A==0 视为未设置。
+	Gradient *GradientFill
+	// Shadow 给节点背景加圆角投影。nil 表示无阴影。Color A==0 时按黑色低透明度画。
+	Shadow *ShadowStyle
+	// Accent 是 empty 这类展示节点的「强调」开关：徽章底/图标改用主题强调色，
+	// 并允许画装饰元素。零值与现状一致。
+	Accent bool
+
+	// AtX / AtY 是浮层要长出来的位置（DIP），目前只有右键面板（ctxmenu）用。
+	//
+	// 之所以做成 Props 字段而不是让宿主塞 Attrs：位置是这个控件的公开契约
+	// ——右键面板只有「按坐标摆」一种用法，宿主必须说得出摆哪儿。
+	AtX, AtY float32
 }
 
 // VNode 是渲染函数产出的虚拟节点。引擎对它做布局与绘制，而不是直接操作 HWND。
@@ -72,6 +101,80 @@ type VNode struct {
 	OnClick    func()
 	X, Y, W, H float32
 	resolved   bool
+	parent     *VNode
+	// meas 跨帧复用 Measure 结果。滚动不重建树时避免重复 MeasureText。
+	meas [2]measMemo
+}
+
+// measMemo 记住某次 Measure 的约束与结果。两个槽覆盖 HStack「自然宽 / 分配宽」两遍。
+type measMemo struct {
+	maxW, maxH, w, h                float32
+	width, height, flex, pad, gap   float32
+	minW, minH, maxWidth, maxHeight float32
+	nSize, pSize                    float32
+	nWeight, pWeight, childN        int
+	nFamily, pFamily, text          string
+	ok                              bool
+}
+
+func vnodeMeasureText(n *VNode) string {
+	if n == nil {
+		return ""
+	}
+	if n.Text != "" {
+		return n.Text
+	}
+	if n.Attrs != nil {
+		if s, ok := n.Attrs["value"].(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
+func (n *VNode) measureMatches(m *measMemo, maxW, maxH float32, family string, fontSize float32, weight int) bool {
+	if n == nil || m == nil || !m.ok {
+		return false
+	}
+	s := n.Style
+	return m.maxW == maxW && m.maxH == maxH &&
+		m.width == s.Width && m.height == s.Height &&
+		m.flex == s.Flex && m.pad == s.Padding && m.gap == s.Gap &&
+		m.minW == s.MinWidth && m.minH == s.MinHeight &&
+		m.maxWidth == s.MaxWidth && m.maxHeight == s.MaxHeight &&
+		m.nSize == s.FontSize && m.nWeight == s.Weight && m.nFamily == s.FontFamily &&
+		m.pSize == fontSize && m.pWeight == weight && m.pFamily == family &&
+		m.childN == len(n.Children) && m.text == vnodeMeasureText(n)
+}
+
+// LookupMeasure 若本节点在相同约束下已经量过，返回缓存尺寸。
+func (n *VNode) LookupMeasure(maxW, maxH float32, family string, fontSize float32, weight int) (float32, float32, bool) {
+	if n == nil {
+		return 0, 0, false
+	}
+	for i := range n.meas {
+		if n.measureMatches(&n.meas[i], maxW, maxH, family, fontSize, weight) {
+			return n.meas[i].w, n.meas[i].h, true
+		}
+	}
+	return 0, 0, false
+}
+
+// StoreMeasure 记下本次测量，供后续帧复用。
+func (n *VNode) StoreMeasure(maxW, maxH float32, family string, fontSize float32, weight int, w, h float32) {
+	if n == nil {
+		return
+	}
+	s := n.Style
+	n.meas[1] = n.meas[0]
+	n.meas[0] = measMemo{
+		maxW: maxW, maxH: maxH, w: w, h: h,
+		width: s.Width, height: s.Height, flex: s.Flex, pad: s.Padding, gap: s.Gap,
+		minW: s.MinWidth, minH: s.MinHeight, maxWidth: s.MaxWidth, maxHeight: s.MaxHeight,
+		nSize: s.FontSize, pSize: fontSize, nWeight: s.Weight, pWeight: weight,
+		childN: len(n.Children), nFamily: s.FontFamily, pFamily: family,
+		text: vnodeMeasureText(n), ok: true,
+	}
 }
 
 func applyProps(n *VNode, p Props) *VNode {
@@ -138,6 +241,7 @@ func applyProps(n *VNode, p Props) *VNode {
 	putBool("vertical", p.Vertical)
 	putBool("closeOnEnter", p.CloseOnEnter)
 	putBool("focus", p.Focus)
+	putBool("widebar", p.WideBar)
 	if p.Modal {
 		put("dismiss", false)
 	}
@@ -157,11 +261,17 @@ func applyProps(n *VNode, p Props) *VNode {
 	putAny("onbg", p.OnBG)
 	putAny("offbg", p.OffBG)
 	putAny("knob", p.Knob)
+	putAny("gradient", p.Gradient)
+	putAny("shadow", p.Shadow)
+	putBool("accent", p.Accent)
 	if p.OnInput != nil {
 		put("onInput", p.OnInput)
 	}
 	if p.OnSubmit != nil {
 		put("onSubmit", p.OnSubmit)
+	}
+	if p.OnBlur != nil {
+		put("onBlur", p.OnBlur)
 	}
 	if p.OnKeyDown != nil {
 		put("onKeyDown", p.OnKeyDown)
@@ -172,11 +282,25 @@ func applyProps(n *VNode, p Props) *VNode {
 	if p.OnEnter != nil {
 		put("onEnter", p.OnEnter)
 	}
+	if p.OnScroll != nil {
+		put("onScroll", p.OnScroll)
+	}
 	if p.OnPointerDown != nil {
 		put("onPointerDown", p.OnPointerDown)
 	}
+	if p.OnContextMenu != nil {
+		put("onContextMenu", p.OnContextMenu)
+	}
 	if p.ContentWidth != 0 {
 		put("width", p.ContentWidth)
+	}
+	// 0 不写：面板坐标的 0 就是原点，读出来缺省也是 0，两种情况等价，
+	// 而每个节点都多两个键不划算。
+	if p.AtX != 0 {
+		put("atX", p.AtX)
+	}
+	if p.AtY != 0 {
+		put("atY", p.AtY)
 	}
 	if len(p.Data) > 0 {
 		put("data", p.Data)
@@ -233,6 +357,9 @@ func mergeStyle(dst *Style, src Style) {
 	if dst.Padding == 0 {
 		dst.Padding = src.Padding
 	}
+	if dst.Margin == 0 {
+		dst.Margin = src.Margin
+	}
 	if dst.Gap == 0 {
 		dst.Gap = src.Gap
 	}
@@ -250,6 +377,20 @@ func mergeStyle(dst *Style, src Style) {
 	}
 	if dst.Justify == "" {
 		dst.Justify = src.Justify
+	}
+	if dst.Overflow == "" {
+		dst.Overflow = src.Overflow
+	}
+	if dst.OverflowX == "" {
+		dst.OverflowX = src.OverflowX
+	}
+	if dst.OverflowY == "" {
+		dst.OverflowY = src.OverflowY
+	}
+	if dst.Position == "" {
+		dst.Position = src.Position
+		dst.Top, dst.Right, dst.Bottom, dst.Left = src.Top, src.Right, src.Bottom, src.Left
+		dst.Inset = src.Inset
 	}
 	if dst.Color.A == 0 {
 		dst.Color = src.Color

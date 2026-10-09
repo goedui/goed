@@ -27,14 +27,16 @@ import "C"
 
 // Options 描述 X11 宿主窗口，字段对齐 Windows 后端。
 type Options struct {
-	Title            string
-	Width            int
-	Height           int
-	Dark             bool
-	Icon16           []byte
-	Icon32           []byte
-	Paint            func(ctx renderer.Context)
-	Pointer          func(x, y float32, down, click bool)
+	Title   string
+	Width   int
+	Height  int
+	Dark    bool
+	Icon16  []byte
+	Icon32  []byte
+	Paint   func(ctx renderer.Context)
+	Pointer func(x, y float32, down, click bool)
+	// RightPointer 报告右键（X11 button 3），与 platform.Options 同名同义。
+	RightPointer     func(x, y float32, down bool)
 	Key              func(key int, char rune, down, ctrl, shift, alt bool)
 	Wheel            func(x, y, delta float32)
 	Composition      func(text string, cursor int) bool
@@ -44,26 +46,30 @@ type Options struct {
 	BindHWND         func(hwnd uintptr)
 	FrameUpdate      func(maximized, active bool, hover, pressed int)
 	SetWindowTitle   func(title string)
+	ToggleMaximize   func(fn func() bool)
+	CloseWindow      func(fn func())
+	// Close 返回 false 时不退出。nil 表示照常关。
+	Close func() bool
 }
 
 const (
 	xevSize = 192
 
-	offType     = 0
-	offWindow   = 32
-	offKeyWin   = 32
-	offBtnX     = 64
-	offBtnY     = 68
-	offBtnRootX = 72
-	offBtnRootY = 76
-	offBtnState = 80
-	offBtnBtn   = 84
-	offKeyCode  = 84
-	offCfgWin   = 40
-	offCfgX     = 48
-	offCfgY     = 52
-	offCfgW     = 56
-	offCfgH     = 60
+	offType       = 0
+	offWindow     = 32
+	offKeyWin     = 32
+	offBtnX       = 64
+	offBtnY       = 68
+	offBtnRootX   = 72
+	offBtnRootY   = 76
+	offBtnState   = 80
+	offBtnBtn     = 84
+	offKeyCode    = 84
+	offCfgWin     = 40
+	offCfgX       = 48
+	offCfgY       = 52
+	offCfgW       = 56
+	offCfgH       = 60
 	offClientType = 40
 	offClientFmt  = 48
 	offClientData = 56
@@ -76,49 +82,49 @@ const (
 )
 
 var (
-	postedMu  sync.Mutex
-	postedSeq uintptr
-	posted    = map[uintptr]func(){}
+	postedMu   sync.Mutex
+	postedSeq  uintptr
+	posted     = map[uintptr]func(){}
 	activeHost *host
 )
 
 type host struct {
-	opts       Options
-	dpy        uintptr
-	screen     int
-	root       uintptr
-	win        uintptr
-	gc         uintptr
-	visual     uintptr
-	depth      int
-	ximage     uintptr
-	pixC       unsafe.Pointer
-	ctx        *swContext
-	pixelW     int
-	pixelH     int
-	dpi        float32
-	maximized  bool
-	active     bool
-	hover      int
-	pressed    int
-	pointerDown bool
-	dirty      bool
-	quit       bool
-	lastClick  int64
-	lastHit    int
+	opts         Options
+	dpy          uintptr
+	screen       int
+	root         uintptr
+	win          uintptr
+	gc           uintptr
+	visual       uintptr
+	depth        int
+	ximage       uintptr
+	pixC         unsafe.Pointer
+	ctx          *swContext
+	pixelW       int
+	pixelH       int
+	dpi          float32
+	maximized    bool
+	active       bool
+	hover        int
+	pressed      int
+	pointerDown  bool
+	dirty        bool
+	quit         bool
+	lastClick    int64
+	lastHit      int
 	rootX, rootY int32
 
-	atomProtocols     uintptr
-	atomDelete        uintptr
-	atomNetWMState    uintptr
-	atomMaxVert       uintptr
-	atomMaxHorz       uintptr
-	atomMoveResize    uintptr
-	atomMotifHints    uintptr
-	atomNetWMName     uintptr
-	atomUTF8          uintptr
-	atomPost          uintptr
-	atomFrame         uintptr
+	atomProtocols  uintptr
+	atomDelete     uintptr
+	atomNetWMState uintptr
+	atomMaxVert    uintptr
+	atomMaxHorz    uintptr
+	atomMoveResize uintptr
+	atomMotifHints uintptr
+	atomNetWMName  uintptr
+	atomUTF8       uintptr
+	atomPost       uintptr
+	atomFrame      uintptr
 }
 
 // Run 创建 DPI 感知窗口，用软件光栅绘制，并阻塞直到关闭。
@@ -164,6 +170,12 @@ func Run(opts Options) error {
 	}
 	if opts.BindHWND != nil {
 		opts.BindHWND(h.win)
+	}
+	if opts.ToggleMaximize != nil {
+		opts.ToggleMaximize(h.toggleMaximize)
+	}
+	if opts.CloseWindow != nil {
+		opts.CloseWindow(h.closeWindow)
 	}
 	h.syncFrame()
 	h.dirty = true
@@ -261,8 +273,8 @@ func (h *host) internAtoms() {
 }
 
 func (h *host) stripDecorations() {
-	// flags = MWM_HINTS_DECORATIONS (1<<1), decorations = 0。
-	// format=32 在 64 位 Xlib 里按 long 数组写。
+	// flags = MWM_HINTS_DECORATIONS (1<<1)，decorations = 0；format=32 在
+	// 64 位 Xlib 里按 long 数组写。
 	hints := [5]uint64{2, 0, 0, 0, 0}
 	xc8(
 		x.XChangeProperty,
@@ -351,6 +363,9 @@ func (h *host) handle(ev *[xevSize]byte) {
 		msg := *(*uintptr)(unsafe.Pointer(&ev[offClientType]))
 		data0 := *(*uintptr)(unsafe.Pointer(&ev[offClientData]))
 		if msg == h.atomProtocols && data0 == h.atomDelete {
+			if h.opts.Close != nil && !h.opts.Close() {
+				return
+			}
 			h.quit = true
 			return
 		}
@@ -427,6 +442,13 @@ func (h *host) onButton(ev *[xevSize]byte, down bool) {
 			h.opts.Wheel(x, y, delta)
 			h.dirty = true
 		}
+		return
+	}
+	if btn == 3 {
+		// X11 的右键是 button 3。和 windows / web 一样只上报，不碰 pointerDown
+		// （左键拖选是另一条通道）。
+		x, y := h.toDIP(px, py)
+		h.emitRightPointer(x, y, down)
 		return
 	}
 	if btn != 1 {
@@ -516,6 +538,18 @@ func (h *host) onKey(ev *[xevSize]byte, down bool) {
 	h.dirty = true
 }
 
+func (h *host) closeWindow() {
+	if h.opts.Close != nil && !h.opts.Close() {
+		return
+	}
+	h.quit = true
+}
+
+func (h *host) toggleMaximize() bool {
+	h.runCaption(2)
+	return true
+}
+
 func (h *host) runCaption(btn int) {
 	switch btn {
 	case 1:
@@ -530,7 +564,7 @@ func (h *host) runCaption(btn int) {
 		h.syncFrame()
 		h.dirty = true
 	case 3:
-		h.quit = true
+		h.closeWindow()
 	}
 }
 
@@ -636,6 +670,16 @@ func (h *host) emitPointer(x, y float32, down, click bool) {
 		h.opts.Pointer(x, y, down, click)
 	}
 	if click || down {
+		h.dirty = true
+	}
+}
+
+// emitRightPointer 上报右键，与 windows / web 宿主对齐（见 platform.Options）。
+func (h *host) emitRightPointer(x, y float32, down bool) {
+	if h.opts.RightPointer != nil {
+		h.opts.RightPointer(x, y, down)
+	}
+	if down {
 		h.dirty = true
 	}
 }

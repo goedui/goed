@@ -22,30 +22,78 @@ func HStack(parts ...any) *runtime.VNode {
 func measureHStack(ctx renderer.Context, n *runtime.VNode, maxW, maxH float32, style renderer.TextStyle, th theme.Theme) (float32, float32) {
 	pad := n.Style.Padding
 	gap := n.Style.Gap
-	innerW := maxW - 2*pad
-	if innerW < 0 {
-		innerW = 0
-	}
-	var contentW, contentH float32
-	first := true
+
+	// 第一遍：按「不受约束的自然宽度」量每一列。
+	//
+	// 宽度**不能**改成传可用宽度：贪婪的子节点（vstack 只要 maxW > 0 就报满 maxW）
+	// 会各自都报全宽，两列并排时第二列直接被推到行外——实测 HStack(Width 660) 里
+	// 放两个无宽度无 flex 的 VStack，两列各报 660，第二列右缘跑到 1364（行右缘 696）。
+	var (
+		kept    []*runtime.VNode
+		natural []float32 // 自然宽度
+		flex    []float32 // flex 权重
+		heights []float32 // 按自然宽度量出来的高度
+	)
 	for _, c := range n.Children {
 		if c == nil {
 			continue
 		}
+		if runtime.IsAbsolute(c) {
+			continue
+		}
 		cw, ch := renderer.MeasureNode(ctx, c, 0, maxH-2*pad, style, th)
-		if ch > contentH {
-			contentH = ch
-		}
-		if !first {
-			contentW += gap
-		}
-		first = false
-		contentW += cw
+		m := 2 * c.Style.Margin
+		kept = append(kept, c)
+		natural = append(natural, cw+m)
+		flex = append(flex, c.Style.Flex)
+		heights = append(heights, ch+m)
 	}
-	w := contentW + 2*pad
+
+	// 自己最终会拿到的宽度。这里先算出来，一是它就是下面 return 出去的那个 w
+	// （applySize 随后只会做同样的收尾），二是**它同时是分配的依据**：
+	// Style.Width 是在本控件的 Measure 之后才由 applySize 覆盖的，用父级给的
+	// maxW 当依据会偏大，弹性列就被按一个偏大的宽度量了高。
+	w := 2 * pad
+	for i, cw := range natural {
+		if i > 0 {
+			w += gap
+		}
+		w += cw
+	}
 	if n.Style.Flex > 0 && maxW > 0 {
 		w = maxW
 	}
+	if n.Style.Width > 0 {
+		w = n.Style.Width
+	}
+	if maxW > 0 && w > maxW {
+		w = maxW
+	}
+
+	// 第二遍：把宽度按同一份规则分下去，弹性列按**分到的**宽度重新量高度。
+	//
+	// 高度不能跟着自然宽度走：后端把 maxW <= 0 当成不限宽（Windows 的 MeasureText
+	// 里 maxW <= 0 → 1e6），换行文本只会报一行高，布局时才按真实宽度画出多行，
+	// 多出来的部分被祖先容器的 PushClip 裁掉。非弹性列拿到的就是自己的自然宽度，
+	// 高度已经是对的，不用重量。
+	innerW := w - 2*pad
+	if innerW < 0 {
+		innerW = 0
+	}
+	widths, _ := renderer.Distribute(natural, flex, gap, innerW)
+	var contentH float32
+	for i, c := range kept {
+		ch := heights[i]
+		if flex[i] > 0 {
+			if _, h2 := renderer.MeasureNode(ctx, c, widths[i], maxH-2*pad, style, th); h2 > ch {
+				ch = h2
+			}
+		}
+		if ch > contentH {
+			contentH = ch
+		}
+	}
+
 	h := contentH + 2*pad
 	if n.Style.Flex > 0 && maxH > 0 && h < maxH {
 		h = maxH
@@ -67,46 +115,50 @@ func layoutHStack(ctx renderer.Context, n *runtime.VNode, x, y, w, h float32, st
 		innerH = 0
 	}
 
-	type item struct {
-		n      *runtime.VNode
-		iw, ih float32
-		flex   float32
-	}
-	items := make([]item, 0, len(n.Children))
-	var contentW, flexSum float32
+	// 同 measureHStack：先按自然宽度量每一列，再用**同一份**分配规则分宽度。
+	// 两处共用 renderer.Distribute，测量与布局才会对「每一列多宽」得出同一个答案。
+	var (
+		kept    []*runtime.VNode
+		natural []float32
+		flex    []float32
+		heights []float32
+	)
 	for _, c := range n.Children {
 		if c == nil {
 			continue
 		}
-		iw, ih := renderer.MeasureNode(ctx, c, 0, innerH, style, th)
-		if len(items) > 0 {
-			contentW += gap
+		if runtime.IsAbsolute(c) {
+			continue
 		}
-		contentW += iw
-		flex := c.Style.Flex
-		flexSum += flex
-		items = append(items, item{c, iw, ih, flex})
+		iw, ih := renderer.MeasureNode(ctx, c, 0, innerH, style, th)
+		m := 2 * c.Style.Margin
+		kept = append(kept, c)
+		natural = append(natural, iw+m)
+		flex = append(flex, c.Style.Flex)
+		heights = append(heights, ih+m)
 	}
+	widths, leftover := renderer.Distribute(natural, flex, gap, innerW)
 
-	extra := innerW - contentW
-	if extra < 0 {
-		extra = 0
-	}
 	cx := x + pad
-	if extra > 0 && flexSum == 0 {
+	if leftover > 0 {
 		switch justify {
 		case runtime.Center:
-			cx += extra / 2
+			cx += leftover / 2
 		case runtime.End:
-			cx += extra
+			cx += leftover
 		}
 	}
-	for _, it := range items {
-		cw := it.iw
-		if extra > 0 && flexSum > 0 && it.flex > 0 {
-			cw += extra * (it.flex / flexSum)
+	for i, c := range kept {
+		cw := widths[i]
+		ch := heights[i]
+		// 弹性列分到的宽度不等于自己的自然宽度（可能被撑宽、也可能被压窄），
+		// 高度得按分到的那一版重量：换行文本被压窄后会多出几行，按自然宽度
+		// 量出来的高度装不下。
+		if flex[i] > 0 {
+			if _, h2 := renderer.MeasureNode(ctx, c, cw, innerH, style, th); h2 > ch {
+				ch = h2
+			}
 		}
-		ch := it.ih
 		cy := y + pad
 		switch align {
 		case runtime.Center:
@@ -116,7 +168,8 @@ func layoutHStack(ctx renderer.Context, n *runtime.VNode, x, y, w, h float32, st
 		case runtime.Stretch:
 			ch = innerH
 		}
-		renderer.LayoutNode(ctx, it.n, cx, cy, cw, ch, style, th)
+		m := c.Style.Margin
+		renderer.LayoutNode(ctx, c, cx+m, cy+m, cw-2*m, ch-2*m, style, th)
 		cx += cw + gap
 	}
 }
@@ -143,6 +196,6 @@ func paintHStackHover(ctx renderer.Context, n *runtime.VNode) {
 		ctx.FillRect(n.X, n.Y, n.W, n.H, c)
 	}
 	if renderer.ColorSet(n.Style.Border) {
-		ctx.DrawRect(n.X, n.Y, n.W, n.H, renderer.ColorFrom(n.Style.Border), 1)
+		renderer.StrokeRounded(ctx, n.X, n.Y, n.W, n.H, n.Style.Radius, 1, renderer.ColorFrom(n.Style.Border))
 	}
 }

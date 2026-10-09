@@ -39,7 +39,21 @@ func Textarea(parts ...any) *runtime.VNode {
 	if n.Attrs == nil {
 		n.Attrs = runtime.Attrs{}
 	}
+	userKey := n.Attrs["onKeyDown"]
+	rememberInput(n.ID(), onString(n, "onInput"))
 	n.Attrs["onKeyDown"] = runtime.KeyHandler(func(e runtime.KeyEvent) bool {
+		// 应用层先看一眼，返回 true 就不再进编辑核心。
+		// md-previewer 的 Ctrl+A 在这里全选且不滚动。
+		switch fn := userKey.(type) {
+		case runtime.KeyHandler:
+			if fn != nil && fn(e) {
+				return true
+			}
+		case func(runtime.KeyEvent) bool:
+			if fn != nil && fn(e) {
+				return true
+			}
+		}
 		if handleEditKey(n, e, true) {
 			return true
 		}
@@ -62,15 +76,41 @@ func Textarea(parts ...any) *runtime.VNode {
 	})
 	n.Attrs["onPointerDown"] = func() { beginPointerSelect(n) }
 	n.Attrs["onPointerDrag"] = func() { dragPointerSelect(n) }
-	// 滚轮在内容超高时内部滚动。delta 正值表示向上滚，偏移随之减小。
-	n.Attrs["onWheel"] = func(x, y, delta float32) {
+	userCtx := n.Attrs["onContextMenu"]
+	n.Attrs["onContextMenu"] = func(x, y float32) {
+		runtime.SetFocus(n.ID())
+		switch fn := userCtx.(type) {
+		case func(float32, float32):
+			if fn != nil {
+				fn(x, y)
+			}
+		}
+	}
+	userWheel := n.Attrs["onWheel"]
+	// 滚轮在内容超高时内部滚动。到头返回 false，外层 overflow 容器可以接着滚。
+	// delta 正值表示向上滚，偏移随之减小。
+	n.Attrs["onWheel"] = func(x, y, delta float32) bool {
 		st := stateFor(n)
+		before := st.scrollY
 		st.scrollY -= delta * 48
-		// 钳制和绘制用同一个函数，避免滚轮设的值下一帧被收窄。
 		st.scrollY = clampScrollY(st, n.H)
-		// 用户主动浏览时不再让光标跟随把它拉回去（记事本行为）。
+		st.viewH = n.H
 		st.scrollSync = false
-		platform.RequestFrame()
+		moved := st.scrollY != before
+		if moved {
+			platform.RequestFrame()
+		}
+		switch fn := userWheel.(type) {
+		case func(float32):
+			fn(delta)
+		case func(float32, float32, float32):
+			fn(x, y, delta)
+		case func(float32) bool:
+			return fn(delta)
+		case func(float32, float32, float32) bool:
+			return fn(x, y, delta)
+		}
+		return moved
 	}
 	return n
 }
@@ -109,8 +149,16 @@ func measureTextarea(ctx renderer.Context, n *runtime.VNode, maxW, maxH float32,
 	if renderer.AttrBool(n, "nowrap") {
 		wrapW = 0
 	}
-	lay := layoutOf(ctx, st, wrapW, textStyle)
-	h := float32(lay.maxLine+1)*lay.lineH + 2*inputTopPad
+	// HStack 第一遍用 maxW=0 量自然宽。textarea 在 flex 列里最终宽度由父级分配，
+	// 这时折行会污染 layout 缓存，滚动帧被假宽度/真实宽乒乓打穿。
+	skipWrap := n.Style.Flex > 0 && maxW <= 0 && !renderer.AttrBool(n, "nowrap")
+	var h float32
+	if skipWrap {
+		h = maxH
+	} else {
+		lay := layoutOf(ctx, st, wrapW, textStyle)
+		h = float32(lay.maxLine+1)*lay.lineH + 2*inputTopPad
+	}
 	if min := n.Style.MinHeight; min > 0 && h < min {
 		h = min
 	}

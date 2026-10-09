@@ -65,6 +65,8 @@ func Dialog(parts ...any) *runtime.VNode {
 		}
 		return true
 	})
+	// 遮罩吃掉滚轮。否则滚轮按坐标命中，会穿过对话框滚到下面的编辑区 / 预览。
+	n.Attrs["onWheel"] = func(float32) {}
 	if n.OnClick == nil {
 		if dialogDismiss(n) {
 			n.OnClick = func() {
@@ -165,12 +167,21 @@ func layoutDialog(ctx renderer.Context, n *runtime.VNode, x, y, w, h float32, st
 		}, msg))
 	}
 	if len(user) > 0 {
-		if len(user) == 1 && user[0].Tag == "hstack" {
-			kids = append(kids, user[0])
-		} else {
+		var body, actions []*runtime.VNode
+		for _, c := range user {
+			if c.Tag == "button" {
+				actions = append(actions, c)
+				continue
+			}
+			body = append(body, c)
+		}
+		kids = append(kids, body...)
+		if len(actions) == 1 && actions[0].Tag == "hstack" {
+			kids = append(kids, actions[0])
+		} else if len(actions) > 0 {
 			kids = append(kids, HStack(runtime.Props{
 				Style: runtime.Style{Gap: 8, Justify: runtime.End, Align: runtime.Center},
-			}, user))
+			}, actions))
 		}
 	}
 

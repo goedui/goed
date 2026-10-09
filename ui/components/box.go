@@ -48,7 +48,11 @@ func layoutBox(ctx renderer.Context, n *runtime.VNode, x, y, w, h float32, style
 		if c == nil {
 			continue
 		}
-		renderer.LayoutNode(ctx, c, x+p, y+p, w-2*p, h-2*p, style, th)
+		if runtime.IsAbsolute(c) {
+			continue
+		}
+		m := c.Style.Margin
+		renderer.LayoutNode(ctx, c, x+p+m, y+p+m, w-2*p-2*m, h-2*p-2*m, style, th)
 	}
 }
 
@@ -88,7 +92,10 @@ func layoutLayer(ctx renderer.Context, n *runtime.VNode, x, y, w, h float32, sty
 		if c == nil {
 			continue
 		}
-		if first {
+		if runtime.IsAbsolute(c) {
+			continue
+		}
+		if first || runtime.OverlayTag(c.Tag) {
 			renderer.LayoutNode(ctx, c, x, y, w, h, style, th)
 			first = false
 			continue

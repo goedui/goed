@@ -28,6 +28,13 @@ var Light = Theme{
 	ButtonHover:      hex("#0062A3"),
 	ButtonPressed:    hex("#00518A"),
 
+	// 禁用态：底色比卡片深一档、文字过 AA。
+	// 以前三处组件各自硬编码 #E8EAEE，与次级按钮的可用底 #EEF0F4 只差 1.056:1
+	// —— 生成过程中「灰掉的按钮」和「只是浅灰的按钮」肉眼分不出来。
+	// 加深到 #E0E3E8 后：vs 白卡 1.204 → 1.287，vs #EEF0F4 1.056 → 1.128。
+	Disabled:           hex("#E0E3E8"),
+	DisabledForeground: hex("#5C6370"),
+
 	FontFamily: "Segoe UI",
 	FontSize:   13, // workbench 默认字号
 	Padding:    16,
@@ -57,6 +64,12 @@ var Dark = Theme{
 	ButtonForeground: hex("#FFFFFF"),
 	ButtonHover:      hex("#1177BB"),
 	ButtonPressed:    hex("#0C5689"),
+
+	// 禁用态：暗色下往「比背景亮一档」走（#1E1E1E → #2A2D33），
+	// 和 light 的「比卡片深一档」是同一条规则的两侧。
+	// 旧的硬编码 #E8EAEE 在暗底上是 13.84:1 的近白色块；现在是 1.208:1。
+	Disabled:           hex("#2A2D33"),
+	DisabledForeground: hex("#96A0AF"),
 
 	FontFamily: "Segoe UI",
 	FontSize:   13,

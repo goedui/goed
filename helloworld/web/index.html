@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HelloWorld</title>
+<!-- 内联 SVG 图标：省掉一次 favicon.ico 的 404 请求，标签页也有个样子。 -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%234a7cff'/%3E%3Cpath d='M8 20l5-7 4 5 3-4 4 6z' fill='%23fff'/%3E%3Ccircle cx='12' cy='11' r='2.5' fill='%23fff'/%3E%3C/svg%3E">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #fcfcfc; }
+  /* touch-action:none 挡住移动端的双击缩放与橡皮筋滚动；
+     outline:none 是因为键盘焦点其实在 wasm 建的隐藏 textarea 上，
+     canvas 上留一圈焦点框只会碍眼。 */
+  #app { display: block; width: 100vw; height: 100vh; outline: none; touch-action: none; }
+  #loading {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px; padding: 24px;
+    font-family: "Microsoft YaHei UI", system-ui, sans-serif; font-size: 14px;
+    color: #555; text-align: center; line-height: 1.7;
+  }
+  #loading.error { color: #c0392b; }
+  #loading code {
+    font-family: "Cascadia Code", Consolas, monospace; font-size: 12px;
+    background: #f0f0f0; padding: 2px 6px; border-radius: 4px; color: #333;
+  }
+</style>
+</head>
+<body>
+<canvas id="app" tabindex="-1"></canvas>
+<div id="loading">正在加载 Goed Imgen…</div>
+<script src="wasm_exec.js"></script>
+<script src="app.wasm.js"></script>
+<script>
+(function () {
+  var loading = document.getElementById('loading');
+
+  function fail(message) {
+    loading.classList.add('error');
+    loading.innerHTML = message;
+  }
+
+  function fatal(err) {
+    fail('加载失败：' + String(err));
+  }
+
+  if (typeof WebAssembly === 'undefined') {
+    fail('当前浏览器不支持 WebAssembly。');
+    return;
+  }
+  if (typeof Go === 'undefined') {
+    fail('缺少 <code>wasm_exec.js</code>，请先跑一次 <code>go run ./应用/web/build_web.go</code>。');
+    return;
+  }
+  if (typeof APP_WASM_GZ_B64 !== 'string' || !APP_WASM_GZ_B64) {
+    fail('缺少 <code>app.wasm.js</code>，请先跑一次 <code>go run ./应用/web/build_web.go</code>。');
+    return;
+  }
+  if (typeof DecompressionStream !== 'function') {
+    fail('当前浏览器不支持 <code>DecompressionStream</code>（解压内嵌 wasm 需要它）。');
+    return;
+  }
+
+  var go = new Go();
+
+  // wasm 以 gzip+base64 写进 app.wasm.js，用 <script> 加载，不走 fetch。
+  // 这样 file:// 直接打开 index.html 也能跑，不必起静态服务器。
+  function b64ToBytes(b64) {
+    var bin = atob(b64);
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  }
+
+  function gunzip(bytes) {
+    return new Response(
+      new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))
+    ).arrayBuffer();
+  }
+
+  gunzip(b64ToBytes(APP_WASM_GZ_B64))
+    .then(function (buf) { return WebAssembly.instantiate(buf, go.importObject); })
+    .then(function (result) {
+      loading.remove();
+      // go.run 的 Promise 在 main 返回时才落地；本程序的 main 永不返回，
+      // 所以它只在 panic 时 reject。
+      return go.run(result.instance);
+    })
+    .catch(fatal);
+
+  // 键盘与输入法由 wasm 建的隐藏 textarea 接管（见 ui/platform/web/host.go），
+  // 这里不要给 canvas 抢焦点，否则输入法立刻失效。
+})();
+</script>
+</body>
+</html>

@@ -16,6 +16,7 @@ import (
 //	readonly     只读（不显示光标、不接受输入）
 //	onInput(v)   文本变化
 //	onSubmit(v)  回车提交；返回 true 表示已处理
+//	onBlur()     焦点离开
 //
 // 编辑状态（光标 / 选区 / 组合串 / 撤销）见 textedit_state.go，
 // 交互在 textedit_keys.go，绘制在 textedit_paint.go。
@@ -47,6 +48,7 @@ func Input(parts ...any) *runtime.VNode {
 	})
 	n.Attrs["onPointerDown"] = func() { beginPointerSelect(n) }
 	n.Attrs["onPointerDrag"] = func() { dragPointerSelect(n) }
+	runtime.SetBlurHook(n.ID(), onVoid(n, "onBlur"))
 	return n
 }
 

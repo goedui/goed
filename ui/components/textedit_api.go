@@ -1,4 +1,4 @@
-// 编辑框对外的操作入口。
+﻿// 编辑框对外的操作入口。
 //
 // 这些符号经 github.com/goedui/goed/ui 转发给应用层，用于状态栏行列、查找后选中定位、
 // 弹出菜单的剪切 / 复制 / 粘贴 / 撤销等场景；组件内部不调用它们。
@@ -75,6 +75,14 @@ func SelectAll(n *runtime.VNode) {
 	stateFor(n).selectAll()
 }
 
+// SelectAllStay 全选，但保持当前滚动位置。光标仍在文末，只是不滚过去。
+func SelectAllStay(n *runtime.VNode) {
+	if n == nil {
+		return
+	}
+	stateFor(n).selectAllStay()
+}
+
 // EditOp 对编辑框执行一次标准编辑命令，供弹出菜单 / 工具栏调用。
 // 支持 "undo"、"redo"、"cut"、"copy"、"paste"、"delete"、"selectall"。
 // 返回是否执行（只读框收到改动类命令时返回 false）。
@@ -82,15 +90,30 @@ func EditOp(n *runtime.VNode, op string) bool {
 	if n == nil {
 		return false
 	}
-	if !renderer.Enabled(n) {
+	return editOpState(stateFor(n), renderer.AttrBool(n, "readonly") || !renderer.Enabled(n), onString(n, "onInput"), op)
+}
+
+// EditOpID 按编辑框 id 执行同一套命令。菜单回调发生在布局之外，那时拿不到节点。
+// onInput 用创建编辑框时记下的回调，剪切 / 粘贴才能把新文本交回应用。
+func EditOpID(id, op string) bool {
+	st := textareaState(id)
+	if st == nil || id == "" {
 		return false
 	}
-	readonly := renderer.AttrBool(n, "readonly")
-	st := stateFor(n)
+	editMu.Lock()
+	onInput := editInputHooks[id]
+	editMu.Unlock()
+	return editOpState(st, false, onInput, op)
+}
+
+func editOpState(st *editState, readonly bool, onInput func(string), op string) bool {
+	if st == nil {
+		return false
+	}
 	notify := func() {
 		resetBlink()
-		if fn := onString(n, "onInput"); fn != nil {
-			fn(st.value)
+		if onInput != nil {
+			onInput(st.value)
 		}
 	}
 	switch op {
@@ -162,4 +185,64 @@ func EditOp(n *runtime.VNode, op string) bool {
 		return true
 	}
 	return false
+}
+
+func textareaState(id string) *editState {
+	if id == "" {
+		return nil
+	}
+	editMu.Lock()
+	defer editMu.Unlock()
+	return editStates[id]
+}
+
+// TextareaScrollY 返回多行编辑框当前纵向滚动偏移。
+func TextareaScrollY(id string) float32 {
+	st := textareaState(id)
+	if st == nil {
+		return 0
+	}
+	return st.scrollY
+}
+
+// TextareaScrollMax 返回多行编辑框可滚上限。尚未布局时为 0。
+func TextareaScrollMax(id string) float32 {
+	st := textareaState(id)
+	if st == nil || st.layout == nil {
+		return 0
+	}
+	maxOff := float32(st.layout.maxLine+1)*st.layout.lineH + 2*inputTopPad - st.viewH
+	if maxOff < 0 {
+		return 0
+	}
+	return maxOff
+}
+
+// PageTextarea 按视口能放下的行数翻一页（dir>0 向下）。
+// 与 PageUp/PageDown 同一条 movePage：光标和滚动一起走，不靠标题比例换算。
+func PageTextarea(id string, dir float32) {
+	st := textareaState(id)
+	if st == nil || st.layout == nil || dir == 0 {
+		return
+	}
+	sign := 1
+	if dir < 0 {
+		sign = -1
+	}
+	st.movePage(sign, false, st.viewH-2*inputTopPad)
+}
+
+// SetTextareaScrollY 设置多行编辑框纵向滚动偏移（会钳进合法范围）。
+func SetTextareaScrollY(id string, y float32) {
+	st := textareaState(id)
+	if st == nil {
+		return
+	}
+	st.scrollY = y
+	st.scrollSync = false
+	if st.viewH > 0 {
+		st.scrollY = clampScrollY(st, st.viewH)
+	} else if st.scrollY < 0 {
+		st.scrollY = 0
+	}
 }

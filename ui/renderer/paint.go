@@ -11,6 +11,8 @@ func PaintTree(ctx Context, nodes []*runtime.VNode, th theme.Theme) {
 	if ctx == nil {
 		return
 	}
+	resetCullClip()
+	syncMeasureOwner(ctx)
 	if th.FontSize <= 0 {
 		th = theme.Default
 	}
@@ -40,13 +42,24 @@ func PaintTree(ctx Context, nodes []*runtime.VNode, th theme.Theme) {
 }
 
 func paintLaidOut(ctx Context, nodes []*runtime.VNode, style TextStyle, th theme.Theme) {
+	var abs []*runtime.VNode
 	for _, n := range nodes {
+		if runtime.IsAbsolute(n) {
+			abs = append(abs, n)
+			continue
+		}
+		paintLaidOutNode(ctx, n, style, th)
+	}
+	for _, n := range abs {
 		paintLaidOutNode(ctx, n, style, th)
 	}
 }
 
 func paintLaidOutNode(ctx Context, n *runtime.VNode, style TextStyle, th theme.Theme) {
 	if n == nil || runtime.OverlayTag(n.Tag) {
+		return
+	}
+	if !nodeInCullClip(n) {
 		return
 	}
 	st := applyStyle(style, n.Style)
@@ -56,6 +69,9 @@ func paintLaidOutNode(ctx Context, n *runtime.VNode, style TextStyle, th theme.T
 		if n.Text == "" {
 			return
 		}
+		// 文本节点自己写了 Align 才算数：盒子比文字宽时（显式宽度 / 被撑满 /
+		// layoutFlow 给的整行宽），文字按它对齐；否则行为与从前完全一致。
+		st.Align = TextAlign(n.Style, st.Align)
 		pad := n.Style.Padding
 		h := n.H - 2*pad
 		if h <= 0 {
@@ -69,11 +85,11 @@ func paintLaidOutNode(ctx Context, n *runtime.VNode, style TextStyle, th theme.T
 			return
 		}
 		paintBackground(ctx, n)
-		paintLaidOut(ctx, n.Children, st, th)
+		PaintChildren(ctx, n, st, th)
 
 	case runtime.KindComponent:
 		paintBackground(ctx, n)
-		paintLaidOut(ctx, n.Children, st, th)
+		PaintChildren(ctx, n, st, th)
 	}
 }
 

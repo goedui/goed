@@ -14,10 +14,11 @@ func init() {
 	})
 }
 
-// Tab 是标签栏上的一项。
+// Tab 是标签栏上的一项。Icon 非空时画在文字左侧（选中胶囊上的 sparkle）。
 type Tab struct {
 	ID       string
 	Label    string
+	Icon     string
 	Closable bool
 	Disabled bool
 	CloseID  string
@@ -58,17 +59,13 @@ func tabsFrom(v any) []Tab {
 //
 // Attrs:
 //
-//	items               []Tab
-//	value               当前选中 id
-//	onChange            func(string)
-//	onClose             func(string)  关闭按钮；参数是 tab id
-//	variant             "pill" 胶囊；默认矩形
-//	selectedBackground  选中底色
-//	selectedColor       选中字色
-//	itemBackground      未选中底色
-//	itemColor           未选中字色
-//	itemBorder          未选中描边（胶囊常用）
-//	closeColor          关闭按钮字色
+//	items      []Tab
+//	value      当前选中 id
+//	onChange   func(string)
+//	onClose    func(string)  关闭按钮；参数是 tab id
+//	variant    "pill" 胶囊；默认矩形
+//	颜色：selectedBackground/selectedColor 选中项，itemBackground/itemColor/itemBorder
+//	未选中项，closeColor 关闭按钮；缺省都取主题
 func Tabs(parts ...any) *runtime.VNode {
 	n := runtime.H("tabs", parts...)
 	if n.Attrs == nil {
@@ -121,6 +118,7 @@ func Tabs(parts ...any) *runtime.VNode {
 				FontSize:   n.Style.FontSize,
 				Padding:    pad,
 			},
+			Icon: t.Icon,
 			ID: id, Label: t.Label, Variant: "ghost", Selected: selected, Disabled: disabled,
 			OnClick: func() {
 				if disabled || id == value {

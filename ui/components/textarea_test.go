@@ -1,13 +1,81 @@
 package components
 
 import (
+	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/goedui/goed/ui/platform"
 	"github.com/goedui/goed/ui/renderer"
 	"github.com/goedui/goed/ui/runtime"
 	"github.com/goedui/goed/ui/theme"
 )
+
+func TestLargeTextareaUsesSparseLayout(t *testing.T) {
+	const id = "ta-large-layout"
+	ResetInputState(id)
+	t.Cleanup(func() { ResetInputState(id) })
+
+	text := strings.Repeat("line\n", largeLayoutBytes/5) + "last line"
+	n := Textarea(runtime.Props{ID: id, Value: text, Nowrap: true})
+	st := stateFor(n)
+	lay := layoutText(&mockContext{w: 400, h: 400}, st, text, 0, renderer.TextStyle{FontSize: 13})
+
+	if !lay.large {
+		t.Fatal("large text should use sparse layout")
+	}
+	if lay.maxLine < largeLayoutBytes/5 {
+		t.Fatalf("maxLine = %d, want at least %d", lay.maxLine, largeLayoutBytes/5)
+	}
+	if got := lay.lineForOffset(len(text) - 1); got != lay.maxLine {
+		t.Fatalf("last line = %d, want %d", got, lay.maxLine)
+	}
+	if got := lay.lineStart(lay.maxLine); got <= 0 {
+		t.Fatalf("last line start = %d, want positive offset", got)
+	}
+}
+
+func TestTextareaLayoutCoversFullWrappedDocument(t *testing.T) {
+	const id = "ta-full-doc"
+	ResetInputState(id)
+	t.Cleanup(func() { ResetInputState(id) })
+
+	text := strings.Repeat("abcdefghij\n", 500)
+	if utf8.RuneCountInString(text) <= maxLayoutRun {
+		t.Fatalf("测试文本应超过 maxLayoutRun=%d", maxLayoutRun)
+	}
+	n := Textarea(runtime.Props{
+		ID:    id,
+		Value: text,
+		Style: runtime.Style{Width: 240, Height: 80, MinHeight: 80, MaxHeight: 80},
+	})
+	st := stateFor(n)
+	ctx := &mockContext{w: 400, h: 200}
+	lay := layoutText(ctx, st, text, 220, renderer.TextStyle{FontSize: 13})
+	if !lay.visual {
+		t.Fatal("超长文本应走可视行稀疏布局，而不是截断 points")
+	}
+	if lay.maxLine < 499 {
+		t.Fatalf("maxLine = %d，应覆盖全部硬换行", lay.maxLine)
+	}
+	if got := lay.lineForOffset(len(text)); got != lay.maxLine {
+		t.Fatalf("文末行 = %d, want %d", got, lay.maxLine)
+	}
+
+	renderer.PaintTree(ctx, []*runtime.VNode{n}, theme.Dark)
+	maxOff := TextareaScrollMax(id)
+	if maxOff <= 0 {
+		t.Fatal("超长文档应能向下滚")
+	}
+	SetTextareaScrollY(id, maxOff)
+	if got := TextareaScrollY(id); got < maxOff-1 {
+		t.Fatalf("应能滚到文末：got %.1f max %.1f", got, maxOff)
+	}
+	HandleWheel([]*runtime.VNode{n}, n.X+10, n.Y+10, -100)
+	if got := TextareaScrollY(id); got < maxOff-1 {
+		t.Fatalf("滚到底后应停在文末：got %.1f max %.1f", got, maxOff)
+	}
+}
 
 // newArea 造一个受控多行文本域。
 func newArea(t *testing.T, id, value string, extra *runtime.Props) (*runtime.VNode, *string) {
@@ -254,6 +322,50 @@ func TestTextareaMoveCaretAndCaretLineCol(t *testing.T) {
 
 // TestTextareaNowrapKeepsLongLineSingle 关闭自动换行后，长行不产生软换行，
 // 高度只由硬换行决定（记事本「自动换行」取消勾选后的行为）。
+func TestArrowKeysRevealCaretHorizontally(t *testing.T) {
+	const id = "ta-arrow-x"
+	ResetInputState(id)
+	t.Cleanup(func() { ResetInputState(id) })
+	text := strings.Repeat("a", 80)
+	n := Textarea(runtime.Props{
+		ID: id, Value: text, Nowrap: true,
+		Style: runtime.Style{Width: 80, Height: 40, FontSize: 14},
+	})
+	n.X, n.Y, n.W, n.H = 0, 0, 80, 40
+	ctx := &mockContext{w: 200, h: 80}
+	style := renderer.TextStyle{FontSize: 14}
+	runtime.SetFocus(id)
+	t.Cleanup(func() { runtime.SetFocus("") })
+	MoveCaret(n, 0, 0)
+	paintTextarea(ctx, n, style, theme.Light)
+	for i := 0; i < len(text); i++ {
+		press(n, runtime.KeyRight)
+		paintTextarea(ctx, n, style, theme.Light)
+	}
+	st := stateFor(n)
+	endX := st.layout.pointAtLineEnd(0).x
+	viewW := n.W - 2*inputPad
+	want := endX - viewW
+	if want < 0 {
+		want = 0
+	}
+	if st.scrollX+1 < want {
+		t.Fatalf("right arrow should reach line end, scrollX=%.1f want>=%.1f", st.scrollX, want)
+	}
+	scrolled := st.scrollX
+	for i := 0; i < len(text); i++ {
+		press(n, runtime.KeyLeft)
+		paintTextarea(ctx, n, style, theme.Light)
+	}
+	if st.scrollX >= scrolled {
+		t.Fatalf("left arrow should scroll back, scrollX=%.1f was %.1f", st.scrollX, scrolled)
+	}
+	if st.scrollX > 1 {
+		t.Fatalf("caret at start should show column 0, scrollX=%.1f", st.scrollX)
+	}
+}
+
+
 func TestTextareaNowrapKeepsLongLineSingle(t *testing.T) {
 	ctx := &mockContext{w: 500, h: 400}
 	style := renderer.TextStyle{FontSize: 13}
@@ -384,6 +496,127 @@ func TestTextareaWheelScrollsContent(t *testing.T) {
 	HandleWheel([]*runtime.VNode{n}, n.X+10, n.Y+10, 100)
 	if top := stateFor(n).scrollY; top != 0 {
 		t.Fatalf("向上滚应回到顶端：%.1f", top)
+	}
+}
+
+func TestTextareaFlexSkipUnconstrainedWrap(t *testing.T) {
+	const id = "ta-flex-skip"
+	ResetInputState(id)
+	t.Cleanup(func() { ResetInputState(id) })
+
+	text := strings.Repeat("abcdefghij", 80)
+	n := Textarea(runtime.Props{
+		ID:    id,
+		Value: text,
+		Style: runtime.Style{Flex: 1, MinHeight: 80},
+	})
+	st := stateFor(n)
+	ctx := &mockContext{w: 800, h: 400}
+	style := renderer.TextStyle{FontSize: 13}
+
+	LayoutDebug = nil
+	_, h0 := measureTextarea(ctx, n, 0, 200, style, theme.Dark)
+	if h0 != 200 {
+		t.Fatalf("flex 列无约束宽度应回报父级高度：got %.1f", h0)
+	}
+	if len(LayoutDebug) != 0 {
+		t.Fatalf("无约束宽度不该折行：%v", LayoutDebug)
+	}
+	if st.layout != nil {
+		t.Fatal("无约束宽度不该写入 layout 缓存")
+	}
+
+	LayoutDebug = nil
+	_, _ = measureTextarea(ctx, n, 430, 200, style, theme.Dark)
+	if len(LayoutDebug) == 0 {
+		t.Fatal("真实宽度应折行")
+	}
+	if st.layout == nil || st.layout.wrapW != 410 {
+		t.Fatalf("真实宽度 wrapW=%v", st.layout)
+	}
+}
+
+func TestTextareaPaintsVisibleLinesOnly(t *testing.T) {
+	const id = "ta-visible"
+	ResetInputState(id)
+	t.Cleanup(func() { ResetInputState(id) })
+
+	var b strings.Builder
+	for i := 0; i < 40; i++ {
+		if i > 0 {
+			b.WriteByte('\n')
+		}
+		b.WriteString("line-")
+		b.WriteString(strings.Repeat("x", 8))
+		b.WriteByte(byte('0' + i%10))
+	}
+	n := Textarea(runtime.Props{
+		ID:    id,
+		Value: b.String(),
+		Style: runtime.Style{Width: 240, Height: 48, MinHeight: 48, MaxHeight: 48},
+	})
+	ctx := &mockContext{w: 400, h: 200}
+	renderer.PaintTree(ctx, []*runtime.VNode{n}, theme.Dark)
+	if len(ctx.texts) == 0 {
+		t.Fatal("应画出文本")
+	}
+	drawn := ctx.texts[len(ctx.texts)-1]
+	if strings.Contains(drawn, "line-x") && strings.Count(drawn, "\n") > 8 {
+		t.Fatalf("应只画可见行，得到 %d 行", strings.Count(drawn, "\n")+1)
+	}
+}
+
+func TestGlyphWidthCachedAcrossRebuild(t *testing.T) {
+	const id = "ta-glyph"
+	ResetInputState(id)
+	t.Cleanup(func() { ResetInputState(id) })
+
+	text := strings.Repeat("汉字宽", 40)
+	n := Textarea(runtime.Props{ID: id, Value: text, Style: runtime.Style{Width: 200}})
+	st := stateFor(n)
+	ctx := &countingMeasure{w: 400, h: 200}
+	style := renderer.TextStyle{FontSize: 13}
+	layoutText(ctx, st, text, 180, style)
+	first := ctx.n
+	if first == 0 {
+		t.Fatal("首次折行应量字形")
+	}
+	st.dropLayout()
+	ctx.n = 0
+	layoutText(ctx, st, text, 180, style)
+	if ctx.n >= first {
+		t.Fatalf("字形缓存后测量次数应从 %d 下降，得到 %d", first, ctx.n)
+	}
+}
+
+func TestSparseSelectAllPaintsHighlightWithoutScroll(t *testing.T) {
+	const id = "ta-sparse-sel"
+	ResetInputState(id)
+	t.Cleanup(func() { ResetInputState(id) })
+	text := strings.Repeat("abcdefghij\n", 500)
+	n := Textarea(runtime.Props{
+		ID: id, Value: text, Nowrap: true,
+		Style: runtime.Style{Width: 200, Height: 80, FontSize: 14},
+	})
+	n.X, n.Y, n.W, n.H = 0, 0, 200, 80
+	ctx := &mockContext{w: 200, h: 80}
+	paintTextarea(ctx, n, renderer.TextStyle{FontSize: 14}, theme.Light)
+	st := stateFor(n)
+	st.scrollY = 40
+	st.selectAllStay()
+	ctx.fills = nil
+	paintTextarea(ctx, n, renderer.TextStyle{FontSize: 14}, theme.Light)
+	if abs32(st.scrollY-40) > 1 {
+		t.Fatalf("select all moved scroll to %.1f", st.scrollY)
+	}
+	hi := 0
+	for _, f := range ctx.fills {
+		if f.c.A > 0.2 && f.c.A < 0.5 && f.h > 4 {
+			hi++
+		}
+	}
+	if hi == 0 {
+		t.Fatal("sparse selection painted no highlight")
 	}
 }
 

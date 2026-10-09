@@ -36,10 +36,16 @@ func (c *d2dContext) bitmap(data []byte) com {
 		return 0
 	}
 	needed := w * h * 4
-	if cap(c.scratch) < needed {
-		c.scratch = make([]byte, needed)
+	bgra := c.scratch
+	if needed > 8<<20 {
+		bgra = make([]byte, needed)
+	} else {
+		if cap(c.scratch) < needed {
+			c.scratch = make([]byte, needed)
+		}
+		bgra = c.scratch
 	}
-	bgra := c.scratch[:needed]
+	bgra = bgra[:needed]
 	copyImageBGRA(bgra, img)
 	bmp := c.createBitmap(w, h, bgra)
 	if bmp == 0 {
@@ -49,8 +55,8 @@ func (c *d2dContext) bitmap(data []byte) com {
 	return bmp
 }
 
-// createBitmap 从一份预乘 BGRA 像素创建位图。调用返回时像素已被拷贝，
-// bgra 缓冲即可复用。失败返回 0。
+// createBitmap 从预乘 BGRA 像素创建位图：返回时像素已被拷贝，bgra 缓冲即可复用。
+// 失败返回 0。
 func (c *d2dContext) createBitmap(w, h int, bgra []byte) com {
 	if c.rt == 0 || w < 1 || h < 1 || len(bgra) < w*h*4 {
 		return 0

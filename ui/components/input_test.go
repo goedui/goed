@@ -26,6 +26,7 @@ func newInput(id string, initial string, extra *runtime.Props) (*runtime.VNode, 
 		p.Password = extra.Password
 		p.Placeholder = extra.Placeholder
 		p.OnSubmit = extra.OnSubmit
+		p.OnBlur = extra.OnBlur
 	}
 	ResetInputState(id)
 	return Input(p), got
@@ -240,6 +241,23 @@ func TestInputDragSelectsOverflowText(t *testing.T) {
 	}
 }
 
+func TestInputBlurFiresWhenFocusLeaves(t *testing.T) {
+	runtime.SetFocus("")
+	t.Cleanup(func() { runtime.SetFocus("") })
+	blurs := 0
+	newInput("t-blur-hook", "abc", &runtime.Props{OnBlur: func() { blurs++ }})
+	runtime.SetFocus("t-blur-hook")
+	runtime.SetFocus("other")
+	if blurs != 1 {
+		t.Fatalf("离开焦点应触发一次 blur: %d", blurs)
+	}
+	runtime.SetFocus("t-blur-hook")
+	runtime.SetFocus("t-blur-hook")
+	if blurs != 1 {
+		t.Fatal("重复设置同一焦点不应再 blur")
+	}
+}
+
 func TestInputNonFocusedIgnoresKeys(t *testing.T) {
 	n, got := newInput("t-blur", "abc", nil)
 	runtime.SetFocus("") // 没有焦点
@@ -303,22 +321,127 @@ func TestInputMultilinePaintsFromTop(t *testing.T) {
 	if d.y != wantY {
 		t.Fatalf("多行输入文字应从顶部内边距开始：got y=%.1f want %.1f", d.y, wantY)
 	}
+	// 编辑区是 14px：字顶到基线约 11.6，高于最小光标，不会被抬起来。
+	cy14, h14 := caretInLine(0, 0, 17.78, 14)
+	if absf(cy14-2.65) > 0.2 || absf((cy14+h14)-14.22) > 0.2 {
+		t.Fatalf("14px 光标应贴着字形：顶 %.2f 底 %.2f，期望顶 2.65 底 14.22", cy14, cy14+h14)
+	}
+	// 光标从字顶画到基线，不取整段字号（那会伸到基线下面）。
+	_, cy, _, ch, ok := FocusedCaretRect()
+	if !ok {
+		t.Fatal("应能读到光标矩形")
+	}
+	lineH := float32(13) * 1.25
+	baseline := lineH * 0.8
+	inset := (lineH - 13) * 0.7
+	if h := baseline - inset; h < minCaretH && h < 13*0.7 {
+		inset = baseline - minCaretH
+	}
+	if absf(cy-(wantY+inset)) > 0.51 {
+		t.Fatalf("多行光标应落在字顶：cy=%.2f 期望 %.2f", cy, wantY+inset)
+	}
+	if absf((cy+ch)-(wantY+baseline)) > 0.51 {
+		t.Fatalf("光标底应停在基线：底 %.2f 基线 %.2f", cy+ch, wantY+baseline)
+	}
 }
 
+// 单行输入的文字块与光标都要落在框的正中。
+//
+// 这条以前断言的是「VAlign=Center 且 y=控件顶部」——而那恰好是 bug 的形状：
+// 后端是以 [y, y+maxH] 为盒子居中的，调用方却给 y=n.Y、maxH=n.H-2*inputTopPad，
+// 等于把居中盒子往上缩了一个 inputTopPad，文字整体偏高 6px。实机量过：
+// 框 163..209、文字墨迹 173..188，中心差 5.5px；另一个框差 6.0px。
+//
+// 所以现在不再断言「用了什么 VAlign」，直接断言几何：文字块中心 == 框中心。
 func TestInputSingleLinePaintsCentered(t *testing.T) {
 	ctx := &mockContext{w: 400, h: 200}
 	n, _ := newInput("t-sl-paint", "hello", nil)
 	n.X, n.Y, n.W, n.H = 10, 20, 300, 38
 
-	paintInput(ctx, n, renderer.TextStyle{FontSize: 13}, theme.Light)
+	style := renderer.TextStyle{FontSize: 13}
+	runtime.SetFocus("t-sl-paint")
+	defer runtime.SetFocus("")
+
+	paintInput(ctx, n, style, theme.Light)
 	if len(ctx.draws) == 0 {
 		t.Fatal("应绘制文本")
 	}
-	d := ctx.draws[0]
-	if d.style.VAlign != renderer.AlignCenter {
-		t.Fatalf("单行输入文字应垂直居中，实际 VAlign=%v", d.style.VAlign)
+	// mockContext 的 MeasureText 把行高报成 FontSize*1.25，单行就是这一行高。
+	lineH := style.FontSize * 1.25
+	boxCenter := n.Y + n.H/2
+
+	if got := ctx.draws[0].y + lineH/2; absf(got-boxCenter) > 0.51 {
+		t.Fatalf("单行输入文字应垂直居中：文字块中心 %.2f，框中心 %.2f，差 %.2f",
+			got, boxCenter, got-boxCenter)
 	}
-	if d.y != n.Y {
-		t.Fatalf("单行输入文字绘制起点应为控件顶部：got y=%.1f want %.1f", d.y, n.Y)
+
+	// 光标从字顶画到基线。高度取整段字号时，底会落到基线下面。
+	_, cy, _, ch, ok := FocusedCaretRect()
+	if !ok {
+		t.Fatal("应能读到光标矩形")
 	}
+	textY := ctx.draws[0].y
+	baseline := lineH * 0.8
+	inset := (lineH - style.FontSize) * 0.7
+	if h := baseline - inset; h < minCaretH && h < style.FontSize*0.7 {
+		inset = baseline - minCaretH
+	}
+	if absf(cy-(textY+inset)) > 0.51 {
+		t.Fatalf("光标应落在字顶：cy=%.2f 期望 %.2f", cy, textY+inset)
+	}
+	if absf((cy+ch)-(textY+baseline)) > 0.51 {
+		t.Fatalf("光标底应停在基线：底 %.2f 基线 %.2f", cy+ch, textY+baseline)
+	}
+}
+
+// 后端折行的光标必须用整串宽度，不能用单字宽度累加。
+// canvas 上这两套数字会差开，密码点和拉丁字母越往后偏得越多。
+type prefixLayouter struct {
+	mockContext
+	advances []float32
+}
+
+func (p *prefixLayouter) LayoutText(text string, _ float32, style renderer.TextStyle) renderer.TextLayout {
+	lineH := style.LineSpacing
+	if lineH <= 0 {
+		lineH = style.FontSize * 1.25
+	}
+	out := renderer.TextLayout{LineH: lineH, LineCount: 1}
+	var x float32
+	off := 0
+	out.Points = append(out.Points, renderer.TextPoint{Off: 0, Line: 0, X: 0})
+	for i, r := range text {
+		if i < len(p.advances) {
+			x = p.advances[i]
+		} else {
+			x += 8
+		}
+		off += len(string(r))
+		out.Points = append(out.Points, renderer.TextPoint{Off: off, Line: 0, X: x})
+	}
+	return out
+}
+
+func TestCaretUsesBackendPrefixWidth(t *testing.T) {
+	ctx := &prefixLayouter{advances: []float32{6, 13, 22, 40}}
+	n, _ := newInput("t-prefix", "mao1", nil)
+	n.X, n.Y, n.W, n.H = 0, 0, 300, 38
+	runtime.SetFocus("t-prefix")
+	defer runtime.SetFocus("")
+	paintInput(ctx, n, renderer.TextStyle{FontSize: 14}, theme.Light)
+	cx, _, _, _, ok := FocusedCaretRect()
+	if !ok {
+		t.Fatal("应能读到光标")
+	}
+	want := inputPad + 40
+	if absf(cx-want) > 0.51 {
+		t.Fatalf("光标应落在整串宽度处：cx=%.1f want %.1f", cx, want)
+	}
+}
+
+func absf(v float32) float32 {
+	if v < 0 {
+		return -v
+	}
+	return v
 }
