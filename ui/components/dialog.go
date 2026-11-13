@@ -17,9 +17,9 @@ func init() {
 const (
 	dialogDefaultW = float32(400)
 	dialogMinW     = float32(240)
-	dialogPad      = float32(20)
-	dialogGap      = float32(12)
-	dialogRadius   = float32(8)
+	dialogPad      = float32(24)
+	dialogGap      = float32(14)
+	dialogRadius   = float32(14)
 )
 
 // Dialog 居中悬浮对话框：铺满父级的半透明遮罩 + 居中卡片。
@@ -51,7 +51,7 @@ func Dialog(parts ...any) *runtime.VNode {
 			}
 			return true
 		}
-		if e.Key == runtime.KeyEnter {
+		if e.Key == runtime.KeyEnter && !e.Shift {
 			if fn := onVoid(n, "onEnter"); fn != nil {
 				fn()
 				return true
@@ -62,6 +62,10 @@ func Dialog(parts ...any) *runtime.VNode {
 				}
 				return true
 			}
+		}
+		// 文字、退格和方向键交给卡片里获得焦点的输入框。
+		if dialogKeyForField(e) {
+			return false
 		}
 		return true
 	})
@@ -79,6 +83,21 @@ func Dialog(parts ...any) *runtime.VNode {
 		}
 	}
 	return n
+}
+
+func dialogKeyForField(e runtime.KeyEvent) bool {
+	if e.Char != 0 && !e.Ctrl && !e.Alt {
+		return true
+	}
+	switch e.Key {
+	case runtime.KeyBackspace, runtime.KeyDelete, runtime.KeyLeft, runtime.KeyRight,
+		runtime.KeyHome, runtime.KeyEnd, runtime.KeyUp, runtime.KeyDown:
+		return true
+	case runtime.KeyA, runtime.KeyC, runtime.KeyV, runtime.KeyX, runtime.KeyZ, runtime.KeyY:
+		return e.Ctrl
+	default:
+		return false
+	}
 }
 
 func dialogDismiss(n *runtime.VNode) bool {
@@ -198,6 +217,8 @@ func layoutDialog(ctx renderer.Context, n *runtime.VNode, x, y, w, h float32, st
 			Background: dialogCardBG(th),
 			Border:     dialogCardBorder(th),
 		},
+		// 细描边 + 柔和大投影，卡片从遮罩里浮起来（投影走 Props）。
+		Shadow:  &runtime.ShadowStyle{Blur: 40, OffsetY: 16, Color: runtime.RGBA(15, 23, 42, 46)},
 		OnClick: func() {},
 		ID:      cardID,
 	}, kids)
@@ -222,12 +243,12 @@ func paintDialog(ctx renderer.Context, n *runtime.VNode, style renderer.TextStyl
 	if ctx == nil || n == nil {
 		return
 	}
-	bg := renderer.RGBA(0, 0, 0, 72)
+	// 遮罩：冷灰半透明，弱化背景而不是纯黑压死。
+	bg := renderer.RGBA(15, 23, 42, 110)
 	if renderer.ColorSet(n.Style.Background) {
 		bg = renderer.ColorFrom(n.Style.Background)
 	}
 	ctx.FillRect(n.X, n.Y, n.W, n.H, bg)
-	_ = th
 	renderer.PaintChildren(ctx, n, style, th)
 }
 

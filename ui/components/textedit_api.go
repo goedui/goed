@@ -1,4 +1,4 @@
-﻿// 编辑框对外的操作入口。
+// 编辑框对外的操作入口。
 //
 // 这些符号经 github.com/goedui/goed/ui 转发给应用层，用于状态栏行列、查找后选中定位、
 // 弹出菜单的剪切 / 复制 / 粘贴 / 撤销等场景；组件内部不调用它们。
@@ -151,7 +151,6 @@ func editOpState(st *editState, readonly bool, onInput func(string), op string) 
 			return false
 		}
 		platform.ClipboardSet(sel)
-		st.snapshot()
 		st.deleteSelection()
 		notify()
 		return true
@@ -163,7 +162,6 @@ func editOpState(st *editState, readonly bool, onInput func(string), op string) 
 		if text == "" {
 			return false
 		}
-		st.snapshot()
 		st.insert(text)
 		notify()
 		return true
@@ -174,7 +172,6 @@ func editOpState(st *editState, readonly bool, onInput func(string), op string) 
 		if _, _, has := st.selRange(); !has && st.caret >= len(st.value) {
 			return false
 		}
-		st.snapshot()
 		if !st.deleteSelection() {
 			st.deleteForward()
 		}

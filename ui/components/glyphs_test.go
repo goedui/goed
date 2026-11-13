@@ -11,6 +11,7 @@ import (
 var requiredGlyphs = []string{
 	"edit", "link", "shield", "box", "user",
 	"save", "trash", "eye", "refresh", "sparkle", "upload", "image",
+	"bolt", "chevron", "check", "ellipsis", "cloud",
 }
 
 func TestRequiredGlyphsRegistered(t *testing.T) {

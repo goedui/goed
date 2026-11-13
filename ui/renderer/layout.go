@@ -229,6 +229,11 @@ func layoutNode(ctx Context, n *runtime.VNode, x, y, w, h float32, style TextSty
 		return
 	}
 	n.X, n.Y, n.W, n.H = x, y, w, h
+	// 可滚容器（含 VStack{OverflowY:auto}）统一补上滚动条拖拽回调：
+	// 滚动条是画在所有 overflow 盒子上的，回调不能只挂在 "scroll" 标签上。
+	if EnsureOverflowDrag != nil {
+		EnsureOverflowDrag(n)
+	}
 	st := applyStyle(style, n.Style)
 	switch n.Kind {
 	case runtime.KindText:

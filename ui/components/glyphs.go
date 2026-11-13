@@ -45,11 +45,17 @@ func init() {
 	RegisterGlyph("save", paintGlyphSave)
 	RegisterGlyph("trash", paintGlyphTrash)
 	RegisterGlyph("eye", paintGlyphEye)
-	RegisterGlyph("refresh", paintGlyphBolt)
+	// refresh 是标准循环箭头（↻）；早先这个名下挂的是闪电，语义对不上，
+	// 闪电改在 "bolt" 名下继续可用。
+	RegisterGlyph("refresh", paintGlyphSync)
+	RegisterGlyph("bolt", paintGlyphBolt)
 	RegisterGlyph("sparkle", paintGlyphSparkle)
 	RegisterGlyph("upload", paintGlyphUpload)
 	RegisterGlyph("image", paintGlyphImage)
 	RegisterGlyph("chevron", paintGlyphChevron)
+	RegisterGlyph("check", paintGlyphCheck)
+	RegisterGlyph("ellipsis", paintGlyphEllipsis)
+	RegisterGlyph("cloud", paintGlyphCloud)
 }
 
 // gx/gy 把 24 网格坐标换到目标矩形。线宽随尺寸缩放，16px 下约 1.4px。
@@ -112,7 +118,10 @@ func strokeArc(ctx renderer.Context, x, y, size, cx, cy, r, a0, a1 float32, fg r
 	for i := 0; i < n; i++ {
 		t0 := a0 + span*float32(i)/float32(n)
 		t1 := a0 + span*float32(i+1)/float32(n)
-		k := float32(math.Tan(float64(t1-t0)/2)) * 4 / 3
+		// 圆弧贝塞尔的控制点偏移 = 4/3·tan(Δ/4)：90° 段即经典的 0.5523·r。
+		// 早先写成 tan(Δ/2)，控制点外推过多，弧段中点外凸成方（大尺寸下
+		// 尤其明显）；按标准公式修正后各段贴合真圆。
+		k := float32(math.Tan(float64(t1-t0)/4)) * 4 / 3
 		path = append(path, renderer.StrokePoint{
 			Curve: true,
 			C1X:   gx(x, size, cx+r*(float32(math.Cos(float64(t0)))-k*float32(math.Sin(float64(t0))))),
@@ -222,7 +231,17 @@ func paintGlyphEye(ctx renderer.Context, x, y, size float32, fg renderer.Color) 
 	strokeArc(ctx, x, y, size, 12, 12, 2.1, 0, math.Pi*2, fg)
 }
 
-// paintGlyphBolt 闪电，刷新按钮用。
+// paintGlyphSync 循环箭头（↻ 刷新 / 重新加载的通用符号）。
+// 几何取自 Feather rotate-cw：圆心 (12,12) 半径 9 的弧从 19.4° 顺时针扫到
+// 315°（经过底、左、顶），右上留缺口；箭头两臂在 (23,10) 成直角指向右下，
+// 落在缺口里沿顺时针方向。
+func paintGlyphSync(ctx renderer.Context, x, y, size float32, fg renderer.Color) {
+	strokeArc(ctx, x, y, size, 12, 12, 9, math.Pi*19.4/180, math.Pi*315.1/180, fg)
+	stroke(ctx, x, y, size, fg, 23, 4, 23, 10)
+	stroke(ctx, x, y, size, fg, 23, 10, 17, 10)
+}
+
+// paintGlyphBolt 闪电，原 "refresh" 名下的图形，现按语义单独注册。
 func paintGlyphBolt(ctx renderer.Context, x, y, size float32, fg renderer.Color) {
 	stroke(ctx, x, y, size, fg, 13.2, 2.6, 6.4, 13.2, 11.2, 13.2, 9.6, 21.4, 17.6, 10.2, 12.4, 10.2, 13.2, 2.6)
 }
@@ -250,4 +269,20 @@ func paintGlyphImage(ctx renderer.Context, x, y, size float32, fg renderer.Color
 // paintGlyphChevron 向下的小尖角，下拉按钮用。
 func paintGlyphChevron(ctx renderer.Context, x, y, size float32, fg renderer.Color) {
 	stroke(ctx, x, y, size, fg, 6, 9.5, 12, 15.5, 18, 9.5)
+}
+
+func paintGlyphCheck(ctx renderer.Context, x, y, size float32, fg renderer.Color) {
+	stroke(ctx, x, y, size, fg, 5, 12.5, 10, 17.5, 19, 7)
+}
+
+func paintGlyphEllipsis(ctx renderer.Context, x, y, size float32, fg renderer.Color) {
+	dot(ctx, x, y, size, 5, 12, 2.4, fg)
+	dot(ctx, x, y, size, 12, 12, 2.4, fg)
+	dot(ctx, x, y, size, 19, 12, 2.4, fg)
+}
+
+func paintGlyphCloud(ctx renderer.Context, x, y, size float32, fg renderer.Color) {
+	strokeArc(ctx, x, y, size, 9, 13, 4.2, math.Pi*0.95, math.Pi*2.05, fg)
+	strokeArc(ctx, x, y, size, 15, 12.2, 3.4, math.Pi*1.15, math.Pi*2.15, fg)
+	stroke(ctx, x, y, size, fg, 5.2, 14.6, 18.6, 14.6)
 }

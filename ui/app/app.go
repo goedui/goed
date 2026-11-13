@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/binary"
 	"fmt"
+	"os"
 
 	"github.com/goedui/goed/ui/components"
 	"github.com/goedui/goed/ui/platform"
@@ -23,8 +24,12 @@ type App struct {
 	continuous bool
 	// appTitleBar 为 true 时应用自己画窗口顶部那一条，框架不占那 32 DIP。
 	appTitleBar bool
-	titleStyle  runtime.Style
-	icon        []byte
+	// noCaptionButtons 关掉顶部条右侧系统按钮的命中区，见 HideCaptionButtons。
+	noCaptionButtons bool
+	titleStyle       runtime.Style
+	icon             []byte
+	// dropFiles 是「从资源管理器拖进窗口」的回调；nil = 不接受拖入。
+	dropFiles func(paths []string)
 }
 
 var (
@@ -129,6 +134,27 @@ func (a *App) AppTitleBar(v bool) *App {
 	return a
 }
 
+// HiddenTitlebar 隐藏框架标题栏，让应用树从窗口顶边开始排。
+//
+// 菜单栏这类顶栏要自己画在 y=0，并用 WindowCaption 把最小化 / 最大化 / 关闭
+// 画在宿主保留的最右三格上。点击和拖动仍由宿主完成，见 AppTitleBar。
+func (a *App) HiddenTitlebar() *App {
+	return a.AppTitleBar(true)
+}
+
+// HideCaptionButtons 去掉顶部条右侧三块系统按钮的命中区。
+//
+// 自绘标题栏且自己画关闭 / 设置等按钮的应用需要它：默认那三块仍属于
+// 最小化 / 最大化 / 关闭，画在那里的控件会被系统按钮抢走（例如设置齿轮
+// 正好落在最大化区，一点就把窗口放大了）。关掉后空白处仍是 HTCAPTION，
+// 应用声明的控件靠 ClientHitTest 回到客户区，关闭由应用自己调 CloseWindow。
+func (a *App) HideCaptionButtons() *App {
+	if a != nil {
+		a.noCaptionButtons = true
+	}
+	return a
+}
+
 // Icon 设置窗口图标。ico 是标准 ICO（含 16/32 等尺寸）；空则用默认应用图标。
 func (a *App) Icon(ico []byte) *App {
 	if a != nil {
@@ -141,6 +167,17 @@ func (a *App) Icon(ico []byte) *App {
 func (a *App) TitleBarStyle(s runtime.Style) *App {
 	if a != nil {
 		a.titleStyle = s
+	}
+	return a
+}
+
+// DropFiles 注册「从资源管理器拖进窗口」的回调，参数是拖进来的路径。
+//
+// 传 nil（默认）表示不接受拖入：宿主不会注册 DragAcceptFiles，用户拖到窗口
+// 上看到的是「禁止」光标，而不是接受了却什么也不发生。
+func (a *App) DropFiles(fn func(paths []string)) *App {
+	if a != nil {
+		a.dropFiles = fn
 	}
 	return a
 }
@@ -243,7 +280,9 @@ func (a *App) Run() error {
 		Icon16: iconImage(a.icon, 16),
 		Icon32: iconImage(a.icon, 32),
 		// 自绘标题栏时，顶部条里属于应用的控件要交回客户区，见 hitTest。
-		ClientHitTest: clientHitTest,
+		ClientHitTest:    clientHitTest,
+		NoCaptionButtons: a.noCaptionButtons,
+		DropFiles:        a.dropFiles,
 		Close: func() bool {
 			if closeGuard == nil {
 				return true
@@ -292,6 +331,7 @@ func (a *App) Run() error {
 			}
 		},
 		Pointer: func(x, y float32, isDown, click bool) {
+			runtime.DispatchHover(hits, px, py, x, y)
 			hoverChanged := runtime.HoverChanged(hits, px, py, x, y)
 			downChanged := down != isDown
 			wasDown := down
@@ -318,10 +358,23 @@ func (a *App) Run() error {
 				editDrag = false
 				dragTarget = nil
 				n := runtime.HitNode(tree, x, y)
+				// 真机验收钩子：GOED_DEBUG_HIT=1 时把「这次按下命中谁」打到
+				// stdout。合成点击 / 截图验收时定位「点了没反应」全靠它 ——
+				// 能看出是点到禁用控件（nil）、被上层浮层抢走，还是找错行。
+				if os.Getenv("GOED_DEBUG_HIT") != "" {
+					if n != nil {
+						fmt.Printf("[hit] x=%.0f y=%.0f -> tag=%s id=%s box=(%.0f,%.0f,%.0f,%.0f)\n",
+							x, y, n.Tag, n.ID(), n.X, n.Y, n.W, n.H)
+					} else {
+						fmt.Printf("[hit] x=%.0f y=%.0f -> nil\n", x, y)
+					}
+				}
 				if n != nil && n.Attrs != nil {
 					if fn, ok := n.Attrs["onPointerDown"].(func()); ok {
 						fn()
-						editDrag = true
+						// 纯滚动容器（引擎补的拖拽回调）不算「正在编辑」：
+						// 点它里面的空白处仍要让输入框失焦，否则焦点会卡住。
+						editDrag = !scrollDragNode(n)
 						dragTarget = n
 					}
 				}
@@ -334,7 +387,15 @@ func (a *App) Run() error {
 			if wasDown && isDown && dragTarget != nil && dragTarget.Attrs != nil {
 				if fn, ok := dragTarget.Attrs["onPointerDrag"].(func()); ok {
 					fn()
-					dirty = true
+					if scrollDragNode(dragTarget) {
+						// 滚动条拖拽只改偏移，重排一次就够，不必重建组件树；
+						// 没真抓住滑块（按在容器空白处）就完全不用重绘。
+						if components.ScrollDragging() {
+							platform.RequestFrame()
+						}
+					} else {
+						dirty = true
+					}
 				}
 			}
 			if hoverChanged || downChanged || dirty {
@@ -362,6 +423,11 @@ func (a *App) Run() error {
 			platform.RequestFrame()
 		},
 		Key: func(key int, char rune, isDown, ctrl, shift, alt bool) {
+			// 同上：GOED_DEBUG_HIT=1 时把按键事件与当前焦点打到 stdout，
+			// 用来区分「按键没送到」与「送到了但焦点不在控件上」。
+			if os.Getenv("GOED_DEBUG_HIT") != "" {
+				fmt.Printf("[key] vk=%d char=%q down=%v ctrl=%v focus=%q\n", key, char, isDown, ctrl, runtime.FocusedID())
+			}
 			if !isDown && char == 0 {
 				// 纯 keyup 原本直接丢弃；游戏「按住移动」需要它维护按键状态，
 				// 分发给 onKeyUp，不影响只认 keydown 的输入框 / 文本编辑。
@@ -385,6 +451,7 @@ func (a *App) Run() error {
 		},
 		Wheel: func(x, y, delta float32) {
 			components.HandleWheel(tree, x, y, delta)
+			platform.RequestFrame()
 		},
 		// 输入法组合串交给焦点控件自己绘制（返回 true 时系统不再画内联组合窗）。
 		Composition: func(text string, cursor int) bool {
@@ -400,6 +467,16 @@ func (a *App) Run() error {
 	inst.Unmount()
 	titleBar.Unmount()
 	return err
+}
+
+// scrollDragNode 报告节点上的 onPointerDown 是否由引擎补的滚动条拖拽（见
+// components.EnsureScrollDrag）。这类拖拽只改滚动偏移，不是「正在编辑」。
+func scrollDragNode(n *runtime.VNode) bool {
+	if n == nil || n.Attrs == nil {
+		return false
+	}
+	v, _ := n.Attrs["scrollDrag"].(bool)
+	return v
 }
 
 func iconImage(ico []byte, want int) []byte {

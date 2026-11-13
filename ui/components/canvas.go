@@ -15,17 +15,18 @@ func init() {
 }
 
 // Canvas 自定义绘制组件。允许用户通过回调函数直接访问 renderer.Context 进行绘制。
-// 
+//
 // 用法：
-//   H("canvas", Props{
-//     Style: Style{Width: 800, Height: 600},
-//     Attrs: map[string]any{
-//       "onPaint": func(ctx renderer.Context, x, y, w, h float32) {
-//         // 在这里进行自定义绘制
-//         ctx.FillRect(x, y, w, h, renderer.RGB(255, 0, 0))
-//       },
-//     },
-//   })
+//
+//	H("canvas", Props{
+//	  Style: Style{Width: 800, Height: 600},
+//	  Attrs: map[string]any{
+//	    "onPaint": func(ctx renderer.Context, x, y, w, h float32) {
+//	      // 在这里进行自定义绘制
+//	      ctx.FillRect(x, y, w, h, renderer.RGB(255, 0, 0))
+//	    },
+//	  },
+//	})
 func Canvas(parts ...any) *runtime.VNode {
 	return runtime.H("canvas", parts...)
 }
@@ -39,7 +40,7 @@ type PaintCallback func(ctx renderer.Context, x, y, w, h float32)
 func measureCanvas(ctx renderer.Context, n *runtime.VNode, maxW, maxH float32, style renderer.TextStyle, th theme.Theme) (float32, float32) {
 	w := n.Style.Width
 	h := n.Style.Height
-	
+
 	if w <= 0 {
 		w = maxW
 	}
@@ -52,7 +53,7 @@ func measureCanvas(ctx renderer.Context, n *runtime.VNode, maxW, maxH float32, s
 	if h <= 0 {
 		h = 300 // 默认高度
 	}
-	
+
 	return w, h
 }
 
@@ -64,10 +65,10 @@ func paintCanvas(ctx renderer.Context, n *runtime.VNode, style renderer.TextStyl
 	if ctx == nil || n == nil {
 		return
 	}
-	
+
 	// 绘制背景
 	renderer.PaintBackground(ctx, n)
-	
+
 	// 调用用户提供的绘制回调
 	if n.Attrs != nil {
 		if callback, ok := n.Attrs["onPaint"].(PaintCallback); ok {

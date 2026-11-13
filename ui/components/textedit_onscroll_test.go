@@ -129,4 +129,3 @@ func TestArrowKeysRevealCaretOnSparseLayout(t *testing.T) {
 		t.Fatalf("horizontal caret follow on sparse layout, scrollX=%.1f", st.scrollX)
 	}
 }
-

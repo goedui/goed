@@ -168,10 +168,10 @@ func (p *pixCtx) DrawText(string, float32, float32, float32, float32, renderer.T
 func (p *pixCtx) MeasureText(string, float32, renderer.TextStyle) (float32, float32) {
 	return 0, 0
 }
-func (p *pixCtx) DrawImage([]byte, float32, float32, float32, float32) {}
+func (p *pixCtx) DrawImage([]byte, float32, float32, float32, float32)            {}
 func (p *pixCtx) DrawPixels([]byte, int, int, float32, float32, float32, float32) {}
-func (p *pixCtx) PushClip(float32, float32, float32, float32)          {}
-func (p *pixCtx) PopClip()                                             {}
+func (p *pixCtx) PushClip(float32, float32, float32, float32)                     {}
+func (p *pixCtx) PopClip()                                                        {}
 
 func (p *pixCtx) FillRect(x, y, w, h float32, c renderer.Color) {
 	if p == nil || w <= 0 || h <= 0 || c.A <= 0 {

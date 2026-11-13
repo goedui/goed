@@ -74,7 +74,6 @@ func handleEditKey(n *runtime.VNode, e runtime.KeyEvent, multiline bool) bool {
 		if e.Ctrl {
 			return true
 		}
-		st.snapshot()
 		st.insert(string(e.Char))
 		onInput()
 		return true
@@ -169,7 +168,6 @@ func handleEditKey(n *runtime.VNode, e runtime.KeyEvent, multiline bool) bool {
 	case runtime.KeyTab:
 		// 多行里 Tab 插入制表符；单行留给上层的焦点切换。
 		if multiline {
-			st.snapshot()
 			st.insert("\t")
 			onInput()
 			return true
@@ -181,7 +179,6 @@ func handleEditKey(n *runtime.VNode, e runtime.KeyEvent, multiline bool) bool {
 			// 没接 onSubmit 的多行框（纯编辑器）保持原行为——Enter 就是换行，
 			// 否则用户会「按回车没反应」。
 			if e.Shift {
-				st.snapshot()
 				st.insert("\n")
 				onInput()
 				return true
@@ -193,7 +190,6 @@ func handleEditKey(n *runtime.VNode, e runtime.KeyEvent, multiline bool) bool {
 				return true
 			}
 			if !e.Ctrl {
-				st.snapshot()
 				st.insert("\n")
 				onInput()
 				return true
@@ -248,16 +244,11 @@ func handleEditKey(n *runtime.VNode, e runtime.KeyEvent, multiline bool) bool {
 		if e.Ctrl && platform.ClipboardSet != nil {
 			if sel := st.selectedText(); sel != "" {
 				platform.ClipboardSet(sel)
-				st.snapshot()
 				st.deleteSelection()
 				onInput()
 			} else {
 				platform.ClipboardSet(st.value)
-				st.snapshot()
-				st.value = ""
-				st.caret = 0
-				st.anchor = 0
-				st.dropLayout()
+				st.clear()
 				onInput()
 			}
 			return true
@@ -265,7 +256,6 @@ func handleEditKey(n *runtime.VNode, e runtime.KeyEvent, multiline bool) bool {
 	case runtime.KeyV:
 		if e.Ctrl && platform.ClipboardGet != nil {
 			if text := platform.ClipboardGet(); text != "" {
-				st.snapshot()
 				st.insert(text)
 				onInput()
 			}
@@ -327,8 +317,10 @@ func (st *editState) moveLine(delta int, extend bool) {
 	if st.layout == nil {
 		return
 	}
+	// 布局偏移是显示文本偏移；先在显示文本上按列移动，再换回真实值。
+	at := st.displayCaretOffset()
 	if st.layout.sparse() {
-		curLine := st.layout.lineForOffset(st.caretOffset())
+		curLine := st.layout.lineForOffset(at)
 		target := curLine + delta
 		if target < 0 {
 			target = 0
@@ -336,25 +328,22 @@ func (st *editState) moveLine(delta int, extend bool) {
 		if target > st.layout.maxLine {
 			target = st.layout.maxLine
 		}
-		curStart := st.layout.lineStart(curLine)
-		column := st.caretOffset() - curStart
+		column := at - st.layout.lineStart(curLine)
 		targetStart := st.layout.lineStart(target)
-		targetEnd := len(st.value)
-		if target < st.layout.maxLine {
-			targetEnd = st.layout.lineStart(target+1) - 1
-		}
+		targetEnd := st.layout.lineEnd(target)
 		if targetStart+column > targetEnd {
-			st.caret = targetEnd
+			at = targetEnd
 		} else {
-			st.caret = targetStart + column
+			at = targetStart + column
 		}
+		st.caret = clampCaret(st.value, st.valueOffsetFromDisplay(at))
 		if !extend {
 			st.anchor = st.caret
 		}
 		st.scrollSync = true
 		return
 	}
-	cur := st.layout.pointAt(st.caretOffset())
+	cur := st.layout.pointAt(at)
 	target := cur.line + delta
 	if target < 0 {
 		st.caret = 0
@@ -371,7 +360,7 @@ func (st *editState) moveLine(delta int, extend bool) {
 		return
 	}
 	p := st.layout.pointAtXY(cur.x, (float32(target)+0.5)*st.layout.lineH)
-	st.caret = clampCaret(st.value, p.off)
+	st.caret = clampCaret(st.value, st.valueOffsetFromDisplay(p.off))
 	if !extend {
 		st.anchor = st.caret
 	}
@@ -381,36 +370,34 @@ func (st *editState) moveLine(delta int, extend bool) {
 // lineBounds 返回光标所在可视行的起止字节偏移（软换行也算一行）。
 // 布局尚未建立时退化为按硬换行切分。
 func (st *editState) lineBounds() (start, end int, ok bool) {
-	at := st.caretOffset()
+	at := st.displayCaretOffset()
 	if st.layout != nil && st.layout.sparse() {
 		line := st.layout.lineForOffset(at)
-		start = st.layout.lineStart(line)
-		end = len(st.value)
-		if line < st.layout.maxLine {
-			end = st.layout.lineStart(line+1) - 1
-		}
+		start = st.valueOffsetFromDisplay(st.layout.lineStart(line))
+		end = st.valueOffsetFromDisplay(st.layout.lineEnd(line))
 		return start, end, true
 	}
 	if st.layout != nil && len(st.layout.points) > 0 {
 		p := st.layout.pointAt(at)
-		start, end = -1, -1
+		dStart, dEnd := -1, -1
 		for _, q := range st.layout.points {
 			if q.line != p.line {
 				continue
 			}
-			if start < 0 || q.off < start {
-				start = q.off
+			if dStart < 0 || q.off < dStart {
+				dStart = q.off
 			}
-			if q.off > end {
-				end = q.off
+			if q.off > dEnd {
+				dEnd = q.off
 			}
 		}
-		if start >= 0 && end >= start {
-			return start, end, true
+		if dStart >= 0 && dEnd >= dStart {
+			return st.valueOffsetFromDisplay(dStart), st.valueOffsetFromDisplay(dEnd), true
 		}
 	}
+	// 没有布局时直接按真实值里的硬换行切，组合串未上屏就不参与。
 	text := st.value
-	at = clampCaret(text, at)
+	at = clampCaret(text, st.caret)
 	s := strings.LastIndexByte(text[:at], '\n') + 1
 	e := len(text)
 	if i := strings.IndexByte(text[at:], '\n'); i >= 0 {
@@ -424,6 +411,7 @@ func (st *editState) movePage(dir int, extend bool, viewH float32) {
 	if st.layout == nil || (len(st.layout.points) == 0 && !st.layout.sparse()) {
 		return
 	}
+	at := st.displayCaretOffset()
 	if st.layout.sparse() {
 		lines := 1
 		if st.layout.lineH > 0 && viewH > 0 {
@@ -432,7 +420,7 @@ func (st *editState) movePage(dir int, extend bool, viewH float32) {
 				lines = 1
 			}
 		}
-		curLine := st.layout.lineForOffset(st.caretOffset())
+		curLine := st.layout.lineForOffset(at)
 		target := curLine + dir*lines
 		if target < 0 {
 			target = 0
@@ -440,25 +428,23 @@ func (st *editState) movePage(dir int, extend bool, viewH float32) {
 		if target > st.layout.maxLine {
 			target = st.layout.maxLine
 		}
-		column := st.caretOffset() - st.layout.lineStart(curLine)
+		column := at - st.layout.lineStart(curLine)
 		st.alignScrollByPage(dir, lines)
 		targetStart := st.layout.lineStart(target)
-		targetEnd := len(st.value)
-		if target < st.layout.maxLine {
-			targetEnd = st.layout.lineStart(target+1) - 1
-		}
+		targetEnd := st.layout.lineEnd(target)
 		if targetStart+column > targetEnd {
-			st.caret = targetEnd
+			at = targetEnd
 		} else {
-			st.caret = targetStart + column
+			at = targetStart + column
 		}
+		st.caret = clampCaret(st.value, st.valueOffsetFromDisplay(at))
 		if !extend {
 			st.anchor = st.caret
 		}
 		st.scrollSync = false
 		return
 	}
-	cur := st.layout.pointAt(st.caretOffset())
+	cur := st.layout.pointAt(at)
 	lines := 1
 	if st.layout.lineH > 0 && viewH > 0 {
 		lines = int(viewH / st.layout.lineH)
@@ -476,7 +462,7 @@ func (st *editState) movePage(dir int, extend bool, viewH float32) {
 		st.caret = len(st.value)
 	default:
 		p := st.layout.pointAtXY(cur.x, (float32(target)+0.5)*st.layout.lineH)
-		st.caret = clampCaret(st.value, p.off)
+		st.caret = clampCaret(st.value, st.valueOffsetFromDisplay(p.off))
 	}
 	if !extend {
 		st.anchor = st.caret
@@ -538,7 +524,6 @@ func handleTextInput(n *runtime.VNode, text string) bool {
 	st.comp = ""
 	st.compAt = 0
 	st.compCu = 0
-	st.snapshot()
 	st.insert(text)
 	resetBlink()
 	if fn := onString(n, "onInput"); fn != nil {
@@ -579,7 +564,7 @@ func extendCaretFromPointer(n *runtime.VNode, extend bool) {
 				localX = st.scrollX
 			case x > n.X+inputPad+viewW:
 				st.scrollX += x - (n.X + inputPad + viewW)
-				end := st.layout.pointAtLineEnd(st.layout.pointAt(st.caretOffset()).line)
+				end := st.layout.pointAtLineEnd(st.layout.pointAt(st.displayCaretOffset()).line)
 				maxOff := end.x - viewW
 				if maxOff < 0 {
 					maxOff = 0
@@ -591,7 +576,7 @@ func extendCaretFromPointer(n *runtime.VNode, extend bool) {
 			}
 		}
 	}
-	st.caret = clampCaret(st.value, st.layout.pointAtXY(localX, localY).off)
+	st.caret = clampCaret(st.value, st.valueOffsetFromDisplay(st.layout.pointAtXY(localX, localY).off))
 	if !extend {
 		st.anchor = st.caret
 	}
@@ -610,7 +595,7 @@ func followCaretX(n *runtime.VNode, st *editState) {
 	if viewW <= 0 {
 		return
 	}
-	cx := st.layout.pointAt(st.caretOffset()).x
+	cx := st.layout.pointAt(st.displayCaretOffset()).x
 	switch {
 	case cx-st.scrollX < 0:
 		st.scrollX = cx

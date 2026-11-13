@@ -14,6 +14,14 @@ var OpenImage func() (path string, ok bool, err error)
 // OpenFile 打开“选择文件”对话框。filter 为空时列出所有文件。
 var OpenFile func(title, filter string) (path string, ok bool, err error)
 
+// OpenFiles 打开“选择多个文件”对话框。返回选中的完整路径列表。
+// 用户取消不算错：ok=false、err=nil。平台不支持多选时回退成单选（只返回一个）。
+var OpenFiles func(title, filter string) (paths []string, ok bool, err error)
+
+// OpenPath 用系统关联程序打开文件 / 文件夹（Windows 上就是 ShellExecute "open"）。
+// 没有关联程序时返回错误。
+var OpenPath func(path string) error
+
 // SaveFile 打开“保存文件”对话框。
 var SaveFile func(title, name, filter, ext string) (path string, ok bool, err error)
 
@@ -33,6 +41,9 @@ var SaveFile func(title, name, filter, ext string) (path string, ok bool, err er
 // 有无 DPI 感知、选文件夹/选文件、自建 COM/comdlg32），完整证据链见
 // ui/platform/windows/input.go 里 folderDialogEnv 的说明。
 var OpenFolder func(title string) (path string, ok bool, err error)
+
+// ClipboardImage 读取剪贴板里的一张图，返回 PNG 字节。没有图片时 ok=false。
+var ClipboardImage func() (data []byte, ok bool)
 
 // ClipboardGet 读取剪贴板文本。
 var ClipboardGet func() string

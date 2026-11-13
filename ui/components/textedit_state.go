@@ -5,12 +5,14 @@
 // 字符会互相覆盖 —— 快速连打、输入法整串上屏都会丢字。props 只负责「外部改值」。
 //
 // 按职责拆在同包的几个文件里：state（状态本体、取状态、基础编辑、闪烁）、layout
-// （可视行与「坐标 ↔ 字节偏移」）、keys（按键 / 输入法 / 指针）、paint（绘制）、
-// api（应用层入口）。
+// （可视行与「坐标 ↔ 字节偏移」）、mask（密码显示偏移换算）、keys（按键 / 输入法 /
+// 指针）、paint（绘制）、api（应用层入口）。
 package components
 
 import (
+	"strings"
 	"sync"
+	"time"
 	"unicode/utf8"
 
 	"github.com/goedui/goed/ui/caret"
@@ -28,7 +30,18 @@ const (
 	caretWidth   = float32(1.6)
 	minCaretH    = float32(12)
 	maxLayoutRun = 4000 // 超过此 rune 数改走可视行稀疏布局，不再截断文本
+
+	// caretDescender 是光标越过基线的部分，按字号的比例计。
+	//
+	// 光标只画到基线（字形主体），在 13px 输入框里只有 10.7px 高，比字身明显
+	// 短一截 —— 系统的插入符、浏览器输入框、VS Code 都把下降部算进去。0.21
+	// 约等于常见西文字体的 descender，画完整个字身而不会吃掉下一行。
+	caretDescender = float32(0.21)
 	undoLimit    = 50
+	maxUndoBytes = 8 << 20 // 撤销/重做只存变化片段，这里再兜一层总字节预算
+	undoCoalesce = 500 * time.Millisecond
+	// LayoutDebug 只给测试看，生产环境到上限就停，避免长期运行无限增长。
+	layoutDebugLimit = 1024
 )
 
 // editState 是一个编辑框的权威状态。
@@ -42,9 +55,11 @@ type editState struct {
 	// lastProp 是上一次绘制时 props 的 value：只有它变了才算「应用改了值」，
 	// 同一帧里的旧节点（props 还是老值）不能拿来覆盖编辑缓冲。
 	lastProp string
-	// 撤销 / 重做
-	undo []editSnap
-	redo []editSnap
+	// 撤销 / 重做：只存改动片段，按字节预算裁剪
+	undo      []editSnap
+	redo      []editSnap
+	undoBytes int
+	redoBytes int
 	// 最近一次绘制缓存的光标矩形（客户区 DIP），供输入法定位候选窗。
 	caretRect [4]float32
 	caretOK   bool
@@ -62,18 +77,28 @@ type editState struct {
 	contentW    float32
 	contentWFor string
 	// 滚动条拖动：0 没拖，1 竖，2 横。grab 是按下时指针相对滑块起点的距离。
-	barDrag int
-	barGrab float32
+	barDrag    int
+	barGrab    float32
 	layout     *inputLayout
 	layouts    [2]*inputLayout
 	glyphW     map[rune]float32
 	glyphLineH float32
+	// masked 表示 layout 建立在密码圆点上。布局偏移是显示文本偏移，
+	// 光标 / 选区 / 指针落点仍用真实值字节偏移，换算见下方 display 系列方法。
+	masked bool
 }
 
 type editSnap struct {
-	value  string
-	caret  int
-	anchor int
+	off      int
+	removed  string
+	inserted string
+	// caret/anchor 是改动前的位置，caretAfter/anchorAfter 是改动后的位置。
+	caret       int
+	anchor      int
+	caretAfter  int
+	anchorAfter int
+	at          time.Time
+	typing      bool
 }
 
 var (
@@ -138,6 +163,8 @@ func stateFor(n *runtime.VNode) *editState {
 			st.anchor = st.caret
 			st.undo = nil
 			st.redo = nil
+			st.undoBytes = 0
+			st.redoBytes = 0
 			st.dropLayout()
 			st.scrollY = 0
 		}
@@ -215,25 +242,86 @@ func (st *editState) collapse(at int) {
 	st.scrollSync = true
 }
 
-// snapshot 在改动文本前压栈（撤销用）。
-func (st *editState) snapshot() {
-	st.undo = append(st.undo, editSnap{value: st.value, caret: st.caret, anchor: st.anchor})
-	if len(st.undo) > undoLimit {
-		st.undo = st.undo[len(st.undo)-undoLimit:]
+// record 把一次文本改动压入撤销栈。removed/inserted 只存变化片段，
+// 大文档连续输入不会每键复制整份正文。
+func (st *editState) record(s editSnap) {
+	if s.removed == "" && s.inserted == "" {
+		return
 	}
+	s.at = time.Now()
+	s.typing = s.removed == "" && utf8.RuneCountInString(s.inserted) == 1 &&
+		!strings.ContainsAny(s.inserted, "\r\n")
 	st.redo = nil
+	st.redoBytes = 0
+	if st.coalesceInsert(s) {
+		return
+	}
+	st.undo = append(st.undo, s)
+	st.undoBytes += editSnapSize(s)
+	st.trimUndo()
 }
 
-// undo / redo 恢复快照；返回是否生效。
+func editSnapSize(s editSnap) int {
+	return len(s.removed) + len(s.inserted) + 32
+}
+
+// coalesceInsert 把连续单字符输入并成一个撤销组；移动光标、粘贴、换行后不合并。
+func (st *editState) coalesceInsert(s editSnap) bool {
+	if len(st.undo) == 0 || !s.typing {
+		return false
+	}
+	prev := &st.undo[len(st.undo)-1]
+	if !prev.typing || s.at.Sub(prev.at) > undoCoalesce {
+		return false
+	}
+	if s.caret != s.anchor || s.caret != prev.off+len(prev.inserted) {
+		return false
+	}
+	prev.inserted += s.inserted
+	prev.caretAfter = s.caretAfter
+	prev.anchorAfter = s.anchorAfter
+	prev.at = s.at
+	st.undoBytes += len(s.inserted)
+	st.trimUndo()
+	return true
+}
+
+func (st *editState) trimUndo() {
+	for len(st.undo) > undoLimit || (st.undoBytes > maxUndoBytes && len(st.undo) > 1) {
+		st.undoBytes -= editSnapSize(st.undo[0])
+		st.undo = st.undo[1:]
+	}
+	if st.undoBytes < 0 {
+		st.undoBytes = 0
+	}
+}
+
+func (st *editState) trimRedo() {
+	for len(st.redo) > undoLimit || (st.redoBytes > maxUndoBytes && len(st.redo) > 1) {
+		st.redoBytes -= editSnapSize(st.redo[0])
+		st.redo = st.redo[1:]
+	}
+	if st.redoBytes < 0 {
+		st.redoBytes = 0
+	}
+}
+
+// undo / redo 反向/正向应用变化片段；返回是否生效。
 func (st *editState) undoStep() bool {
 	if len(st.undo) == 0 {
 		return false
 	}
 	snap := st.undo[len(st.undo)-1]
 	st.undo = st.undo[:len(st.undo)-1]
-	st.redo = append(st.redo, editSnap{value: st.value, caret: st.caret, anchor: st.anchor})
-	st.apply(snap)
-	st.dropLayout()
+	st.undoBytes -= editSnapSize(snap)
+	if !st.applyUndo(snap) {
+		st.undo = nil
+		st.undoBytes = 0
+		return false
+	}
+	st.redo = append(st.redo, snap)
+	st.redoBytes += editSnapSize(snap)
+	st.trimRedo()
 	return true
 }
 
@@ -243,28 +331,59 @@ func (st *editState) redoStep() bool {
 	}
 	snap := st.redo[len(st.redo)-1]
 	st.redo = st.redo[:len(st.redo)-1]
-	st.undo = append(st.undo, editSnap{value: st.value, caret: st.caret, anchor: st.anchor})
-	st.apply(snap)
-	st.dropLayout()
+	st.redoBytes -= editSnapSize(snap)
+	if !st.applyRedo(snap) {
+		st.redo = nil
+		st.redoBytes = 0
+		return false
+	}
+	st.undo = append(st.undo, snap)
+	st.undoBytes += editSnapSize(snap)
+	st.trimUndo()
 	return true
 }
 
-func (st *editState) apply(snap editSnap) {
-	st.value = snap.value
-	st.caret = clampCaret(st.value, snap.caret)
-	st.anchor = clampCaret(st.value, snap.anchor)
+func (st *editState) applyUndo(snap editSnap) bool {
+	end := snap.off + len(snap.inserted)
+	if snap.off < 0 || end > len(st.value) || st.value[snap.off:end] != snap.inserted {
+		return false
+	}
+	st.value = st.value[:snap.off] + snap.removed + st.value[end:]
+	st.restoreCaret(snap.caret, snap.anchor)
+	return true
+}
+
+func (st *editState) applyRedo(snap editSnap) bool {
+	end := snap.off + len(snap.removed)
+	if snap.off < 0 || end > len(st.value) || st.value[snap.off:end] != snap.removed {
+		return false
+	}
+	st.value = st.value[:snap.off] + snap.inserted + st.value[end:]
+	st.restoreCaret(snap.caretAfter, snap.anchorAfter)
+	return true
+}
+
+func (st *editState) restoreCaret(caret, anchor int) {
+	st.caret = clampCaret(st.value, caret)
+	st.anchor = clampCaret(st.value, anchor)
 	st.comp = ""
 	st.compAt = 0
 	st.compCu = 0
 	st.scrollSync = true
+	st.dropLayout()
 }
 
 // insert 在光标处插入文本（有选区时先替换选区；组合中先丢组合串）。
 func (st *editState) insert(text string) {
-	if _, _, has := st.selRange(); has {
-		st.deleteSelection()
-	}
+	caretBefore, anchorBefore := st.caret, st.anchor
+	from, to, hasSel := st.selRange()
+	removed := ""
 	at := st.caret
+	if hasSel {
+		removed = st.value[from:to]
+		st.value = st.value[:from] + st.value[to:]
+		at = from
+	}
 	if st.comp != "" {
 		at = clampCaret(st.value, st.compAt)
 		st.comp = ""
@@ -272,9 +391,18 @@ func (st *editState) insert(text string) {
 		st.compCu = 0
 	}
 	at = clampCaret(st.value, at)
+	if text == "" && removed == "" {
+		st.caret, st.anchor = at, at
+		return
+	}
 	st.value = st.value[:at] + text + st.value[at:]
 	st.caret = at + len(text)
 	st.anchor = st.caret
+	st.record(editSnap{
+		off: at, removed: removed, inserted: text,
+		caret: caretBefore, anchor: anchorBefore,
+		caretAfter: st.caret, anchorAfter: st.anchor,
+	})
 	st.dropLayout()
 	st.scrollSync = true
 }
@@ -289,8 +417,15 @@ func (st *editState) deleteSelection() bool {
 	if !has {
 		return false
 	}
+	caretBefore, anchorBefore := st.caret, st.anchor
+	removed := st.value[from:to]
 	st.value = st.value[:from] + st.value[to:]
 	st.collapse(from)
+	st.record(editSnap{
+		off: from, removed: removed,
+		caret: caretBefore, anchor: anchorBefore,
+		caretAfter: from, anchorAfter: from,
+	})
 	st.dropLayout()
 	return true
 }
@@ -318,11 +453,17 @@ func (st *editState) backspace() bool {
 	if st.caret <= 0 {
 		return false
 	}
-	st.snapshot()
+	caretBefore, anchorBefore := st.caret, st.anchor
 	start := prevRuneStart(st.value, st.caret)
+	removed := st.value[start:st.caret]
 	st.value = st.value[:start] + st.value[st.caret:]
 	st.caret = start
 	st.anchor = st.caret
+	st.record(editSnap{
+		off: start, removed: removed,
+		caret: caretBefore, anchor: anchorBefore,
+		caretAfter: start, anchorAfter: start,
+	})
 	st.dropLayout()
 	st.scrollSync = true
 	return true
@@ -336,12 +477,35 @@ func (st *editState) deleteForward() bool {
 	if st.caret >= len(st.value) {
 		return false
 	}
-	st.snapshot()
+	caretBefore, anchorBefore := st.caret, st.anchor
 	_, size := utf8.DecodeRuneInString(st.value[st.caret:])
+	removed := st.value[st.caret : st.caret+size]
 	st.value = st.value[:st.caret] + st.value[st.caret+size:]
+	st.record(editSnap{
+		off: st.caret, removed: removed,
+		caret: caretBefore, anchor: anchorBefore,
+		caretAfter: st.caret, anchorAfter: st.anchor,
+	})
 	st.dropLayout()
 	st.scrollSync = true
 	return true
+}
+
+// clear 清空正文（Ctrl+X 无选区时用），保留一次可撤销的改动。
+func (st *editState) clear() {
+	if st.value == "" {
+		return
+	}
+	caretBefore, anchorBefore := st.caret, st.anchor
+	removed := st.value
+	st.value = ""
+	st.caret, st.anchor = 0, 0
+	st.record(editSnap{
+		off: 0, removed: removed,
+		caret: caretBefore, anchor: anchorBefore,
+	})
+	st.dropLayout()
+	st.scrollSync = true
 }
 
 // move 移动光标；extend 为 true 时扩展选区。

@@ -1,729 +1,805 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Goed UI</title>
+<title>goed UI · 说明文档</title>
+<script>document.documentElement.classList.add('js')</script>
 <style>
-:root {
-  --vp-c-bg: #ffffff;
-  --vp-c-bg-alt: #f8f9fc;
-  --vp-c-bg-soft: #f2f4f9;
-  --vp-c-divider: #e7e9f0;
-  --vp-c-text-1: #23262f;
-  --vp-c-text-2: #5a6072;
-  --vp-c-text-3: #959bad;
-  --vp-c-brand: #3f5bd9;
-  --vp-c-brand-2: #6d5df6;
-  --vp-c-brand-soft: rgba(63, 91, 217, .10);
-  --vp-sidebar: 276px;
-  --vp-nav: 60px;
-  --arco-radius: 6px;
-  --code-bg: #171b2b;
-  --code-fg: #ccd3e6;
-  --shadow-1: 0 1px 2px rgba(24, 30, 56, .05), 0 4px 16px rgba(24, 30, 56, .05);
-  --shadow-2: 0 2px 4px rgba(24, 30, 56, .06), 0 12px 32px rgba(24, 30, 56, .09);
-  --ring: 0 0 0 3px rgba(63, 91, 217, .16);
+:root{
+  --brand:#165dff;
+  --brand-ink:#0e42d2;
+  --active-bg:#e8f3ff;
+  --bg:#ffffff;
+  --bg-soft:#f7f8fa;
+  --bg-code:#f7f8fa;
+  --bg-top:#ffffff;
+  --text:#1d2129;
+  --text-2:#4e5969;
+  --text-3:#86909c;
+  --border:#e5e6eb;
+  --border-soft:#f2f3f5;
+  --hover:#f2f3f5;
+  --mono:"JetBrains Mono","Cascadia Code",Consolas,"Courier New",monospace;
+  --topbar-h:60px;
+  --side-w:248px;
 }
-* { box-sizing: border-box; }
-html { scroll-behavior: smooth; scroll-padding-top: 84px; }
-body {
-  margin: 0;
-  color: var(--vp-c-text-1);
-  background:
-    radial-gradient(1100px 480px at 78% -180px, rgba(109, 93, 246, .10), transparent 60%),
-    radial-gradient(900px 420px at 12% -220px, rgba(63, 91, 217, .10), transparent 62%),
-    var(--vp-c-bg);
-  font: 16px/1.75 "Inter", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+html.dark{
+  --brand:#4080ff;
+  --brand-ink:#94bfff;
+  --active-bg:#1b2f4f;
+  --bg:#17171a;
+  --bg-soft:#232324;
+  --bg-code:#1d1d20;
+  --bg-top:#17171a;
+  --text:#e5e6eb;
+  --text-2:#c9cdd4;
+  --text-3:#86909c;
+  --border:#2e2e32;
+  --border-soft:#26262a;
+  --hover:#232324;
 }
-a { color: var(--vp-c-brand); text-decoration: none; transition: color .15s ease; }
-a:hover { color: var(--vp-c-brand-2); }
-code, pre, .mono { font-family: ui-monospace, SFMono-Regular, "Cascadia Code", Consolas, "Liberation Mono", monospace; }
-p code, li code, td code {
-  background: var(--vp-c-brand-soft); color: var(--vp-c-brand);
-  padding: 1px 6px; border-radius: 5px; font-size: .92em;
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--text);
+  font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei UI","PingFang SC",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:inherit;text-decoration:none}
+
+/* 顶栏 */
+.topbar{
+  position:fixed;inset:0 0 auto 0;height:var(--topbar-h);z-index:30;
+  display:flex;align-items:center;gap:24px;padding:0 24px;
+  background:var(--bg-top);border-bottom:1px solid var(--border);
+}
+.brand{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:600;white-space:nowrap}
+.mark{width:18px;height:18px;border-radius:5px;background:linear-gradient(135deg,#165dff,#00b42a)}
+.brand-name{letter-spacing:.2px}
+.chip{
+  font-size:11px;font-weight:400;color:var(--text-3);
+  border:1px solid var(--border);border-radius:9px;padding:0 6px;line-height:16px;
+}
+.search{
+  display:flex;align-items:center;gap:8px;flex:0 1 380px;max-width:380px;
+  height:32px;padding:0 10px;border-radius:4px;
+  background:var(--bg-soft);border:1px solid transparent;color:var(--text-3);
+}
+.search:focus-within{border-color:var(--brand);background:var(--bg)}
+.search input{
+  flex:1;min-width:0;border:0;background:transparent;outline:none;
+  font:inherit;color:var(--text);
+}
+.search input::-webkit-search-cancel-button{display:none}
+.search kbd{
+  font:11px/1 var(--mono);color:var(--text-3);
+  border:1px solid var(--border);border-radius:3px;padding:3px 4px;white-space:nowrap;
+}
+.topnav{display:flex;align-items:center;gap:20px;margin-left:auto;font-size:14px;color:var(--text-2)}
+.topnav a:hover{color:var(--brand)}
+.topnav .sep{width:1px;height:16px;background:var(--border)}
+.ghost{
+  font:inherit;font-size:13px;color:var(--text-2);cursor:pointer;
+  background:var(--bg-soft);border:1px solid var(--border);border-radius:4px;padding:4px 10px;
+}
+.ghost:hover{color:var(--brand);border-color:var(--brand)}
+
+/* 骨架 */
+.shell{display:flex;align-items:flex-start;padding-top:var(--topbar-h)}
+.side{
+  position:sticky;top:var(--topbar-h);flex:0 0 var(--side-w);width:var(--side-w);
+  height:calc(100vh - var(--topbar-h));overflow-y:auto;
+  padding:16px 12px 64px;border-right:1px solid var(--border);
+}
+.nav .group{margin-bottom:8px}
+.group-title{
+  font-size:13px;color:var(--text-3);font-weight:400;
+  padding:6px 10px;margin-top:10px;
+}
+.nav .item{
+  display:block;padding:6px 10px;margin:1px 0;border-radius:4px;
+  font-size:14px;color:var(--text-2);line-height:22px;
+}
+.nav .item:hover{background:var(--hover);color:var(--text)}
+.nav .item.on{background:var(--active-bg);color:var(--brand);font-weight:500}
+.nav .group.off{display:none}
+.empty-hint{padding:12px 10px;color:var(--text-3);font-size:13px}
+
+/* 正文 */
+.main{flex:1;min-width:0;padding:32px 56px 120px}
+.page{max-width:880px}
+.crumb{font-size:13px;color:var(--text-3);margin-bottom:14px}
+h1{font-size:32px;font-weight:500;line-height:1.35;margin:0 0 12px;letter-spacing:-.2px}
+.lead{color:var(--text-2);font-size:14px;line-height:24px;margin:0 0 4px}
+.rule{border:0;border-top:1px solid var(--border);margin:20px 0 4px}
+h2{font-size:20px;font-weight:500;line-height:1.5;margin:36px 0 12px;scroll-margin-top:80px}
+h3{font-size:16px;font-weight:500;margin:24px 0 8px}
+p{margin:0 0 12px;line-height:1.75;color:var(--text)}
+ul,ol{margin:0 0 14px;padding-left:22px;line-height:1.8}
+li{margin:2px 0}
+li>code,p>code,td>code,th>code,b>code{
+  font-family:var(--mono);font-size:12.5px;
+  background:var(--bg-soft);border:1px solid var(--border-soft);border-radius:3px;
+  padding:0 4px;color:var(--brand-ink);
+}
+a.link, p a{color:var(--brand)}
+
+/* 代码块 */
+.code{
+  margin:14px 0 18px;border-radius:4px;background:var(--bg-code);
+  border:1px solid var(--border-soft);overflow:hidden;
+}
+.code-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:4px 8px 4px 14px;font:12px/20px var(--mono);color:var(--text-3);
+  border-bottom:1px solid var(--border-soft);
+}
+.code-head .copy{
+  font:inherit;font-family:inherit;color:var(--text-3);cursor:pointer;
+  background:transparent;border:0;border-radius:3px;padding:2px 8px;
+}
+.code-head .copy:hover{background:var(--hover);color:var(--text)}
+pre{margin:0;padding:14px 16px;overflow-x:auto}
+pre code{
+  font-family:var(--mono);font-size:13px;line-height:1.75;
+  color:var(--text);white-space:pre;
+}
+.tok-kw{color:#c4309b}
+.tok-str{color:#00a870}
+.tok-com{color:var(--text-3);font-style:italic}
+.tok-num{color:#d2691e}
+.tok-fn{color:#165dff}
+.tok-typ{color:#7048e8}
+html.dark .tok-kw{color:#d67ad6}
+html.dark .tok-str{color:#7bd88f}
+html.dark .tok-num{color:#e8b262}
+html.dark .tok-fn{color:#79bbff}
+html.dark .tok-typ{color:#b197fc}
+
+/* 表格 */
+.table-wrap{
+  margin:14px 0 18px;border:1px solid var(--border);border-radius:4px;overflow-x:auto;
+}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:10px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--border-soft)}
+th{
+  font-weight:500;color:var(--text-2);background:var(--bg-soft);
+  border-bottom:1px solid var(--border);white-space:nowrap;
+}
+tr:last-child td{border-bottom:0}
+td{color:var(--text-2);line-height:1.6}
+td:first-child{white-space:normal}
+th:first-child{min-width:132px}
+
+/* 提示条 */
+.note{
+  margin:14px 0 18px;padding:10px 14px;border-radius:4px;font-size:13.5px;
+  line-height:1.7;border-left:3px solid var(--brand);background:var(--bg-soft);
+}
+.note.warn{border-left-color:#ff7d00}
+.note.tip{border-left-color:#00b42a}
+.note code{background:transparent;border:0;padding:0}
+
+/* 控件示意 */
+.demo{
+  display:flex;flex-wrap:wrap;align-items:center;gap:14px;
+  margin:14px 0 18px;padding:20px;border:1px solid var(--border);border-radius:4px;
+  background:var(--bg-soft);
 }
 
-/* ── 顶栏 ─────────────────────────────── */
-.nav {
-  position: fixed; inset: 0 0 auto 0; height: var(--vp-nav); z-index: 30;
-  display: flex; align-items: center; gap: 26px; padding: 0 24px;
-  background: rgba(255,255,255,.78);
-  -webkit-backdrop-filter: saturate(180%) blur(14px);
-  backdrop-filter: saturate(180%) blur(14px);
-  border-bottom: 1px solid rgba(231, 233, 240, .9);
-  box-shadow: 0 1px 0 rgba(255,255,255,.6) inset;
-}
-.brand {
-  display: flex; align-items: center; gap: 10px; color: var(--vp-c-text-1);
-  font-weight: 680; letter-spacing: -.02em; font-size: 15px;
-}
-.brand:hover { text-decoration: none; }
-.mark {
-  width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
-  background: linear-gradient(135deg, var(--vp-c-brand) 0%, var(--vp-c-brand-2) 100%);
-  color: #fff; font-size: 15px; font-weight: 700;
-  box-shadow: 0 4px 12px rgba(63, 91, 217, .35);
-}
-.nav nav { display: flex; gap: 4px; font-size: 14px; }
-.nav nav a {
-  color: var(--vp-c-text-2); padding: 6px 12px; border-radius: 8px; font-weight: 500;
-  transition: background .15s ease, color .15s ease;
-}
-.nav nav a:hover { background: var(--vp-c-brand-soft); color: var(--vp-c-brand); text-decoration: none; }
-.nav .spacer { flex: 1; }
-.nav .meta {
-  color: var(--vp-c-text-3); font-size: 12.5px;
-  background: var(--vp-c-bg-soft); border: 1px solid var(--vp-c-divider);
-  padding: 5px 11px; border-radius: 99px;
+/* 页脚 */
+.foot{
+  margin:48px 0 0;padding-top:16px;border-top:1px solid var(--border);
+  font-size:13px;color:var(--text-3);
 }
 
-/* ── 侧栏 ─────────────────────────────── */
-.sidebar {
-  position: fixed; top: var(--vp-nav); bottom: 0; left: 0; width: var(--vp-sidebar);
-  overflow: auto; padding: 20px 14px 48px 18px;
-  border-right: 1px solid var(--vp-c-divider);
-  background: linear-gradient(180deg, #f8f9fc 0%, #f5f6fb 100%);
-}
-.sidebar::-webkit-scrollbar { width: 8px; }
-.sidebar::-webkit-scrollbar-thumb { background: #d8dbe6; border-radius: 99px; border: 2px solid transparent; background-clip: padding-box; }
-.sidebar::-webkit-scrollbar-thumb:hover { background: #c2c6d6; background-clip: padding-box; }
-.sidebar h4 {
-  margin: 20px 0 7px; padding: 0 10px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--vp-c-text-3); font-weight: 700;
-}
-.sidebar h4:first-of-type { margin-top: 4px; }
-.sidebar a {
-  display: flex; align-items: center; gap: 8px;
-  padding: 6px 10px; margin: 1px 0; border-radius: 8px;
-  color: var(--vp-c-text-2); font-size: 14px; font-weight: 500;
-  border-left: 2px solid transparent;
-  transition: background .13s ease, color .13s ease, border-color .13s ease;
-}
-.sidebar a::before {
-  content: ""; width: 5px; height: 5px; border-radius: 50%;
-  background: #c9cddd; flex: none; transition: background .13s ease, transform .13s ease;
-}
-.sidebar a:hover {
-  background: rgba(255,255,255,.9); color: var(--vp-c-brand); text-decoration: none;
-  border-left-color: #cdd3ea;
-}
-.sidebar a:hover::before { background: var(--vp-c-brand); transform: scale(1.25); }
-.sidebar a.active {
-  background: #fff; color: var(--vp-c-brand); font-weight: 650;
-  border-left-color: var(--vp-c-brand);
-  box-shadow: var(--shadow-1);
-}
-.sidebar a.active::before { background: var(--vp-c-brand); }
-.search {
-  width: 100%; margin-bottom: 6px; height: 34px;
-  border: 1px solid var(--vp-c-divider); border-radius: 9px;
-  padding: 0 12px 0 32px; background: #fff; font-size: 13.5px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23959bad' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E");
-  background-repeat: no-repeat; background-position: 11px center;
-  transition: border-color .15s ease, box-shadow .15s ease;
-}
-.search:focus { outline: none; border-color: var(--vp-c-brand); box-shadow: var(--ring); }
-.search::placeholder { color: var(--vp-c-text-3); }
+/* 分页显隐：无 JS 时全部摊开，有 JS 时一次只显示一页 */
+html.js .page{display:none}
+html.js .page.on{display:block}
 
-/* ── 正文 ─────────────────────────────── */
-.page { margin-left: var(--vp-sidebar); padding: 40px 64px 110px; max-width: 1200px; }
-.hero {
-  position: relative; padding: 34px 36px; margin-top: 8px;
-  border: 1px solid var(--vp-c-divider); border-radius: 18px;
-  background: linear-gradient(135deg, rgba(63,91,217,.07) 0%, rgba(109,93,246,.06) 55%, rgba(255,255,255,0) 100%), #fff;
-  box-shadow: var(--shadow-1);
-  overflow: hidden;
+@media (max-width:1100px){
+  .side{flex-basis:210px;width:210px}
+  .main{padding:24px 28px 96px}
 }
-.hero::after {
-  content: ""; position: absolute; right: -70px; top: -90px; width: 260px; height: 260px;
-  background: radial-gradient(circle, rgba(109,93,246,.22), transparent 68%);
-  border-radius: 50%; pointer-events: none;
+@media (max-width:860px){
+  .search{display:none}
+  .side{display:none}
+  .main{padding:20px 18px 96px}
+  h1{font-size:26px}
 }
-.hero h1 {
-  margin: 12px 0 10px; font-size: 46px; line-height: 1.08; letter-spacing: -.035em; font-weight: 750;
-  background: linear-gradient(100deg, #23262f 15%, var(--vp-c-brand) 65%, var(--vp-c-brand-2) 100%);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
-.lead { font-size: 18px; color: var(--vp-c-text-2); max-width: 780px; margin: 0; }
-.pills { display: flex; gap: 8px; margin: 0; flex-wrap: wrap; position: relative; z-index: 1; }
-.pill {
-  font-size: 12px; padding: 3px 11px; border-radius: 99px; font-weight: 600;
-  background: rgba(255,255,255,.85); border: 1px solid rgba(63,91,217,.22); color: var(--vp-c-brand);
-  box-shadow: 0 1px 2px rgba(63,91,217,.10);
-}
-h2 {
-  position: relative; margin: 64px 0 16px; padding-top: 16px;
-  font-size: 29px; letter-spacing: -.025em; font-weight: 720;
-  border-top: 1px solid var(--vp-c-divider);
-}
-h2::before {
-  content: ""; position: absolute; top: -1px; left: 0; width: 56px; height: 2px;
-  background: linear-gradient(90deg, var(--vp-c-brand), var(--vp-c-brand-2)); border-radius: 2px;
-}
-h2:first-of-type, .hero + h2 { border-top: 0; padding-top: 0; }
-h2:first-of-type::before, .hero + h2::before { display: none; }
-h3 { margin: 30px 0 10px; font-size: 19px; font-weight: 680; letter-spacing: -.01em; }
-p { margin: 10px 0 16px; }
-.lead, p { color: var(--vp-c-text-2); }
-.hero h1 + .lead, .lead { color: var(--vp-c-text-2); }
-p strong, li strong, td strong { color: var(--vp-c-text-1); font-weight: 650; }
-
-/* ── 提示条 ───────────────────────────── */
-.note, .warn {
-  position: relative; margin: 18px 0; padding: 13px 16px 13px 44px;
-  border-radius: 12px; font-size: 14.5px; line-height: 1.7;
-  background: #f4f7ff; border: 1px solid #dfe6ff; color: var(--vp-c-text-1);
-}
-.note::before, .warn::before {
-  position: absolute; left: 14px; top: 13px; width: 20px; height: 20px;
-  border-radius: 50%; display: grid; place-items: center;
-  font-size: 12px; font-weight: 800; color: #fff;
-}
-.note::before { content: "i"; background: linear-gradient(135deg, var(--vp-c-brand), var(--vp-c-brand-2)); }
-.warn {
-  background: #fff8ec; border-color: #ffe8c8;
-}
-.warn::before { content: "!"; background: linear-gradient(135deg, #f59e0b, #ea850a); }
-.note code, .warn code { background: #fff; border: 1px solid rgba(63,91,217,.18); }
-
-/* ── 演示卡 ───────────────────────────── */
-.demo {
-  margin: 18px 0 0; border: 1px solid var(--vp-c-divider); border-radius: 14px;
-  overflow: hidden; background: #fff; box-shadow: var(--shadow-1);
-}
-.demo-stage {
-  padding: 30px; background:
-  linear-gradient(rgba(255,255,255,.75), rgba(255,255,255,.75)),
-  linear-gradient(45deg, #eceef4 25%, transparent 25%),
-  linear-gradient(-45deg, #eceef4 25%, transparent 25%),
-  linear-gradient(45deg, transparent 75%, #eceef4 75%),
-  linear-gradient(-45deg, transparent 75%, #eceef4 75%);
-  background-size: auto, 18px 18px, 18px 18px, 18px 18px, 18px 18px;
-  background-position: 0 0, 0 0, 0 9px, 9px -9px, -9px 0;
-}
-.fake { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-.btn, .field, .chip, .sw, .boxy {
-  border: 1px solid #d9dce6; background: #fff; color: #23262f; border-radius: var(--arco-radius);
-  height: 32px; padding: 0 14px; display: inline-flex; align-items: center; font-size: 14px;
-  box-shadow: 0 1px 2px rgba(24,30,56,.05);
-}
-.btn.primary {
-  background: linear-gradient(180deg, #2f6bff, #165dff); border-color: #165dff; color: #fff;
-  box-shadow: 0 2px 8px rgba(22,93,255,.32);
-}
-.btn.ghost { background: transparent; box-shadow: none; }
-.field { min-width: 220px; color: #959bad; }
-.chip { height: 28px; border-radius: 99px; background: #e9f1ff; border-color: transparent; color: #165dff; font-weight: 600; }
-.sw { width: 40px; padding: 0 3px; justify-content: flex-end; background: #165dff; border-color: #165dff; }
-.sw i { width: 16px; height: 16px; border-radius: 50%; background: #fff; display: block; box-shadow: 0 1px 3px rgba(0,0,0,.28); }
-.check { width: 14px; height: 14px; border-radius: 3px; background: #165dff; color: #fff; font-size: 11px; display: grid; place-items: center; }
-.tabs { display: flex; gap: 4px; background: #eef0f5; padding: 4px; border-radius: 10px; }
-.tabs b { background: #fff; border-radius: 7px; padding: 5px 14px; font-weight: 600; box-shadow: 0 1px 3px rgba(24,30,56,.12); }
-.tabs span { padding: 5px 14px; color: #6b7183; }
-
-/* ── 代码块 ───────────────────────────── */
-pre {
-  position: relative; margin: 0; padding: 18px 20px;
-  background: linear-gradient(180deg, #1b2033 0%, var(--code-bg) 100%);
-  color: var(--code-fg);
-  overflow: auto; font-size: 13px; line-height: 1.7;
-  border-top: 1px solid rgba(255,255,255,.05);
-}
-.demo pre:first-child, .demo > pre { border-top: 0; }
-pre::-webkit-scrollbar { height: 9px; }
-pre::-webkit-scrollbar-thumb { background: #3a4160; border-radius: 99px; border: 2px solid transparent; background-clip: padding-box; }
-pre::-webkit-scrollbar-thumb:hover { background: #4a527a; background-clip: padding-box; }
-.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; } .cm { color: #5f6a94; font-style: italic; } .num { color: #f78c6c; }
-
-/* ── 表格 ─────────────────────────────── */
-.api {
-  width: 100%; border-collapse: separate; border-spacing: 0; margin: 12px 0 22px; font-size: 14px;
-  border: 1px solid var(--vp-c-divider); border-radius: 12px; overflow: hidden;
-  box-shadow: var(--shadow-1);
-}
-.api th, .api td { border-bottom: 1px solid var(--vp-c-divider); text-align: left; padding: 11px 14px; vertical-align: top; line-height: 1.65; }
-.api th {
-  background: linear-gradient(180deg, #f7f8fc, #f2f4f9); color: var(--vp-c-text-1);
-  font-weight: 650; font-size: 13px; letter-spacing: .02em;
-}
-.api tbody tr:last-child td { border-bottom: 0; }
-.api tbody tr { transition: background .12s ease; }
-.api tbody tr:hover { background: #f8f9fe; }
-.api td:first-child {
-  white-space: nowrap; font-family: ui-monospace, Consolas, monospace;
-  color: var(--vp-c-brand); font-size: 13px; font-weight: 600;
-}
-.api td:nth-child(2) { color: var(--vp-c-text-2); }
-.tag {
-  display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 5px;
-  background: #fff3e8; color: #d25f00; font-size: 12px; font-family: inherit; font-weight: 600;
-}
-ul.clean { margin: 10px 0 18px; padding-left: 20px; color: var(--vp-c-text-2); }
-ul.clean li { margin: 7px 0; padding-left: 2px; }
-ul.clean li::marker { color: var(--vp-c-brand); }
-
-@media (max-width: 960px) {
-  .sidebar { display: none; }
-  .page { margin-left: 0; padding: 24px 18px 72px; }
-  .hero { padding: 24px 20px; border-radius: 14px; }
-  .hero h1 { font-size: 34px; }
-  .nav .meta { display: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; animation: none !important; }
-  html { scroll-behavior: auto; }
+@media print{
+  .topbar,.side{display:none}
+  html.js .page{display:block}
+  .main{padding:0}
+  .code{break-inside:avoid}
 }
 </style>
 </head>
 <body>
-<header class="nav">
-  <a class="brand" href="#start"><span class="mark">G</span> Goed UI</a>
-  <nav>
-    <a href="#start">开始</a>
-    <a href="#layout">布局</a>
-    <a href="#button">组件</a>
-    <a href="#style">样式</a>
-    <a href="#app">应用</a>
-  </nav>
-  <div class="spacer"></div>
-  <span class="meta">应用只 import github.com/goedui/goed/ui</span>
+<header class="topbar">
+  <a class="brand" href="#/intro">
+    <span class="mark"></span>
+    <span class="brand-name">goed UI</span>
+    <span class="chip">v1.0.0</span>
+  </a>
+  <label class="search">
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M7 1a6 6 0 104.24 10.24l3.26 3.26 1.06-1.06-3.26-3.26A6 6 0 007 1zm0 1.5a4.5 4.5 0 110 9 4.5 4.5 0 010-9z" fill="currentColor"/></svg>
+    <input id="q" type="search" placeholder="搜索组件 / API" autocomplete="off" spellcheck="false">
+    <kbd>Ctrl K</kbd>
+  </label>
+  <div class="topnav">
+    <a href="#/quickstart">开发</a>
+    <a href="#/button">组件</a>
+    <a href="#/api-app">API</a>
+    <span class="sep"></span>
+    <button id="theme" class="ghost" type="button" title="切换明暗主题">暗色</button>
+  </div>
 </header>
-<aside class="sidebar">
-  <input class="search" id="q" placeholder="搜索组件" oninput="filterNav(this.value)">
-  <div id="toc"></div>
-</aside>
-<main class="page">
-<section class="hero" id="start">
-  <div class="pills"><span class="pill">声明式</span><span class="pill">DIP</span><span class="pill">Windows / Linux / Web</span></div>
-  <h1>Goed UI</h1>
-  <p class="lead">用 Go 写桌面界面。写法对齐 Vue 3 的 <code>h(type, props?, children)</code>：组件 setup 一次，渲染函数每次重绘返回一棵虚拟节点树。应用层只从 <code>github.com/goedui/goed/ui</code> 取 API。</p>
-</section>
+<div class="shell">
+  <aside class="side">
+<nav class="nav" id="nav"><div class="group"><div class="group-title">开始</div><a class="item" href="#/intro" data-slug="intro" data-search="简介 intro overview goed 是什么">简介</a><a class="item" href="#/install" data-slug="install" data-search="安装 install go get 模块 go.mod">安装</a><a class="item" href="#/quickstart" data-slug="quickstart" data-search="快速上手 quickstart 快速上手 hello world 第一个界面">快速上手</a></div><div class="group"><div class="group-title">基础</div><a class="item" href="#/vnode" data-slug="vnode" data-search="节点与子内容 vnode h 节点 children text">节点与子内容</a><a class="item" href="#/props" data-slug="props" data-search="props props 属性 字段 onchange value">Props</a><a class="item" href="#/style" data-slug="style" data-search="style style 样式 flex padding overflow position">Style</a><a class="item" href="#/component" data-slug="component" data-search="组件与状态 component ref setup 状态 重新渲染">组件与状态</a><a class="item" href="#/layout" data-slug="layout" data-search="布局与命中 layout 布局 命中 hit layer overlay zorder">布局与命中</a><a class="item" href="#/text" data-slug="text" data-search="文本与字体 text 文本 字体 wrap ellipsis 字号">文本与字体</a><a class="item" href="#/theme" data-slug="theme" data-search="主题 theme 主题 暗色 dark light 色板">主题</a></div><div class="group"><div class="group-title">通用</div><a class="item" href="#/button" data-slug="button" data-search="按钮 button button 按钮 primary secondary ghost onclick">按钮 Button</a><a class="item" href="#/glyph" data-slug="glyph" data-search="图标 glyph glyph icon 图标 registerglyph">图标 Glyph</a><a class="item" href="#/tag" data-slug="tag" data-search="标签 tag tag 标签 胶囊 badge 状态">标签 Tag</a><a class="item" href="#/divider" data-slug="divider" data-search="分割线 divider divider 分割线 分隔">分割线 Divider</a><a class="item" href="#/richtext" data-slug="richtext" data-search="富文本 richtext richtext 富文本 textrun 行内">富文本 RichText</a><a class="item" href="#/markdown" data-slug="markdown" data-search="markdown markdown md gfm 文档渲染">Markdown</a></div><div class="group"><div class="group-title">布局</div><a class="item" href="#/box" data-slug="box" data-search="容器 box box 容器 background radius padding">容器 Box</a><a class="item" href="#/stack" data-slug="stack" data-search="堆叠 vstack / hstack vstack hstack 堆叠 flex gap justify">堆叠 VStack / HStack</a><a class="item" href="#/wrap" data-slug="wrap" data-search="流式 wrap wrap 换行 流式 标签墙">流式 Wrap</a><a class="item" href="#/layer" data-slug="layer" data-search="叠层 layer layer 叠层 覆盖 overlay">叠层 Layer</a><a class="item" href="#/table" data-slug="table" data-search="表格 table table 表格 列 列宽">表格 Table</a><a class="item" href="#/scroll" data-slug="scroll" data-search="滚动 scroll scroll 滚动 overflow scrolloffset scrolltoend">滚动 Scroll</a></div><div class="group"><div class="group-title">数据录入</div><a class="item" href="#/input" data-slug="input" data-search="输入框 input input 输入框 文本框 password oninput">输入框 Input</a><a class="item" href="#/textarea" data-slug="textarea" data-search="多行文本 textarea textarea 多行 编辑 文本域 撤销">多行文本 Textarea</a><a class="item" href="#/select" data-slug="select" data-search="选择器 select select 下拉 选择 compact">选择器 Select</a><a class="item" href="#/switch" data-slug="switch" data-search="开关 switch switch 开关 布尔 toggle">开关 Switch</a><a class="item" href="#/checkbox" data-slug="checkbox" data-search="复选框 checkbox checkbox 复选 勾选">复选框 Checkbox</a><a class="item" href="#/slider" data-slug="slider" data-search="滑块 slider slider 滑块 范围 range 数值">滑块 Slider</a><a class="item" href="#/tabs" data-slug="tabs" data-search="标签页 tabs tabs 标签页 pill 切换">标签页 Tabs</a></div><div class="group"><div class="group-title">数据展示</div><a class="item" href="#/image" data-slug="image" data-search="图片 image image 图片 png jpeg avatar">图片 Image</a><a class="item" href="#/qrcode" data-slug="qrcode" data-search="二维码 qrcode qrcode 二维码 qr 扫码">二维码 QRCode</a><a class="item" href="#/empty" data-slug="empty" data-search="空状态 empty empty 空状态 placeholder 无数据">空状态 Empty</a><a class="item" href="#/canvas" data-slug="canvas" data-search="画布 canvas canvas 自绘 onpaint renderer">画布 Canvas</a></div><div class="group"><div class="group-title">导航</div><a class="item" href="#/menubar" data-slug="menubar" data-search="菜单栏 menubar menubar 菜单栏 menu 菜单项">菜单栏 MenuBar</a><a class="item" href="#/windowcaption" data-slug="windowcaption" data-search="窗口按钮 windowcaption windowcaption 标题栏 最小化 最大化 关闭 apptitlebar">窗口按钮 WindowCaption</a></div><div class="group"><div class="group-title">反馈与浮层</div><a class="item" href="#/dialog" data-slug="dialog" data-search="对话框 dialog dialog 对话框 模态 确认框">对话框 Dialog</a><a class="item" href="#/popover" data-slug="popover" data-search="浮层 popover popover 下拉 浮层 菜单">浮层 Popover</a><a class="item" href="#/itemmenu" data-slug="itemmenu" data-search="富选项菜单 itemmenu itemmenu menurow 富选项 模式切换">富选项菜单 ItemMenu</a><a class="item" href="#/tooltip" data-slug="tooltip" data-search="提示 tooltip tooltip 提示 悬停提示">提示 Tooltip</a><a class="item" href="#/contextmenu" data-slug="contextmenu" data-search="右键菜单 contextmenu contextmenu 右键 菜单 oncontextmenu">右键菜单 ContextMenu</a></div><div class="group"><div class="group-title">API</div><a class="item" href="#/api-app" data-slug="api-app" data-search="应用与窗口 createapp app 窗口 run title size theme">应用与窗口</a><a class="item" href="#/api-platform" data-slug="api-platform" data-search="平台能力 clipboard 剪贴板 openfile savefile dragdrop 文件对话框">平台能力</a><a class="item" href="#/api-edit" data-slug="api-edit" data-search="文本编辑 edit 光标 选区 undo focus 编辑命令">文本编辑</a><a class="item" href="#/api-scroll" data-slug="api-scroll" data-search="滚动控制 scroll 滚动 scrolltoend offset">滚动控制</a><a class="item" href="#/api-const" data-slug="api-const" data-search="常量与主题 常量 const 对齐 overflow key theme">常量与主题</a></div><div class="group"><div class="group-title">附录</div><a class="item" href="#/platform" data-slug="platform" data-search="平台差异 platform windows linux wasm web 平台">平台差异</a><a class="item" href="#/limit" data-slug="limit" data-search="已知限制 限制 已知问题 性能 坑">已知限制</a></div><div class="empty-hint" hidden>没有匹配的页面</div></nav>
+  </aside>
+  <main class="main" id="main">
+<div class="page" id="page-intro" data-slug="intro"><div class="crumb">开始</div><h1>简介</h1><p class="lead">goed UI 是用 Go 写的声明式桌面 UI 引擎：用 <code>VNode</code> 描述界面，引擎负责布局、绘制、输入与命中，不写 HTML 也不依赖浏览器。</p><hr class="rule"><h2 id="sec">设计取向</h2><ul><li><strong>形状对齐 Vue 3</strong>：<code>h(type, props?, children...)</code>、<code>Component(setup)</code>、<code>Ref</code>，会写 Vue 就能上手。</li><li><strong>绘制走系统原生</strong>：Windows 上是 Direct2D + DirectWrite（GPU 加速、ClearType、原生 DPI），Linux 是 X11，Web 是 <code>js/wasm</code>。</li><li><strong>没有运行时解释器</strong>：<code>Component.setup</code> 只执行一次，返回的函数每次重绘产生新的节点树；引擎按 <code>Key</code> / <code>ID</code> 调和。</li><li><strong>单位是 DIP</strong>：96 DIP = 1 英寸，与系统缩放无关，高 DPI 下布局数字不用改。</li></ul><h2 id="sec-2">一个应用由什么组成</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code><span class="tok-kw">package</span> main
 
-<h2 id="quick">快速开始</h2>
-<p>根组件和 <code>CreateApp</code> 包住的那一层都要 <code>Style.Flex: 1</code>，否则窗口按内容高度排，状态栏会被顶出去。</p>
-<div class="demo"><pre><span class="kw">var</span> App = ui.<span class="fn">Component</span>(<span class="kw">func</span>(ctx *ui.SetupContext) <span class="kw">func</span>() *ui.VNode {
-    n := ui.<span class="fn">Ref</span>(<span class="num">0</span>)
-    <span class="kw">return func</span>() *ui.VNode {
-        <span class="kw">return</span> ui.<span class="fn">VStack</span>(ui.Props{Style: ui.Style{Flex: <span class="num">1</span>, Padding: <span class="num">16</span>, Gap: <span class="num">8</span>}},
-            ui.<span class="fn">Text</span>(<span class="str">"点击了 "</span>, n.<span class="fn">Get</span>(), <span class="str">" 次"</span>),
-            ui.<span class="fn">Button</span>(ui.Props{OnClick: <span class="kw">func</span>() { n.<span class="fn">Set</span>(n.<span class="fn">Get</span>() + <span class="num">1</span>) }}, <span class="str">"点我"</span>),
-        )
-    }
+<span class="tok-kw">import</span> <span class="tok-str">&quot;github.com/goedui/goed/ui&quot;</span>
+
+<span class="tok-com">// 1. 根组件：setup 只跑一次，返回渲染函数。</span>
+<span class="tok-kw">var</span> <span class="tok-typ">App</span> = ui.<span class="tok-fn">Component</span>(<span class="tok-kw">func</span>(_ *ui.<span class="tok-typ">SetupContext</span>) <span class="tok-kw">func</span>() *ui.<span class="tok-typ">VNode</span> {
+	<span class="tok-kw">return</span> <span class="tok-kw">func</span>() *ui.<span class="tok-typ">VNode</span> {
+		<span class="tok-kw">return</span> ui.<span class="tok-fn">VStack</span>(
+			ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Flex: <span class="tok-num">1</span>, Padding: <span class="tok-num">20</span>, Gap: <span class="tok-num">12</span>}},
+			ui.<span class="tok-fn">Text</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Height: <span class="tok-num">24</span>}}, <span class="tok-str">&quot;你好，goed UI&quot;</span>),
+			ui.<span class="tok-fn">Button</span>(ui.<span class="tok-typ">Props</span>{OnClick: <span class="tok-kw">func</span>() {}}, <span class="tok-str">&quot;点击&quot;</span>),
+		)
+	}
 })
 
-<span class="kw">func</span> <span class="fn">main</span>() {
-    ui.<span class="fn">CreateApp</span>(App).Title(<span class="str">"demo"</span>).Size(<span class="num">960</span>, <span class="num">640</span>).Theme(<span class="str">"light"</span>).Run()
-}</pre></div>
-<div class="note"><code>Run()</code> 必须在主 goroutine。后台改 UI 用 <code>runtime.Dispatcher</code> + <code>platform.Post</code>；测试里 <code>Post</code> 为 nil 时只入队，要自己 <code>Drain()</code>。</div>
+<span class="tok-kw">func</span> <span class="tok-fn">main</span>() {
+	<span class="tok-com">// 2. 应用外壳：窗口标题、尺寸、主题。</span>
+	<span class="tok-kw">if</span> err := ui.<span class="tok-fn">CreateApp</span>(<span class="tok-typ">App</span>).
+		<span class="tok-fn">Title</span>(<span class="tok-str">&quot;示例&quot;</span>).
+		<span class="tok-fn">Size</span>(<span class="tok-num">800</span>, <span class="tok-num">600</span>).
+		<span class="tok-typ">Theme</span>(<span class="tok-str">&quot;light&quot;</span>).
+		<span class="tok-fn">Run</span>(); err != <span class="tok-kw">nil</span> {
+		<span class="tok-fn">panic</span>(err)
+	}
+}</code></pre></div><h2 id="sec-3">分层</h2><div class="table-wrap"><table><thead><tr><th>包</th><th>职责</th></tr></thead><tbody><tr><td><code>ui</code></td><td>应用层唯一入口：构造节点、创建应用、窗口与编辑 API。</td></tr><tr><td><code>ui/components</code></td><td>全部控件实现，<code>init</code> 里向渲染器注册。</td></tr><tr><td><code>ui/renderer</code></td><td>布局、绘制、命中、主题应用，平台无关。</td></tr><tr><td><code>ui/runtime</code></td><td><code>VNode</code> / <code>Props</code> / <code>Style</code>、组件实例与状态。</td></tr><tr><td><code>ui/platform</code></td><td>窗口、IME、剪贴板、文件对话框等系统能力。</td></tr><tr><td><code>ui/theme</code></td><td>主题值：浅色 / 深色 / 自定义。</td></tr></tbody></table></div><h2 id="sec-4">平台支持</h2><ul><li>Windows 10 / 11：主目标平台，Direct2D 后端。</li><li>Linux：X11 后端。</li><li>Web：<code>js &amp;&amp; wasm</code> 后端，跑在 canvas 上。</li><li>macOS：后端尚未实现。</li></ul><div class="note info">本页文档由 <code>docs/gen</code> 从源码旁的说明数据生成，界面 API 以 v1.0.0 的 <code>ui/</code> 为准。</div></div><div class="page" id="page-install" data-slug="install"><div class="crumb">开始</div><h1>安装</h1><p class="lead">goed UI 是库，不是可执行命令，也不需要 <code>go install</code>。给已有的 Go 模块加一行依赖即可。</p><hr class="rule"><h2 id="sec">要求</h2><ul><li>Go 1.23 及以上。</li><li>一个已有的 Go 模块；没有就先 <code>go mod init example.com/myapp</code>。</li></ul><h2 id="sec-2">取依赖</h2><div class="code"><div class="code-head"><span>BASH</span><button class="copy" type="button">复制</button></div><pre><code>go get github.com/goedui/goed/ui@latest</code></pre></div><h2 id="sec-3">导入</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code><span class="tok-kw">import</span> (
+	<span class="tok-str">&quot;github.com/goedui/goed/ui&quot;</span>
+	<span class="tok-str">&quot;github.com/goedui/goed/ui/renderer&quot;</span> <span class="tok-com">// 只在 Canvas 自绘时需要</span>
+)</code></pre></div><h2 id="sec-4">单独的应用模块</h2><p>仓库里有几个目录自带 <code>go.mod</code>（<code>browser/</code>、<code>banzip/</code>、<code>tmp/</code>）。它们用 <code>replace</code> 指回根模块，构建与测试要先 <code>cd</code> 进去：</p><div class="code"><div class="code-head"><span>BASH</span><button class="copy" type="button">复制</button></div><pre><code>cd browser
+go test ./...
+go build ./...</code></pre></div><div class="note warn">根目录的 <code>go.mod</code> 由作者手动维护；应用需要第三方依赖时，在自己的应用目录下单独建 <code>go.mod</code>。</div></div><div class="page" id="page-quickstart" data-slug="quickstart"><div class="crumb">开始</div><h1>快速上手</h1><p class="lead">从空目录到一个能点的计数器，大约 30 行。</p><hr class="rule"><h2 id="sec">最小可运行程序</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code><span class="tok-kw">package</span> main
 
-<h2 id="model">编程模型</h2>
-<h3>组件</h3>
-<p><code>Component(setup)</code> 在创建时跑一次 setup，返回的函数是渲染函数。状态放 <code>Ref</code>，改值后请求重绘。生命周期在 <code>SetupContext</code> 上：<code>OnMounted</code> / <code>OnUnmounted</code> / <code>Invalidate</code> / <code>Props</code> / <code>Attr</code> / <code>Children</code>。<code>Attr(key)</code> 按名字读少数注入字段：<code>state</code> / <code>dispatcher</code> / <code>focus</code> / <code>path</code> / <code>label</code>；<code>Children()</code> 是默认 slot。</p>
-<p><code>OnMounted</code> 发生在第一次渲染之后，早于布局。要读 <code>X/Y/W/H</code> 用 <code>SetAfterPaint</code>，那时本帧布局已经写进节点。子组件实例按 vnode 路径缓存跨帧复用，<code>Props.Key</code> 参与调和（节点上用 <code>.WithKey("id")</code> 设 key）。没有 computed / watch / emit / 具名 slot，也没有 VNode diff——脏时整棵应用树重建。</p>
-<h3>节点</h3>
-<p><code>H(type, props?, children...)</code> 是底层工厂。<code>VStack</code> / <code>HStack</code> 的 children 可以是 <code>*VNode</code> 或 <code>[]*VNode</code>，不要把 <code>[]any</code> 和 <code>Props</code> 一起 <code>...</code> 展开。<code>Button</code> 的签名是 <code>(props?, label)</code>，不是通用 children 工厂。</p>
-<p>颜色 <code>A == 0</code> 表示未设置，不要用全 0 RGB 当黑色。单位是 DIP，96 DIP = 1 英寸。<code>X/Y/W/H</code> 只在 <code>PaintTree</code> 之后有效。</p>
-<h3>浮层</h3>
-<p><code>popover</code>、<code>dialog</code> 和 <code>ctxmenu</code>（右键面板）是 Overlay：后绘制、后命中。新浮层必须把 tag 加进 <code>runtime.OverlayTag</code>，否则会被后面的内容盖住、点不到。键盘顺序是 dialog → ctxmenu → popover → 焦点 → 其余；ctxmenu 排在 popover 前，是为了让 Esc 先关最后打开的那一层。</p>
+<span class="tok-kw">import</span> <span class="tok-str">&quot;github.com/goedui/goed/ui&quot;</span>
 
-<h2 id="layout">布局</h2>
-<p>流式布局由 <code>VStack</code> / <code>HStack</code> 完成。第一个 <code>layer</code> 孩子铺满，其余按自然尺寸叠在 <code>(x, y)</code>。文本节点必须给够 <code>Height</code>，否则字形下半会被裁掉。</p>
-<table class="api">
-<thead><tr><th>字段</th><th>说明</th><th>类型</th><th>默认</th></tr></thead>
-<tbody>
-<tr><td>Flex</td><td>在父级主轴上分剩余空间。根节点用 1 铺满窗口</td><td>float32</td><td>0</td></tr>
-<tr><td>Width / Height</td><td>固定尺寸。0 表示未设置，走测量</td><td>float32</td><td>0</td></tr>
-<tr><td>MinWidth / MinHeight / MaxWidth / MaxHeight</td><td>尺寸夹取</td><td>float32</td><td>0</td></tr>
-<tr><td>Padding / Margin / Gap</td><td>内边距、外边距、子项间距。Margin 可为负；绝对定位不占父级空间</td><td>float32</td><td>0</td></tr>
-<tr><td>Align / Justify</td><td><code>start</code> <code>center</code> <code>end</code> <code>stretch</code></td><td>string</td><td>start</td></tr>
-<tr><td>Overflow / OverflowX / OverflowY</td><td><code>visible</code> <code>hidden</code> <code>auto</code> <code>scroll</code>。轴字段非空时盖过 Overflow</td><td>string</td><td>visible</td></tr>
-<tr><td>Position</td><td>空为 static。<code>relative</code> 仍占位再平移；<code>absolute</code> 脱离文档流</td><td>string</td><td>""</td></tr>
-<tr><td>Top / Right / Bottom / Left</td><td>0 默认是「没写」。要钉在 0，把对应位写进 Inset</td><td>float32</td><td>0</td></tr>
-<tr><td>Inset</td><td><code>InsetTop</code> <code>InsetRight</code> <code>InsetBottom</code> <code>InsetLeft</code> <code>InsetAll</code></td><td>uint8</td><td>0</td></tr>
-</tbody>
-</table>
-<div class="demo"><div class="demo-stage"><div class="fake">
-  <span class="boxy">侧栏 240</span><span class="boxy" style="flex:1;min-width:180px;background:#f2f3f5">Flex: 1</span>
-</div></div><pre>ui.<span class="fn">HStack</span>(ui.Props{Style: ui.Style{Flex: <span class="num">1</span>}},
-    ui.<span class="fn">Box</span>(ui.Props{Style: ui.Style{Width: <span class="num">240</span>}}),
-    ui.<span class="fn">VStack</span>(ui.Props{Style: ui.Style{Flex: <span class="num">1</span>, Padding: <span class="num">12</span>, Gap: <span class="num">8</span>}}),
-)</pre></div>
-
-<h2 id="button">Button 按钮</h2>
-<p>按钮只吃 label，不吃 children。图标名走 <code>Icon</code>，和文字并排。浅色底会自动挑深色字。</p>
-<div class="demo"><div class="demo-stage"><div class="fake">
-  <span class="btn primary">主要按钮</span><span class="btn">次要按钮</span><span class="btn ghost">文字按钮</span>
-</div></div><pre>ui.<span class="fn">Button</span>(ui.Props{
-    Icon: <span class="str">"save"</span>,
-    Style: ui.Style{Background: ui.<span class="fn">RGB</span>(<span class="num">22</span>, <span class="num">93</span>, <span class="num">255</span>), Color: ui.<span class="fn">RGB</span>(<span class="num">255</span>, <span class="num">255</span>, <span class="num">255</span>)},
-    OnClick: save,
-}, <span class="str">"保存"</span>)</pre></div>
-<h3>API</h3>
-<table class="api">
-<thead><tr><th>参数</th><th>说明</th><th>类型</th><th>默认值</th></tr></thead>
-<tbody>
-<tr><td>label</td><td>第二个参数，按钮文字</td><td>string</td><td>-</td></tr>
-<tr><td>Variant</td><td><code>secondary</code> / <code>ghost</code> 走标题栏色；缺省主题主色</td><td>string</td><td>-</td></tr>
-<tr><td>OnClick</td><td>点击回调</td><td>func()</td><td>-</td></tr>
-<tr><td>Icon</td><td>左侧矢量图标名</td><td>string</td><td>-</td></tr>
-<tr><td>Disabled</td><td>禁用。不响应悬停和点击</td><td>bool</td><td>false</td></tr>
-<tr><td>Selected</td><td>选中态，用主色底</td><td>bool</td><td>false</td></tr>
-<tr><td>Gradient</td><td>线性渐变底。nil 时用 Style.Background</td><td>*GradientFill</td><td>nil</td></tr>
-<tr><td>Shadow</td><td>圆角投影</td><td>*ShadowStyle</td><td>nil</td></tr>
-<tr><td>Style</td><td>宽高、内边距、字号、颜色、圆角</td><td>Style</td><td>主题</td></tr>
-</tbody>
-</table>
-
-<h2 id="input">Input 输入框</h2>
-<p>单行文本。外部改 <code>Value</code> 时内部缓冲让位。光标、选区、输入法组合串、撤销和 Textarea 共用一套编辑核心。</p>
-<div class="demo"><div class="demo-stage"><div class="fake"><span class="field">请输入</span></div></div><pre>ui.<span class="fn">Input</span>(ui.Props{
-    ID: <span class="str">"name"</span>, Value: name, Placeholder: <span class="str">"请输入"</span>,
-    OnInput: <span class="kw">func</span>(v <span class="kw">string</span>) { name = v },
-    OnSubmit: <span class="kw">func</span>(v <span class="kw">string</span>) { commit(v) },
-})</pre></div>
-<table class="api">
-<thead><tr><th>参数</th><th>说明</th><th>类型</th><th>默认值</th></tr></thead>
-<tbody>
-<tr><td>ID</td><td>焦点、滚动和 EditOp 的键</td><td>string</td><td>-</td></tr>
-<tr><td>Value</td><td>当前文本。外部改值以此为准</td><td>string</td><td>""</td></tr>
-<tr><td>Placeholder</td><td>空值占位</td><td>string</td><td>-</td></tr>
-<tr><td>Password</td><td>密码显示</td><td>bool</td><td>false</td></tr>
-<tr><td>Readonly</td><td>只读。不显示光标、不接受输入</td><td>bool</td><td>false</td></tr>
-<tr><td>Disabled</td><td>禁用，并去掉焦点环</td><td>bool</td><td>false</td></tr>
-<tr><td>Multiline</td><td>把 Input 按多行绘制（顶对齐）</td><td>bool</td><td>false</td></tr>
-<tr><td>OnInput</td><td>文本变化</td><td>func(string)</td><td>-</td></tr>
-<tr><td>OnSubmit</td><td>单行回车提交</td><td>func(string)</td><td>-</td></tr>
-<tr><td>OnBlur</td><td>焦点离开</td><td>func()</td><td>-</td></tr>
-</tbody>
-</table>
-
-<h2 id="textarea">Textarea 多行输入</h2>
-<p>高度随内容增长（<code>MinHeight</code> / <code>MaxHeight</code> 夹取），到上限后内部滚动。接了 <code>OnSubmit</code> 时 Enter 提交、Shift+Enter 换行；没接时 Enter 就是换行。Ctrl+Enter 仍是提交的历史别名。</p>
-<div class="demo"><pre>ui.<span class="fn">Textarea</span>(ui.Props{
-    ID: <span class="str">"sql"</span>, Value: text, Nowrap: <span class="kw">true</span>,
-    Style: ui.Style{Flex: <span class="num">1</span>, MinHeight: <span class="num">120</span>, MaxHeight: <span class="num">480</span>},
-    OnInput: <span class="kw">func</span>(v <span class="kw">string</span>) { text = v },
-    OnKeyDown: <span class="kw">func</span>(e ui.KeyEvent) <span class="kw">bool</span> {
-        <span class="kw">if</span> e.Ctrl && e.Key == ui.KeyA && e.Down { ui.<span class="fn">SelectAllStay</span>(node); <span class="kw">return true</span> }
-        <span class="kw">return false</span>
-    },
-})</pre></div>
-<table class="api">
-<thead><tr><th>参数</th><th>说明</th><th>类型</th><th>默认值</th></tr></thead>
-<tbody>
-<tr><td>Value / Placeholder / Readonly / Disabled</td><td>与 Input 相同</td><td>-</td><td>-</td></tr>
-<tr><td>Nowrap</td><td>不自动换行，超长行横向滚动</td><td>bool</td><td>false</td></tr>
-<tr><td>Style.MinHeight / MaxHeight</td><td>自动高度的上下限</td><td>float32</td><td>-</td></tr>
-<tr><td>OnSubmit</td><td>Enter 或 Ctrl+Enter 提交</td><td>func(string)</td><td>-</td></tr>
-<tr><td>OnScroll</td><td>纵向偏移变化。滚轮、光标跟随、外部设置都会通知</td><td>func(float32)</td><td>-</td></tr>
-<tr><td>OnKeyDown</td><td>先于编辑核心。返回 true 则吞掉按键</td><td>KeyHandler</td><td>-</td></tr>
-<tr><td>OnWheel</td><td>滚轮。到头返回 false 交给外层（delta 正值向上）</td><td>func / func(float32) bool / func(x,y,delta) bool</td><td>-</td></tr>
-<tr><td>OnContextMenu</td><td>右键，参数是客户区坐标</td><td>func(x, y float32)</td><td>-</td></tr>
-</tbody>
-</table>
-<h3>编辑命令</h3>
-<table class="api">
-<thead><tr><th>函数</th><th>说明</th></tr></thead>
-<tbody>
-<tr><td>SetFocus / FocusedID</td><td>设置或读取焦点 id。空字符串取消焦点</td></tr>
-<tr><td>CaretLineCol / MoveCaret</td><td>读或设置光标行列（0 基，列按 rune 计）</td></tr>
-<tr><td>SelectedRange / SelectRange / SelectAll / SelectAllStay</td><td>选区是<b>字节</b>区间 [from, to)。SelectAllStay 不滚动视口</td></tr>
-<tr><td>EditOp / EditOpID</td><td><code>undo</code> <code>redo</code> <code>cut</code> <code>copy</code> <code>paste</code> <code>delete</code> <code>selectall</code></td></tr>
-<tr><td>ResetInputState</td><td>丢掉某个编辑框的内部状态</td></tr>
-<tr><td>FocusedCaretRect</td><td>当前焦点编辑框的光标矩形（客户区 DIP），宿主贴输入法候选窗用</td></tr>
-<tr><td>TextareaScrollY / TextareaScrollMax / SetTextareaScrollY / PageTextarea</td><td>多行纵向滚动</td></tr>
-<tr><td>TextareaOffsetY(id, off) / TextareaLineHeight(id)</td><td>某字节偏移的内容纵坐标 / 当前行高</td></tr>
-</tbody>
-</table>
-
-<h2 id="select">Select 选择器</h2>
-<p>点击展开 Popover。必须有稳定 <code>ID</code>，开合状态按 id 存在进程级 map 里，测试结束要 <code>SetSelectOpen(id, false)</code>。<code>Compact</code> 只画箭头，给「输入框 + ▼」拆分布局。</p>
-<div class="demo"><div class="demo-stage"><div class="fake"><span class="field" style="color:#1d2129">1024 × 1024 ▾</span></div></div><pre>ui.<span class="fn">Select</span>(ui.Props{
-    ID: <span class="str">"size"</span>, Value: size, Placeholder: <span class="str">"选择尺寸"</span>,
-    Items: []<span class="kw">string</span>{<span class="str">"1024 × 1024"</span>, <span class="str">"---"</span>, <span class="str">"自定义"</span>},
-    OnChange: <span class="kw">func</span>(v <span class="kw">string</span>) { size = v },
-})</pre></div>
-<table class="api">
-<thead><tr><th>参数</th><th>说明</th><th>类型</th><th>默认值</th></tr></thead>
-<tbody>
-<tr><td>ID</td><td>开合状态键。空 id 无法记住展开</td><td>string</td><td>-</td></tr>
-<tr><td>Value</td><td>当前值，直接显示</td><td>string</td><td>-</td></tr>
-<tr><td>Items</td><td>选项。<code>---</code> 或 <code>-</code> 是分隔线</td><td>[]string</td><td>-</td></tr>
-<tr><td>Placeholder</td><td>无值时的文案</td><td>string</td><td>-</td></tr>
-<tr><td>Compact</td><td>只画箭头，默认宽 44</td><td>bool</td><td>false</td></tr>
-<tr><td>Disabled</td><td>不展开</td><td>bool</td><td>false</td></tr>
-<tr><td>OnChange</td><td>选中后回调新值</td><td>func(string)</td><td>-</td></tr>
-<tr><td>OnOpen</td><td>展开状态变化</td><td>func(bool)</td><td>-</td></tr>
-<tr><td>OnEmpty</td><td>没有选项时点击</td><td>func()</td><td>-</td></tr>
-</tbody>
-</table>
-
-<h2 id="checkbox">Checkbox 复选框</h2>
-<p>方框、对勾和标签整块可点。状态由外部持有，点击回调的是新值。</p>
-<div class="demo"><div class="demo-stage"><div class="fake"><span class="check">✓</span><span>非空</span></div></div><pre>ui.<span class="fn">Checkbox</span>(ui.Props{
-    Value: notNull, Label: <span class="str">"非空"</span>, Disabled: locked,
-    OnChange: <span class="kw">func</span>(v <span class="kw">bool</span>) { notNull = v },
-})</pre></div>
-<table class="api">
-<thead><tr><th>参数</th><th>说明</th><th>类型</th><th>默认值</th></tr></thead>
-<tbody>
-<tr><td>Value</td><td>是否勾选</td><td>bool</td><td>false</td></tr>
-<tr><td>Label</td><td>右侧文字</td><td>string</td><td>-</td></tr>
-<tr><td>Disabled</td><td>置灰且不吃点击</td><td>bool</td><td>false</td></tr>
-<tr><td>OnChange</td><td>点击后的新值</td><td>func(bool)</td><td>-</td></tr>
-</tbody>
-</table>
-
-<h2 id="switch">Switch 开关</h2>
-<p>滑块有 140ms 过渡。开启、关闭和滑块颜色可单独覆盖。</p>
-<div class="demo"><div class="demo-stage"><div class="fake"><span class="sw"><i></i></span><span>启用尺寸</span></div></div><pre>ui.<span class="fn">Switch</span>(ui.Props{
-    ID: <span class="str">"size-on"</span>, Value: enabled, Label: <span class="str">"启用尺寸"</span>,
-    OnChange: <span class="kw">func</span>(v <span class="kw">bool</span>) { enabled = v },
-})</pre></div>
-<table class="api">
-<thead><tr><th>参数</th><th>说明</th><th>类型</th><th>默认值</th></tr></thead>
-<tbody>
-<tr><td>Value</td><td>当前开关</td><td>bool</td><td>false</td></tr>
-<tr><td>Label</td><td>无障碍标签</td><td>string</td><td>-</td></tr>
-<tr><td>Disabled</td><td>不吃点击</td><td>bool</td><td>false</td></tr>
-<tr><td>OnBG / OffBG / Knob</td><td>开轨、关轨、滑块颜色</td><td>颜色</td><td>主题 / 白</td></tr>
-<tr><td>OnChange</td><td>点击后的新值</td><td>func(bool)</td><td>-</td></tr>
-</tbody>
-</table>
-
-<h2 id="tabs">Tabs 标签页</h2>
-<p><code>variant: "pill"</code> 是胶囊，默认是矩形页签。子节点会排到标签栏尾部。</p>
-<div class="demo"><div class="demo-stage"><div class="tabs"><b>结果</b><span>历史</span></div></div><pre>ui.<span class="fn">Tabs</span>(ui.Props{
-    Variant: <span class="str">"pill"</span>, Value: tab,
-    Items: []ui.Tab{{ID: <span class="str">"result"</span>, Label: <span class="str">"结果"</span>, Icon: <span class="str">"sparkle"</span>}, {ID: <span class="str">"history"</span>, Label: <span class="str">"历史"</span>, Closable: <span class="kw">true</span>}},
-    OnChange: <span class="kw">func</span>(id <span class="kw">string</span>) { tab = id },
-    OnClose: <span class="kw">func</span>(id <span class="kw">string</span>) { closeTab(id) },
-})</pre></div>
-<table class="api">
-<thead><tr><th>参数</th><th>说明</th><th>类型</th><th>默认值</th></tr></thead>
-<tbody>
-<tr><td>Items</td><td><code>[]Tab{ID, Label, Icon, Closable, Disabled, CloseID}</code></td><td>[]Tab</td><td>-</td></tr>
-<tr><td>Value</td><td>当前选中 id</td><td>string</td><td>-</td></tr>
-<tr><td>Variant</td><td><code>pill</code> 或默认矩形</td><td>string</td><td>""</td></tr>
-<tr><td>OnChange</td><td>选中变化，参数是 tab id</td><td>func(string)</td><td>-</td></tr>
-<tr><td>OnClose</td><td>点关闭，参数是 tab id</td><td>func(string)</td><td>-</td></tr>
-<tr><td>SelectedBackground / SelectedColor</td><td>选中项颜色</td><td>Color</td><td>主题</td></tr>
-<tr><td>ItemBackground / ItemColor / ItemBorder / CloseColor</td><td>未选中项和关闭按钮</td><td>Color</td><td>主题</td></tr>
-</tbody>
-</table>
-
-<h2 id="menu">MenuBar 菜单</h2>
-<p>不要在应用里手写 Button + Popover 菜单。顶层菜单用 <code>MenuBar</code>，右键用 <code>ContextMenu</code>。两项都用 <code>MenuItem</code>，<code>Sep</code> 画分隔线，<code>Shortcut</code> 用制表符对齐。</p>
-<div class="demo"><pre>ui.<span class="fn">MenuBar</span>(ui.Props{
-    ID: <span class="str">"menu"</span>, Open: openMenu,
-    Menus: []ui.Menu{{Label: <span class="str">"文件"</span>, Items: []ui.MenuItem{
-        {Label: <span class="str">"打开"</span>, Shortcut: <span class="str">"Ctrl+O"</span>, Action: open},
-        {Sep: <span class="kw">true</span>},
-        {Label: <span class="str">"退出"</span>, Action: ui.CloseWindow},
-    }}},
-    OnOpen: <span class="kw">func</span>(id <span class="kw">string</span>) { openMenu = id },
+<span class="tok-kw">var</span> Counter = ui.<span class="tok-fn">Component</span>(<span class="tok-kw">func</span>(_ *ui.<span class="tok-typ">SetupContext</span>) <span class="tok-kw">func</span>() *ui.<span class="tok-typ">VNode</span> {
+	<span class="tok-com">// setup 里创建状态：Ref 一改，界面就重绘。</span>
+	count := ui.<span class="tok-typ">Ref</span>(<span class="tok-num">0</span>)
+	<span class="tok-kw">return</span> <span class="tok-kw">func</span>() *ui.<span class="tok-typ">VNode</span> {
+		<span class="tok-kw">return</span> ui.<span class="tok-fn">VStack</span>(
+			ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Flex: <span class="tok-num">1</span>, Padding: <span class="tok-num">24</span>, Gap: <span class="tok-num">12</span>, Background: ui.<span class="tok-fn">RGB</span>(<span class="tok-num">255</span>, <span class="tok-num">255</span>, <span class="tok-num">255</span>)}},
+			ui.<span class="tok-fn">Text</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Height: <span class="tok-num">32</span>, FontSize: <span class="tok-num">24</span>, Weight: <span class="tok-num">600</span>}}, <span class="tok-str">&quot;Hello, goed UI&quot;</span>),
+			ui.<span class="tok-fn">Text</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Height: <span class="tok-num">24</span>}}, <span class="tok-str">&quot;点击次数：&quot;</span>, count.<span class="tok-fn">Get</span>()),
+			ui.<span class="tok-fn">Button</span>(ui.<span class="tok-typ">Props</span>{OnClick: <span class="tok-kw">func</span>() { count.<span class="tok-fn">Set</span>(count.<span class="tok-fn">Get</span>() + <span class="tok-num">1</span>) }}, <span class="tok-str">&quot;点我&quot;</span>),
+		)
+	}
 })
 
-ui.<span class="fn">ContextMenu</span>(ui.Props{
-    AtX: x, AtY: y,
-    Items: []ui.MenuItem{{Label: <span class="str">"复制"</span>, Action: copy}},
-    OnClose: <span class="kw">func</span>() { menu = <span class="kw">nil</span> },
-})</pre></div>
-<table class="api">
-<thead><tr><th>参数</th><th>说明</th><th>类型</th><th>默认值</th></tr></thead>
-<tbody>
-<tr><td>Menus</td><td>顶层菜单。<code>Menu{ID, Label, Items}</code></td><td>[]Menu</td><td>-</td></tr>
-<tr><td>Open</td><td>当前展开的 id 或 label。空字符串收起</td><td>string</td><td>""</td></tr>
-<tr><td>OnOpen</td><td>展开变化</td><td>func(string)</td><td>-</td></tr>
-<tr><td>PopupId</td><td>下拉节点 id</td><td>string</td><td><code><id>-popup</code></td></tr>
-<tr><td>Items</td><td>右键项。<code>MenuItem{Label, Shortcut, Sep, Checked, Action}</code>。空则 ContextMenu 返回 nil</td><td>[]MenuItem</td><td>-</td></tr>
-<tr><td>AtX / AtY</td><td>右键菜单长出的客户区坐标</td><td>float32</td><td>0</td></tr>
-<tr><td>OnClose / OnSelect</td><td>关闭，或在 Action 之后再回调整条标签</td><td>func / func(string)</td><td>-</td></tr>
-</tbody>
-</table>
+<span class="tok-kw">func</span> <span class="tok-fn">main</span>() {
+	<span class="tok-kw">if</span> err := ui.<span class="tok-fn">CreateApp</span>(Counter).<span class="tok-fn">Title</span>(<span class="tok-str">&quot;Hello&quot;</span>).<span class="tok-fn">Size</span>(<span class="tok-num">600</span>, <span class="tok-num">400</span>).<span class="tok-fn">Run</span>(); err != <span class="tok-kw">nil</span> {
+		<span class="tok-fn">panic</span>(err)
+	}
+}</code></pre></div><h2 id="sec-2">跑起来</h2><div class="code"><div class="code-head"><span>BASH</span><button class="copy" type="button">复制</button></div><pre><code>go run .            <span class="tok-com"># 跑当前应用</span>
+go build -o app.exe <span class="tok-com"># 出可执行文件</span></code></pre></div><h2 id="sec-3">仓库里的示例应用</h2><div class="table-wrap"><table><thead><tr><th>目录</th><th>内容</th></tr></thead><tbody><tr><td><code>helloworld/</code></td><td>最小的声明式界面。</td></tr><tr><td><code>note/</code></td><td>复刻记事本：菜单栏、多行编辑、状态栏。</td></tr><tr><td><code>wx/</code></td><td>复刻微信账号选择窗口：自绘标题栏、绝对定位。</td></tr><tr><td><code>md-previewer/</code></td><td>Markdown 预览：自绘顶栏、源码编辑 + 渲染。</td></tr></tbody></table></div><h2 id="sec-4">三条容易踩的规矩</h2><ol><li>根节点要 <code>Style.Flex: 1</code>，否则走「主题 padding + 自然高度」分支，界面缩在顶部。</li><li><code>Run()</code> 必须在主 goroutine 调用；跨线程改窗口尺寸走 <code>ui.SetWindowSize</code>（内部会 Post）。</li><li>文本节点给够 <code>Style.Height</code>，不然 DirectWrite 会把字形下半裁掉。</li></ol></div><div class="page" id="page-vnode" data-slug="vnode"><div class="crumb">基础</div><h1>节点与子内容</h1><p class="lead"><code>ui.H</code> 是通用节点工厂，子内容可以是节点、节点数组或任意会被拼成文本的值。</p><hr class="rule"><h2 id="sec">构造节点</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code><span class="tok-com">// 通用工厂：标签名是引擎内置的控件名</span>
+ui.<span class="tok-fn">H</span>(<span class="tok-str">&quot;box&quot;</span>, ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Flex: <span class="tok-num">1</span>}}, child)
 
-<h2 id="dialog">Dialog 对话框</h2>
-<p>铺满父级的半透明遮罩加居中卡片。Esc 和点击遮罩走 <code>OnClose</code>。确认框把 <code>Modal</code> 设为 true（内部写入 <code>dismiss=false</code>），避免点遮罩关掉。遮罩吃掉滚轮，不会穿透到下面的编辑区。</p>
-<div class="demo"><pre>ui.<span class="fn">Dialog</span>(ui.Props{
-    Title: <span class="str">"保存更改"</span>, Message: <span class="str">"文件已修改。"</span>,
-    ContentWidth: <span class="num">360</span>, Modal: <span class="kw">true</span>,   <span class="cm">// 卡片宽；点遮罩不关</span>
-    OnEnter: save, OnClose: cancel,
-},
-    ui.<span class="fn">HStack</span>(ui.Props{Style: ui.Style{Gap: <span class="num">8</span>, Justify: ui.End}},
-        ui.<span class="fn">Button</span>(ui.Props{OnClick: cancel}, <span class="str">"取消"</span>),
-        ui.<span class="fn">Button</span>(ui.Props{OnClick: save}, <span class="str">"保存"</span>),
-    ),
-)</pre></div>
-<table class="api">
-<thead><tr><th>参数</th><th>说明</th><th>类型</th><th>默认值</th></tr></thead>
-<tbody>
-<tr><td>Title / Message</td><td>标题和正文。正文可含换行</td><td>string</td><td>-</td></tr>
-<tr><td>ContentWidth</td><td>卡片宽度，夹在 240 和父级之间</td><td>float32</td><td>400</td></tr>
-<tr><td>OnClose</td><td>Esc、点遮罩</td><td>func()</td><td>-</td></tr>
-<tr><td>OnEnter</td><td>Enter。优先于关闭</td><td>func()</td><td>-</td></tr>
-<tr><td>Modal</td><td>点遮罩不关闭（内部写入 dismiss=false）</td><td>bool</td><td>false</td></tr>
-<tr><td>CloseOnEnter</td><td>Enter 是否同时关闭</td><td>bool</td><td>false</td></tr>
-<tr><td>children</td><td>标题和正文之下的自定义内容，例如按钮行</td><td>*VNode</td><td>-</td></tr>
-</tbody>
-</table>
-<div class="warn">Dialog 会吞掉按键，避免底下的编辑器同时响应。卡片自身的点击不会关闭对话框。</div>
+<span class="tok-com">// 便捷控件：第一参数可以是 Props，也可以是纯子内容</span>
+ui.<span class="tok-fn">Box</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Padding: <span class="tok-num">16</span>}}, child)
+ui.<span class="tok-fn">Text</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Height: <span class="tok-num">22</span>}}, <span class="tok-str">&quot;你好，&quot;</span>, name)
 
-<h2 id="scroll">Scroll 滚动</h2>
-<p>自带滚动条的容器，按 <code>ID</code>（或 Key）存偏移。普通盒子在 <code>VStack</code> / <code>HStack</code> 上直接写 <code>OverflowY: ui.OverflowAuto</code> 也能滚（通用溢出路径，按节点 id 记偏移）；<code>scroll</code> 控件有自己的布局，不走那条路。滚轮到头会继续向外冒泡。</p>
-<div class="demo"><pre>ui.<span class="fn">Scroll</span>(ui.Props{ID: <span class="str">"list"</span>, WideBar: <span class="kw">true</span>, Style: ui.Style{Flex: <span class="num">1</span>}}, rows...)
-y := ui.<span class="fn">ScrollOffset</span>(<span class="str">"list"</span>)
-ui.<span class="fn">ScrollBy</span>(<span class="str">"list"</span>, -<span class="num">1</span>)</pre></div>
-<table class="api">
-<thead><tr><th>函数</th><th>说明</th></tr></thead>
-<tbody>
-<tr><td>ScrollOffset / SetScrollOffset</td><td>读或写纵向偏移</td></tr>
-<tr><td>ScrollMax / ScrollBy</td><td>可滚上限；按滚轮格滚动，正值向上</td></tr>
-<tr><td>WideBar</td><td>Props 字段。留出 22 DIP 滑槽，避免细滚动条盖住最后一列</td></tr>
-<tr><td>ContentHeight / ScrollBottomGap / ScrollToEnd</td><td>内容高度 / 距底部 DIP / 滚到最底。<b>在 components 包，未从 ui 再导出</b>；流式贴底用 <code>ScrollBottomGap(id)==0 → ScrollToEnd(id)</code></td></tr>
-</tbody>
-</table>
+<span class="tok-com">// 自定义组件（*ui.ComponentDef）</span>
+ui.<span class="tok-fn">H</span>(editor.View, ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Flex: <span class="tok-num">1</span>}, Path: path})</code></pre></div><h2 id="sec-2">子内容规则</h2><ul><li>children 可以是 <code>*VNode</code>、<code>[]*VNode</code>，或会被格式化成文本的值（数字、<code>Ref</code>、<code>fmt.Stringer</code>）。</li><li>不要写 <code>children...</code> 展开一个 <code>[]any</code> 再拼 <code>Props</code> —— 类型对不上，编译直接失败。</li><li><code>ui.Button</code> 是例外：签名是 <code>Button(props?, label)</code>，第二个参数是文案，不接子节点。</li></ul><h2 id="key--id">Key 与 ID</h2><ul><li>列表项用 <code>node.WithKey(&quot;id&quot;)</code> 或 <code>ui.Props{Key: &quot;id&quot;}</code>，重排时实例状态跟着走。</li><li><code>ui.Props.ID</code> 是有语义的全局 id：滚动位置、编辑状态、焦点、Select 开合、浮层锚点都按它存。</li><li><code>node.ID()</code> 读回 id（没写时按结构生成）。</li></ul><h2 id="sec-3">找节点</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>n := ui.<span class="tok-fn">FindByID</span>(ui.<span class="tok-fn">LayoutRoot</span>(), <span class="tok-str">&quot;main-input&quot;</span>)
+<span class="tok-kw">if</span> n != <span class="tok-kw">nil</span> {
+	ui.<span class="tok-fn">SetFocus</span>(<span class="tok-str">&quot;main-input&quot;</span>)
+}</code></pre></div></div><div class="page" id="page-props" data-slug="props"><div class="crumb">基础</div><h1>Props</h1><p class="lead">控件的通用属性都在一个 <code>ui.Props</code> 里：布局与身份、文案、状态、事件、数据、颜色。每个控件只读自己关心的字段。</p><hr class="rule"><h2 id="sec">分组速查</h2><div class="table-wrap"><table><thead><tr><th>类别</th><th>字段</th></tr></thead><tbody><tr><td>布局与身份</td><td><code>Style</code>、<code>Key</code>、<code>ID</code></td></tr><tr><td>文案与标识</td><td><code>Label</code>、<code>Placeholder</code>、<code>Variant</code>、<code>Title</code>、<code>Hint</code>、<code>Icon</code>、<code>Name</code>、<code>Badge</code>、<code>Message</code>、<code>Path</code>、<code>Open</code>、<code>PopupId</code>、<code>Anchor</code>、<code>AlignX</code>、<code>Shortcut</code>、<code>TextAlign</code>、<code>Footer</code></td></tr><tr><td>状态</td><td><code>Disabled</code>、<code>Selected</code>、<code>Password</code>、<code>Compact</code>、<code>Multiline</code>、<code>Readonly</code>、<code>Nowrap</code>、<code>Borderless</code>、<code>Dashed</code>、<code>Vertical</code>、<code>CloseOnEnter</code>、<code>Modal</code>、<code>Focus</code>、<code>WideBar</code>、<code>NoWheelX</code>、<code>Ellipsis</code>、<code>Accent</code></td></tr><tr><td>事件</td><td><code>OnClick</code>、<code>OnMouseEnter</code>、<code>OnMouseLeave</code>、<code>OnChange</code>、<code>OnInput</code>、<code>OnSubmit</code>、<code>OnBlur</code>、<code>OnKeyDown</code>、<code>OnClose</code>、<code>OnOpen</code>、<code>OnSelect</code>、<code>OnEmpty</code>、<code>OnFooter</code>、<code>OnEnter</code>、<code>OnWheel</code>、<code>OnScroll</code>、<code>OnPaint</code>、<code>OnPointerDown</code>、<code>OnContextMenu</code></td></tr><tr><td>数据</td><td><code>Value</code>、<code>Items</code>、<code>Menus</code>、<code>Data</code>、<code>State</code>、<code>Dispatcher</code>、<code>Term</code>、<code>ContentWidth</code></td></tr><tr><td>颜色</td><td><code>SelectedBackground</code>、<code>SelectedColor</code>、<code>ItemBackground</code>、<code>ItemColor</code>、<code>ItemBorder</code>、<code>CloseColor</code>、<code>OpenBackground</code>、<code>OpenColor</code>、<code>OnBG</code>、<code>OffBG</code>、<code>Knob</code></td></tr><tr><td>填充与坐标</td><td><code>Gradient</code>、<code>Shadow</code>、<code>AtX</code>、<code>AtY</code></td></tr></tbody></table></div><h2 id="sec-2">受控与回填</h2><p>值类控件（Input、Textarea、Select、Switch、Checkbox、Slider、Tabs）都是<strong>受控</strong>的：回调收到新值后，应用更新自己的状态，下一次渲染把新值传回 <code>Value</code>。控件只记「编辑中间态、滚动、开合」这类内部状态。</p><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>enabled := ui.<span class="tok-typ">Ref</span>(<span class="tok-kw">false</span>)
+<span class="tok-kw">return</span> ui.<span class="tok-fn">Switch</span>(ui.<span class="tok-typ">Props</span>{
+	ID:       <span class="tok-str">&quot;notify&quot;</span>,
+	Value:    enabled.<span class="tok-fn">Get</span>(),
+	OnChange: <span class="tok-kw">func</span>(on <span class="tok-typ">bool</span>) { enabled.<span class="tok-fn">Set</span>(on) },
+})</code></pre></div><h2 id="sec-3">回调签名</h2><div class="table-wrap"><table><thead><tr><th>字段</th><th>类型</th></tr></thead><tbody><tr><td><code>OnChange</code></td><td><code>func(string)</code> / <code>func(bool)</code> / <code>func(float64)</code>，按控件而定</td></tr><tr><td><code>OnInput</code>、<code>OnSubmit</code>、<code>OnBlur</code></td><td><code>func(string)</code> / <code>func()</code></td></tr><tr><td><code>OnSelect</code></td><td><code>func(string)</code>；ItemMenu 收到 <code>MenuRow.ID</code>，Markdown 收到链接 URL</td></tr><tr><td><code>OnClose</code>、<code>OnOpen</code></td><td><code>func()</code> 或 <code>func(bool)</code> / <code>func(string)</code>，见各控件页</td></tr><tr><td><code>OnKeyDown</code></td><td><code>func(ui.KeyEvent) bool</code>，返回 true 表示已处理</td></tr><tr><td><code>OnContextMenu</code></td><td><code>func(x, y float32)</code>，客户区 DIP 坐标</td></tr><tr><td><code>OnPaint</code></td><td><code>func(renderer.Context, x, y, w, h float32)</code></td></tr></tbody></table></div><div class="note tip"><code>OnClick</code> 只表示「这块矩形可点」，不是组件事件冒泡：谁在最上面就归谁，不会传给父级。</div></div><div class="page" id="page-style" data-slug="style"><div class="crumb">基础</div><h1>Style</h1><p class="lead"><code>Style</code> 对应 CSS 的行内样式：零值表示「没写」，走主题默认；每个节点都能带一份，不限于某个控件。</p><hr class="rule"><h2 id="sec">字段</h2><div class="table-wrap"><table><thead><tr><th>字段</th><th>说明</th></tr></thead><tbody><tr><td><code>Flex</code></td><td>主轴剩余空间的权重；根节点写 1 铺满客户区。</td></tr><tr><td><code>Width</code> <code>Height</code> <code>MinWidth</code> <code>MinHeight</code> <code>MaxWidth</code> <code>MaxHeight</code></td><td>尺寸与约束，单位 DIP。</td></tr><tr><td><code>Padding</code> <code>Margin</code> <code>Gap</code></td><td>内边距、外边距、子项间距。</td></tr><tr><td><code>MarginAuto</code></td><td><code>margin: 0 auto</code>：固定宽度的块在父级内容区里水平居中。</td></tr><tr><td><code>MarginLeftAuto</code></td><td><code>margin-left: auto</code>：横排里吸收左侧剩余空间，把自己与后面的兄弟推到最右。</td></tr><tr><td><code>FontSize</code> <code>FontFamily</code> <code>Weight</code></td><td>字号、字体族、字重。</td></tr><tr><td><code>Align</code> <code>Justify</code></td><td>交叉轴 / 主轴对齐：<code>ui.Start</code>、<code>ui.Center</code>、<code>ui.End</code>、<code>ui.Stretch</code>、<code>ui.SpaceBetween</code>。</td></tr><tr><td><code>Overflow</code> <code>OverflowX</code> <code>OverflowY</code></td><td><code>ui.OverflowVisible</code> / <code>Hidden</code> / <code>Auto</code> / <code>Scroll</code>，轴向字段优先。</td></tr><tr><td><code>Position</code> <code>Top</code> <code>Right</code> <code>Bottom</code> <code>Left</code> <code>Inset</code></td><td><code>relative</code> 占位后平移，<code>absolute</code> 脱离文档流，<code>sticky</code> 滚出容器上沿时钉住。</td></tr><tr><td><code>Color</code> <code>Background</code> <code>Border</code> <code>Radius</code></td><td>前景、背景、描边、圆角。</td></tr></tbody></table></div><h2 id="position--inset">Position 与 Inset</h2><p><code>Top: 0</code> 这类写法默认被当成「没写」，因为零值无法区分。要真的钉在 0 上，必须同时写位标志：</p><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code><span class="tok-com">// 铺满父级宽度（左 0 + 右 0 = 拉满）</span>
+ui.<span class="tok-fn">Text</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{
+	Position: ui.PositionAbsolute,
+	Inset:    ui.InsetLeft | ui.InsetRight,
+	Left:     <span class="tok-num">0</span>, Right: <span class="tok-num">0</span>, Top: <span class="tok-num">120</span>,
+	Align:    ui.Center,
+}}, <span class="tok-str">&quot;居中一行&quot;</span>)</code></pre></div><h2 id="sec-2">绝对定位的包含块</h2><ul><li>最近的 <code>relative</code> / <code>absolute</code> 祖先的 padding 边；没有就相对内容区。</li><li>对边都写了且没写 <code>Width</code> / <code>Height</code> 时，该轴被拉满。</li><li>绝对定位不占父级空间，父级的测量不会把它的尺寸算进去。</li></ul><h2 id="sec-3">颜色</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">RGB</span>(<span class="tok-num">255</span>, <span class="tok-num">255</span>, <span class="tok-num">255</span>)           <span class="tok-com">// 不透明</span>
+ui.<span class="tok-fn">RGBA</span>(<span class="tok-num">0</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>, <span class="tok-num">0</span>)              <span class="tok-com">// 全透明 —— 注意 A == 0 在 Style 里表示「未设置」</span>
+ui.<span class="tok-typ">Style</span>{Background: ui.<span class="tok-fn">RGB</span>(<span class="tok-num">0xFA</span>, <span class="tok-num">0xFA</span>, <span class="tok-num">0xFA</span>), Radius: <span class="tok-num">6</span>}</code></pre></div><div class="note warn">颜色的 <code>A == 0</code> 一律按「未设置」处理。想画透明底请用 <code>ui.RGBA(r, g, b, 1)</code> 这种接近 0 但非 0 的 alpha。</div><h2 id="sec-4">渐变与阴影</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>raised := ui.<span class="tok-typ">Props</span>{
+	<span class="tok-typ">Style</span>:    ui.<span class="tok-typ">Style</span>{Height: <span class="tok-num">40</span>, Radius: <span class="tok-num">8</span>},
+	Gradient: &amp;ui.<span class="tok-typ">GradientFill</span>{From: ui.<span class="tok-fn">RGB</span>(<span class="tok-num">22</span>, <span class="tok-num">93</span>, <span class="tok-num">255</span>), To: ui.<span class="tok-fn">RGB</span>(<span class="tok-num">0</span>, <span class="tok-num">180</span>, <span class="tok-num">42</span>), Vertical: <span class="tok-kw">false</span>},
+	Shadow:   &amp;ui.<span class="tok-typ">ShadowStyle</span>{Blur: <span class="tok-num">12</span>, OffsetY: <span class="tok-num">4</span>},
+}</code></pre></div></div><div class="page" id="page-component" data-slug="component"><div class="crumb">基础</div><h1>组件与状态</h1><p class="lead"><code>ui.Component(setup)</code> 的 setup 只跑一次，返回的渲染函数每次重绘都会重新执行；<code>Ref</code> 是跨帧保存的状态。</p><hr class="rule"><h2 id="sec">结构</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code><span class="tok-kw">var</span> Panel = ui.<span class="tok-fn">Component</span>(<span class="tok-kw">func</span>(ctx *ui.<span class="tok-typ">SetupContext</span>) <span class="tok-kw">func</span>() *ui.<span class="tok-typ">VNode</span> {
+	<span class="tok-com">// 这里只执行一次：状态、订阅、计时器放这儿</span>
+	open := ui.<span class="tok-typ">Ref</span>(<span class="tok-kw">false</span>)
+	ctx.<span class="tok-fn">OnMounted</span>(<span class="tok-kw">func</span>() { /* 首次挂载 */ })
+	ctx.<span class="tok-fn">OnUnmounted</span>(<span class="tok-kw">func</span>() { /* 卸载清理 */ })
 
-<h2 id="table">Table 表格</h2>
-<p>子节点是行，行的子节点是单元格。列宽取该列自然宽度的最大值，再按行的 flex 分剩余空间。空单元格仍然占一列。</p>
-<div class="demo"><pre>ui.<span class="fn">Table</span>(
-    ui.<span class="fn">HStack</span>(ui.<span class="fn">Text</span>(<span class="str">"名称"</span>), ui.<span class="fn">Text</span>(<span class="str">"类型"</span>), ui.<span class="fn">Text</span>(<span class="str">"非空"</span>)),
-    ui.<span class="fn">HStack</span>(ui.<span class="fn">Text</span>(<span class="str">"id"</span>), ui.<span class="fn">Text</span>(<span class="str">"INTEGER"</span>), ui.<span class="fn">Text</span>(<span class="str">"是"</span>)),
-)</pre></div>
-
-<h2 id="display">展示</h2>
-<h3>Text / Box / Divider / Empty / Image / Glyph</h3>
-<div class="demo"><div class="demo-stage"><div class="fake">
-  <span class="chip">空状态</span><span class="boxy">图片</span><span style="color:#c9cdd4">|</span><span>分隔</span>
-</div></div><pre>ui.<span class="fn">Text</span>(<span class="str">"共 "</span>, count, <span class="str">" 行"</span>)
-ui.<span class="fn">Box</span>(ui.Props{Style: ui.Style{Padding: <span class="num">12</span>, Radius: <span class="num">8</span>, Background: card}})
-ui.<span class="fn">Divider</span>()          <span class="cm">// 水平 1px</span>
-ui.<span class="fn">Divider</span>(<span class="kw">true</span>)     <span class="cm">// 竖直</span>
-ui.<span class="fn">Empty</span>(ui.Props{Title: <span class="str">"还没有结果"</span>, Hint: <span class="str">"生成后显示在这里"</span>, Icon: <span class="str">"image"</span>, Dashed: <span class="kw">true</span>, Accent: <span class="kw">true</span>})
-ui.<span class="fn">Image</span>(ui.Props{Data: png, Name: <span class="str">"out.png"</span>, Badge: <span class="str">"1/4"</span>, Style: ui.Style{Flex: <span class="num">1</span>}})
-ui.<span class="fn">Glyph</span>(ui.Props{Icon: <span class="str">"edit"</span>, Style: ui.Style{Width: <span class="num">16</span>, Height: <span class="num">16</span>}})</pre></div>
-<table class="api">
-<thead><tr><th>组件</th><th>要点</th></tr></thead>
-<tbody>
-<tr><td>Text</td><td>参数会拼成一段文字。必须给够高度</td></tr>
-<tr><td>Box</td><td>矩形容器，样式全部来自 Style</td></tr>
-<tr><td>Divider</td><td><code>Divider()</code> 水平，<code>Divider(true)</code> 竖直。颜色用 Style.Color，否则主题分隔色</td></tr>
-<tr><td>Empty</td><td><code>Title</code> <code>Hint</code> <code>Dashed</code>。<code>Icon</code> 为 image / history / spinner（spinner 自带动画）。<code>Accent</code> 让徽章底/图标/虚线用主题强调色并画装饰。子节点排在提示下方</td></tr>
-<tr><td>Image</td><td><code>Data</code> 是 PNG/JPEG 字节，contain 适配。无数据只画底。<code>Name</code> 是文件名，<code>Badge</code> 是角标</td></tr>
-<tr><td>Glyph</td><td>内置 edit link shield box user save trash eye refresh sparkle upload image chevron（24×24 网格，缺省边长 16）。<code>RegisterGlyph</code> 同名覆盖，<code>HasGlyph(name)</code> 查是否可用</td></tr>
-</tbody>
-</table>
-
-<h2 id="canvas">Canvas 画布</h2>
-<p>回调直接拿 <code>renderer.Context</code>。有背景时先铺底再调用回调。</p>
-<div class="demo"><pre>ui.<span class="fn">Canvas</span>(ui.Props{
-    Style: ui.Style{Width: <span class="num">800</span>, Height: <span class="num">600</span>},
-    OnPaint: <span class="kw">func</span>(ctx renderer.Context, x, y, w, h <span class="kw">float32</span>) {
-        ctx.<span class="fn">FillRect</span>(x, y, w, h, renderer.<span class="fn">RGB</span>(<span class="num">255</span>, <span class="num">0</span>, <span class="num">0</span>))
-    },
-})</pre></div>
-
-<h2 id="style">样式与主题</h2>
-<p>零值字段走主题。<code>A == 0</code> 的颜色是未设置。内置 <code>light</code> / <code>dark</code>（色板对齐 VS Code Default Light+ / Dark+），自定义主题用 <code>RegisterTheme</code> 后 <code>CreateApp(...).Theme("name")</code>，或直接 <code>UseTheme</code>。运行中切换 <code>SetTheme</code>，读当前用 <code>CurrentTheme</code>，按名取用 <code>LookupTheme</code>（未知名回退 Default=light）。</p>
-<table class="api">
-<thead><tr><th>Style 字段</th><th>说明</th></tr></thead>
-<tbody>
-<tr><td>FontSize / FontFamily / Weight</td><td>文字。Weight 是字重整数</td></tr>
-<tr><td>Color / Background / Border / Radius</td><td>前景、背景、边框、圆角</td></tr>
-<tr><td>Gradient</td><td>实际挂在 <code>Props.Gradient</code>（不在 Style 里）：<code>GradientFill{From, To, Vertical}</code>。端点 A==0 由绘制端回退</td></tr>
-<tr><td>Shadow</td><td>实际挂在 <code>Props.Shadow</code>：<code>ShadowStyle{Blur, OffsetY, Color}</code>。Color A==0 时按黑色低透明度</td></tr>
-</tbody>
-</table>
-<table class="api">
-<thead><tr><th>Theme 字段</th><th>说明</th></tr></thead>
-<tbody>
-<tr><td>Name / Dark</td><td>登记名；Dark 决定窗口边框和禁用色回退</td></tr>
-<tr><td>Background / Foreground</td><td>窗口底和正文</td></tr>
-<tr><td>Titlebar / TitlebarForeground / TitlebarHover / TitlebarInactive / CloseHover</td><td>框架标题栏</td></tr>
-<tr><td>Separator / Button / ButtonForeground / ButtonHover / ButtonPressed</td><td>分隔线和按钮</td></tr>
-<tr><td>Disabled / DisabledForeground</td><td>未设置时按 Dark 回退，文字对比度满足 WCAG AA</td></tr>
-<tr><td>FontFamily / FontSize / Padding</td><td>主题默认文字和内边距</td></tr>
-</tbody>
-</table>
-<div class="demo"><pre>ui.<span class="fn">RegisterTheme</span>(ui.Theme{Name: <span class="str">"paper"</span>, FontSize: <span class="num">13</span>, Background: ui.<span class="fn">RGB</span>(<span class="num">250</span>, <span class="num">248</span>, <span class="num">244</span>)})
-ui.<span class="fn">SetTheme</span>(ui.<span class="fn">LookupTheme</span>(<span class="str">"paper"</span>))  <span class="cm">// 运行中切换</span></pre></div>
-
-<h2 id="app">应用与窗口</h2>
-<div class="demo"><pre>ui.<span class="fn">CreateApp</span>(App).
-    Title(<span class="str">"imgen生图"</span>).
-    Size(<span class="num">1180</span>, <span class="num">800</span>).
-    Icon(appIcon).                 <span class="cm">// 标准 ICO，运行时用于标题栏和任务栏</span>
-    TitleBarStyle(bar).
-    UseTheme(theme).
-    Run()
-
-<span class="cm">// 资源管理器里的 exe 图标要在编译后写入 PE 资源</span>
-<span class="cm">// go run ./ui/cmd/build -ldflag "-s -w -H windowsgui" -o imgen.exe ./imgen</span></pre></div>
-<table class="api">
-<thead><tr><th>方法 / 函数</th><th>说明</th></tr></thead>
-<tbody>
-<tr><td>Run()</td><td>创建窗口、挂载根组件、进入消息循环。必须主 goroutine；退出后才跑根实例的 OnUnmounted</td></tr>
-<tr><td>Title / Size / Theme / UseTheme</td><td>标题、客户区 DIP、按名或按值设置主题</td></tr>
-<tr><td>Icon</td><td>窗口图标。空则用默认应用图标。不是 exe 文件图标</td></tr>
-<tr><td>Continuous</td><td>每帧重建根组件。普通界面不要开</td></tr>
-<tr><td>AppTitleBar</td><td>应用自绘顶栏。框架不再占 32 DIP。系统按钮位置必须对齐 CaptionButtonWidth</td></tr>
-<tr><td>SetTitle / SetWindowSize / WindowSize / ToggleMaximize / CloseWindow</td><td>运行期窗口操作。未就绪时尺寸操作返回 false</td></tr>
-<tr><td>SetCloseGuard</td><td>返回 false 留下窗口。标题栏、菜单和系统关闭都走这里</td></tr>
-<tr><td>Frame / CaptionButtons</td><td>标题、最大化、按钮悬停。浏览器里 CaptionButtons 为 false</td></tr>
-<tr><td>TitleBarHeight / CaptionButtonWidth</td><td>自绘标题栏必须对齐的命中区</td></tr>
-<tr><td>ClipboardSet</td><td>写入系统剪贴板</td></tr>
-<tr><td>SetAfterPaint</td><td>本帧布局完成后的收尾，例如打开文件后定位光标</td></tr>
-</tbody>
-</table>
-<div class="note">自绘标题栏时，关闭在 <code>宽 - CaptionButtonWidth</code>，最大化再往左一格，最小化再往左一格。空白处仍是系统拖动区，交互控件靠 ClientHitTest 交回客户区。</div>
-
-<h2 id="keys">按键</h2>
-<p>常量：<code>KeySpace KeyEnter KeyEscape KeyBackspace KeyTab KeyHome KeyEnd KeyLeft KeyUp KeyRight KeyDown KeyPageUp KeyPageDown KeyDelete</code>，字母导出的是 <code>KeyA KeyC KeyF KeyL KeyN KeyO KeyP KeyS KeyT KeyV KeyW KeyX KeyY KeyZ</code>，另有 <code>KeyF1 KeyF11</code>。<code>KeyEvent</code> 带 <code>Key Char Ctrl Shift Alt Down</code>，<code>KeyHandler</code> 返回 true 表示已消费。</p>
-<p>纯 keyup 分发给树上的 <code>onKeyUp</code>（游戏「按住移动」维护按键状态），不影响只认 keydown 的输入框。输入法：Windows 把组合串交给焦点控件的 <code>onComposition</code>，上屏走 <code>onTextInput</code>——Input / Textarea 已内建，应用层一般不用接。</p>
-
-<h2 id="rules">使用约定</h2>
-<ul class="clean">
-  <li>新控件写在 <code>ui/components</code>，<code>init</code> 里 <code>renderer.Register(tag, Widget)</code>，再从 <code>ui/ui.go</code> 导出。</li>
-  <li>不要在应用里手写按钮菜单、1px Box 分隔线或胶囊标签，用 MenuBar、Select、Divider、Dialog、Tabs。</li>
-  <li>新浮层 tag 必须加入 <code>runtime.OverlayTag</code>（目前是 <code>popover</code> / <code>dialog</code> / <code>ctxmenu</code>）。</li>
-  <li>跨线程改窗口走 <code>Post</code>。直接跨线程 <code>SetWindowPos</code> 会死锁。测试里 <code>Post</code> 为 nil 只入队，要 <code>Drain()</code>。</li>
-  <li>只拼 <code>runtime.H("button")</code> 而不导入 <code>components</code> 时，Paint 没有 widget。mock <code>renderer.Context</code> 必须实现 <code>DrawPixels</code>。</li>
-  <li>进程级状态（Select 开合、Input 编辑状态、Scroll 偏移）按 id 存 map，测试必须 Cleanup。</li>
-  <li>宿主：Windows（Direct2D）、Linux（X11）、Web（Canvas 2D）。macOS 及其它平台 <code>run_stub.go</code> 直接报错。Web 没有 <code>SetWindowSize</code>，画布尺寸由页面决定，<code>CaptionButtons()</code> 为 false。</li>
-</ul>
-</main>
-<script>
-const groups = [
-  ["开始", [["start","概览"],["quick","快速开始"],["model","编程模型"]]],
-  ["布局", [["layout","VStack / HStack"],["style","样式"],["scroll","Scroll"]]],
-  ["通用", [["button","Button"],["display","展示"]]],
-  ["数据输入", [["input","Input"],["textarea","Textarea"],["select","Select"],["checkbox","Checkbox"],["switch","Switch"]]],
-  ["导航", [["tabs","Tabs"],["menu","MenuBar"]]],
-  ["反馈", [["dialog","Dialog"],["display","Empty"]]],
-  ["数据展示", [["table","Table"],["canvas","Canvas"]]],
-  ["应用", [["app","窗口"],["keys","按键"],["rules","约定"]]]
-];
-const toc = document.getElementById("toc");
-groups.forEach(([title, items]) => {
-  const h = document.createElement("h4"); h.textContent = title; toc.appendChild(h);
-  items.forEach(([id, label]) => {
-    const a = document.createElement("a"); a.href = "#" + id; a.textContent = label; a.dataset.id = id; toc.appendChild(a);
-  });
-});
-function filterNav(v) {
-  const q = v.trim().toLowerCase();
-  toc.querySelectorAll("a").forEach(a => { a.style.display = a.textContent.toLowerCase().includes(q) ? "" : "none"; });
+	<span class="tok-kw">return</span> <span class="tok-kw">func</span>() *ui.<span class="tok-typ">VNode</span> {
+		<span class="tok-com">// 每次重绘都会执行：只描述界面，别在这里建状态</span>
+		<span class="tok-kw">return</span> ui.<span class="tok-fn">VStack</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Gap: <span class="tok-num">8</span>}},
+			ui.<span class="tok-fn">Button</span>(ui.<span class="tok-typ">Props</span>{OnClick: <span class="tok-kw">func</span>() { open.<span class="tok-fn">Set</span>(!open.<span class="tok-fn">Get</span>()) }}, <span class="tok-str">&quot;切换&quot;</span>),
+			ui.<span class="tok-fn">Text</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Height: <span class="tok-num">22</span>}}, <span class="tok-str">&quot;open = &quot;</span>, open.<span class="tok-fn">Get</span>()),
+		)
+	}
+})</code></pre></div><h2 id="ref">Ref</h2><ul><li><code>ui.Ref(v)</code> 返回 <code>*runtime.Ref[T]</code>，<code>Get()</code> / <code>Set(v)</code>；<code>Set</code> 会请求重绘。</li><li><code>Set</code> 一定会请求重绘：值没变也会（这样 <code>Ref</code> 可以当「脏标记」用）。</li><li><code>Ref</code> 会实现文本输出，可以直接塞进 <code>ui.Text</code> 的子内容。</li></ul><h2 id="setupcontext">SetupContext</h2><div class="table-wrap"><table><thead><tr><th>方法</th><th>用途</th></tr></thead><tbody><tr><td><code>Props()</code></td><td>组件收到的 <code>ui.Props</code>（<code>H(Comp, props)</code> 里那份）。</td></tr><tr><td><code>Attr(key)</code> / <code>String(key)</code></td><td>读任意属性和字符串属性。</td></tr><tr><td><code>Children()</code></td><td>传给组件的子节点。</td></tr><tr><td><code>Invalidate()</code></td><td>手动请求重绘。</td></tr><tr><td><code>OnMounted</code> / <code>OnUnmounted</code></td><td>挂载与卸载钩子。</td></tr></tbody></table></div><h2 id="sec-2">重绘时机</h2><p>事件驱动的界面只在「脏了」的时候重绘：<code>Ref.Set</code>、输入、布局变化、窗口尺寸改变都会标脏。实时动画用 <code>CreateApp(...).Continuous(true)</code>，此时根组件每帧重建 —— 别在那种模式下写重活。</p></div><div class="page" id="page-layout" data-slug="layout"><div class="crumb">基础</div><h1>布局与命中</h1><p class="lead">布局单位是 DIP；节点的 <code>X</code> / <code>Y</code> / <code>W</code> / <code>H</code> 只在绘制完一帧之后才有效。</p><hr class="rule"><h2 id="sec">容器怎么排子节点</h2><div class="table-wrap"><table><thead><tr><th>容器</th><th>排法</th></tr></thead><tbody><tr><td><code>VStack</code></td><td>纵向依次排；<code>Gap</code> 间隔；子项 <code>Flex</code> 分剩余高度。</td></tr><tr><td><code>HStack</code></td><td>横向依次排；<code>Gap</code> 间距；子项 <code>MarginLeftAuto</code> 推到最右。</td></tr><tr><td><code>Wrap</code></td><td>横向流式，放不下换行；子项保持自然尺寸。</td></tr><tr><td><code>Box</code></td><td>子节点叠在同一块内边距区域（不是文档流）。</td></tr><tr><td><code>layer</code>（<code>ui.H(&quot;layer&quot;, ...)</code>）</td><td>第一个孩子铺满，其余按自然尺寸叠在左上角。</td></tr><tr><td><code>Table</code></td><td>行是子节点，行内子节点是单元格；列宽取各行自然宽最大值。</td></tr></tbody></table></div><h2 id="sec-2">浮层的顺序</h2><p><code>popover</code>、<code>dialog</code>、<code>contextmenu</code>、<code>itemmenu</code>、<code>tooltip</code> 都是 Overlay：最后绘制、最先命中。键盘事件顺序是 <strong>dialog → popover → 焦点控件 → 其余</strong>。</p><h2 id="sec-3">命中与悬停</h2><ul><li>只有带 <code>OnClick</code> / <code>OnPointerDown</code> / <code>OnContextMenu</code> / <code>OnMouseEnter</code> / <code>OnMouseLeave</code> 的节点进命中表。</li><li>命中取最上层那个节点，不冒泡：父子都绑了回调时只触发子节点。</li><li><code>renderer.PointerIn(x, y, w, h)</code> 可以在绘制回调里问「指针是否在这块矩形里」，<code>renderer.PointerDown()</code> 问按下态。</li></ul><h2 id="sec-4">测量与绘制是两趟</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code><span class="tok-com">// 依赖布局结果的收尾动作放这里：本帧绘制完，X/Y/W/H 已经是新值</span>
+ui.<span class="tok-fn">SetAfterPaint</span>(<span class="tok-kw">func</span>() {
+	x, y, w, h, ok := ui.<span class="tok-fn">FocusedCaretRect</span>()
+	_ = x
+	_ = y
+	_ = w
+	_ = h
+	_ = ok
+})</code></pre></div><div class="note tip">合成点击（自动化测试）之前先画一遍：坐标没算出来之前点谁都点不中。</div></div><div class="page" id="page-text" data-slug="text"><div class="crumb">基础</div><h1>文本与字体</h1><p class="lead"><code>ui.Text</code> 是最基础的节点：子内容按顺序拼成一段文字，字体、颜色、对齐都由 <code>Style</code> 控制。</p><hr class="rule"><h2 id="sec">基本用法</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">Text</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{
+	Height: <span class="tok-num">24</span>, FontSize: <span class="tok-num">14</span>, Weight: <span class="tok-num">500</span>, <span class="tok-typ">Color</span>: ui.<span class="tok-fn">RGB</span>(<span class="tok-num">70</span>, <span class="tok-num">78</span>, <span class="tok-num">90</span>),
+}}, <span class="tok-str">&quot;你好，&quot;</span>, <span class="tok-str">&quot;goed UI&quot;</span>, count)</code></pre></div><h2 id="sec-2">高度必须给够</h2><p>文本节点的高度参与裁剪：写着 <code>Height: 16</code> 却用 14px 字号，字形下半会被裁掉。经验值是 <strong>字号 × 1.4 以上</strong>，或者干脆不写 <code>Height</code>，让测量结果决定。</p><h2 id="sec-3">换行与省略</h2><div class="table-wrap"><table><thead><tr><th>写法</th><th>效果</th></tr></thead><tbody><tr><td>不写 <code>Nowrap</code></td><td>按可用宽度自动折行，高度随行数增长。</td></tr><tr><td><code>Nowrap: true</code></td><td>单行，不折行（超宽会被父级裁掉）。</td></tr><tr><td><code>Ellipsis: true</code></td><td>单行超宽时尾部省略，通常和 <code>Nowrap</code> 一起用。</td></tr></tbody></table></div><h2 id="sec-4">对齐</h2><p>节点的 <code>Style.Align</code> 同时决定「子节点怎么摆」和「文字在盒子里怎么对」。文本节点自己写了 <code>Align</code> 才算数；父级写 <code>Align: ui.Center</code> 不会让所有 <code>Text</code> 变居中。</p><h2 id="markdown">富文本与 Markdown</h2><ul><li><code>ui.RichText(props, runs...)</code> 支持行内加粗、斜体、行内代码、下划线、删除线、链接点击，折行时格式不断。</li><li><code>ui.Markdown(props, source)</code> 解析 GFM：标题、段落、列表、表格、代码块（带高亮）、链接。</li></ul></div><div class="page" id="page-theme" data-slug="theme"><div class="crumb">基础</div><h1>主题</h1><p class="lead">主题是一组命名视觉配置：底色、前景、标题栏、按钮三态、禁用态、字体与 padding。零值颜色回退到内置默认。</p><hr class="rule"><h2 id="sec">内置主题</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code><span class="tok-com">// 主题名：&quot;light&quot; / &quot;dark&quot;，未知名字回退默认</span>
+app := ui.<span class="tok-fn">CreateApp</span>(<span class="tok-typ">App</span>).<span class="tok-fn">Title</span>(<span class="tok-str">&quot;示例&quot;</span>).<span class="tok-typ">Theme</span>(<span class="tok-str">&quot;light&quot;</span>)
+<span class="tok-kw">if</span> err := app.<span class="tok-fn">Run</span>(); err != <span class="tok-kw">nil</span> {
+	<span class="tok-fn">panic</span>(err)
 }
-const links = [...toc.querySelectorAll("a")];
-const obs = new IntersectionObserver(entries => {
-  entries.forEach(en => {
-    if (!en.isIntersecting) return;
-    links.forEach(a => a.classList.toggle("active", a.dataset.id === en.target.id));
+
+<span class="tok-com">// 直接给一份主题值（等价于按名字取内置主题）</span>
+ui.<span class="tok-fn">CreateApp</span>(<span class="tok-typ">App</span>).<span class="tok-fn">UseTheme</span>(ui.<span class="tok-fn">LookupTheme</span>(<span class="tok-str">&quot;dark&quot;</span>)).<span class="tok-fn">Run</span>()</code></pre></div><h2 id="sec-2">派生一份自己的主题</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code><span class="tok-kw">func</span> <span class="tok-typ">Theme</span>() ui.<span class="tok-typ">Theme</span> {
+	t := ui.<span class="tok-fn">LookupTheme</span>(<span class="tok-str">&quot;light&quot;</span>)
+	t.Name = <span class="tok-str">&quot;my-app&quot;</span>
+	t.FontFamily = <span class="tok-str">&quot;Microsoft YaHei UI&quot;</span>
+	t.Background = ui.<span class="tok-fn">RGB</span>(<span class="tok-num">0xFA</span>, <span class="tok-num">0xFA</span>, <span class="tok-num">0xFA</span>)
+	t.Button = ui.<span class="tok-fn">RGB</span>(<span class="tok-num">0x00</span>, <span class="tok-num">0xC3</span>, <span class="tok-num">0x75</span>)
+	t.ButtonHover = ui.<span class="tok-fn">RGB</span>(<span class="tok-num">0x06</span>, <span class="tok-num">0xAE</span>, <span class="tok-num">0x66</span>)
+	t.ButtonPressed = ui.<span class="tok-fn">RGB</span>(<span class="tok-num">0x05</span>, <span class="tok-num">0x9B</span>, <span class="tok-num">0x58</span>)
+	<span class="tok-kw">return</span> t
+}
+
+ui.<span class="tok-fn">CreateApp</span>(<span class="tok-typ">App</span>).<span class="tok-fn">UseTheme</span>(<span class="tok-typ">Theme</span>()).<span class="tok-fn">Run</span>()</code></pre></div><h2 id="sec-3">字段</h2><div class="table-wrap"><table><thead><tr><th>字段</th><th>影响</th></tr></thead><tbody><tr><td><code>Background</code> <code>Foreground</code></td><td>默认底色与文字色。</td></tr><tr><td><code>Titlebar</code> <code>TitlebarForeground</code> <code>TitlebarHover</code> <code>TitlebarInactive</code> <code>CloseHover</code></td><td>框架标题栏。</td></tr><tr><td><code>Separator</code></td><td>分隔线、边框、未选中标签的底色。</td></tr><tr><td><code>Button</code> <code>ButtonForeground</code> <code>ButtonHover</code> <code>ButtonPressed</code></td><td>主按钮三态。</td></tr><tr><td><code>Disabled</code> <code>DisabledForeground</code></td><td>禁用控件的底与字色。</td></tr><tr><td><code>Scrollbar</code></td><td>滚动条滑块；零值取前景色的 18%。</td></tr><tr><td><code>FontFamily</code> <code>FontSize</code> <code>Padding</code></td><td>默认字体和根内边距。</td></tr></tbody></table></div><div class="note tip">想让按钮有悬停反馈，就别用 <code>Style.Background</code> 写死底色 —— 那会把主题的 hover / press 一起关掉。</div><h2 id="sec-4">运行中切换</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">RegisterTheme</span>(<span class="tok-typ">Theme</span>())   <span class="tok-com">// 登记后用名字切</span>
+ui.<span class="tok-fn">SetTheme</span>(ui.<span class="tok-fn">LookupTheme</span>(<span class="tok-str">&quot;dark&quot;</span>))
+cur := ui.<span class="tok-fn">CurrentTheme</span>()</code></pre></div></div><div class="page" id="page-button" data-slug="button"><div class="crumb">组件 / 通用</div><h1>按钮 Button</h1><p class="lead">可点击按钮。签名是 <code>ui.Button(props?, label)</code>；底色默认取主题，写死 <code>Style.Background</code> 会关掉悬停反馈。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">Button</span>(ui.<span class="tok-typ">Props</span>{OnClick: save}, <span class="tok-str">&quot;保存&quot;</span>)
+
+ui.<span class="tok-fn">Button</span>(ui.<span class="tok-typ">Props</span>{Variant: <span class="tok-str">&quot;secondary&quot;</span>, Icon: <span class="tok-str">&quot;save&quot;</span>, OnClick: save}, <span class="tok-str">&quot;另存为&quot;</span>)
+
+ui.<span class="tok-fn">Button</span>(ui.<span class="tok-typ">Props</span>{Disabled: <span class="tok-kw">true</span>}, <span class="tok-str">&quot;不可用&quot;</span>)</code></pre></div><h2 id="sec-2">字段</h2><div class="table-wrap"><table><thead><tr><th>字段</th><th>说明</th></tr></thead><tbody><tr><td><code>Variant</code></td><td>不写＝主按钮（主题 <code>Button</code> 三态）；<code>secondary</code> / <code>ghost</code> 是次要与幽灵。</td></tr><tr><td><code>Icon</code></td><td>左侧图标名，走 <code>Glyph</code> 图标集（如 <code>save</code>、<code>trash</code>）。</td></tr><tr><td><code>TextAlign</code></td><td><code>&quot;start&quot;</code> 让文字靠左（菜单项式按钮）；默认居中。</td></tr><tr><td><code>Selected</code></td><td>用主题强调色底 + 白字。</td></tr><tr><td><code>Disabled</code></td><td>置灰且不吃点击。</td></tr><tr><td><code>Style</code></td><td><code>Width</code> / <code>Height</code> / <code>Radius</code> / <code>Background</code> / <code>Color</code> / <code>FontSize</code> / <code>Weight</code>。</td></tr></tbody></table></div><h2 id="sec-3">尺寸</h2><ul><li>默认最小高度 32 DIP，水平 / 垂直内边距 16 / 8（可用 <code>Style.Padding</code> 覆盖）。</li><li>宽度按文字自然宽 + 内边距；写 <code>Style.Width</code> 就只用它。</li><li>圆角走 <code>Style.Radius</code>；<code>0</code> 画直角。</li></ul><div class="note warn"><code>Style.Background</code> 会同时覆盖 hover / pressed 两态（自定义底色时控件不再变色）。想要悬停反馈就把颜色写进主题 <code>Button</code> / <code>ButtonHover</code> / <code>ButtonPressed</code>。</div></div><div class="page" id="page-glyph" data-slug="glyph"><div class="crumb">组件 / 通用</div><h1>图标 Glyph</h1><p class="lead">单个矢量图标节点：<code>Icon</code> 指定名字，<code>Style.Width</code> / <code>Height</code> 缺省 16 DIP，<code>Style.Color</code> 是笔画色。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">Glyph</span>(ui.<span class="tok-typ">Props</span>{
+	Icon:  <span class="tok-str">&quot;save&quot;</span>,
+	<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Width: <span class="tok-num">18</span>, Height: <span class="tok-num">18</span>, <span class="tok-typ">Color</span>: ui.<span class="tok-fn">RGB</span>(<span class="tok-num">40</span>, <span class="tok-num">100</span>, <span class="tok-num">180</span>)},
+})</code></pre></div><h2 id="sec-2">内置图标</h2><p><code>edit</code> <code>link</code> <code>shield</code> <code>box</code> <code>user</code> <code>save</code> <code>trash</code> <code>eye</code> <code>refresh</code> <code>bolt</code> <code>sparkle</code> <code>upload</code> <code>image</code> <code>chevron</code> <code>check</code> <code>ellipsis</code> <code>cloud</code> <code>copy</code></p><h2 id="sec-3">登记自己的图标</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code><span class="tok-com">// 24×24 设计网格上的单色绘制函数</span>
+ui.<span class="tok-fn">RegisterGlyph</span>(<span class="tok-str">&quot;my-dot&quot;</span>, <span class="tok-kw">func</span>(ctx renderer.<span class="tok-typ">Context</span>, x, y, size <span class="tok-typ">float32</span>, fg renderer.<span class="tok-typ">Color</span>) {
+	ctx.<span class="tok-fn">FillRoundedRect</span>(x+size*<span class="tok-num">0.4</span>, y+size*<span class="tok-num">0.4</span>, size*<span class="tok-num">0.2</span>, size*<span class="tok-num">0.2</span>, size*<span class="tok-num">0.1</span>, fg)
+})
+
+ui.<span class="tok-fn">Glyph</span>(ui.<span class="tok-typ">Props</span>{Icon: <span class="tok-str">&quot;my-dot&quot;</span>})
+ui.<span class="tok-fn">HasGlyph</span>(<span class="tok-str">&quot;my-dot&quot;</span>) <span class="tok-com">// true</span></code></pre></div><h2 id="canvas">在 Canvas 里复用</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">Canvas</span>(ui.<span class="tok-typ">Props</span>{
+	<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Width: <span class="tok-num">24</span>, Height: <span class="tok-num">24</span>},
+	OnPaint: <span class="tok-kw">func</span>(ctx renderer.<span class="tok-typ">Context</span>, x, y, w, h <span class="tok-typ">float32</span>) {
+		ui.<span class="tok-fn">PaintGlyphNamed</span>(ctx, <span class="tok-str">&quot;save&quot;</span>, x, y, w, renderer.<span class="tok-fn">RGB</span>(<span class="tok-num">80</span>, <span class="tok-num">80</span>, <span class="tok-num">80</span>))
+	},
+})</code></pre></div><div class="note tip">按钮不写 <code>label</code> 也能显示图标，但语义上图标不是按钮 —— 需要点的位置请用 <code>ui.Button</code> 或带 <code>OnClick</code> 的 <code>Canvas</code>/<code>Box</code>。</div></div><div class="page" id="page-tag" data-slug="tag"><div class="crumb">组件 / 通用</div><h1>标签 Tag</h1><p class="lead">圆角胶囊 + 居中单行短文本。宽度按文字自然宽 + 左右内边距，文本垂直居中，不会被行高公式裁掉。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>tag := ui.<span class="tok-fn">Tag</span>(ui.<span class="tok-typ">Props</span>{Label: <span class="tok-str">&quot;运行中&quot;</span>})
+tag.Attrs[<span class="tok-str">&quot;fg&quot;</span>] = ui.<span class="tok-fn">RGB</span>(<span class="tok-num">35</span>, <span class="tok-num">110</span>, <span class="tok-num">70</span>)   <span class="tok-com">// 文字色</span>
+tag.Attrs[<span class="tok-str">&quot;bg&quot;</span>] = ui.<span class="tok-fn">RGB</span>(<span class="tok-num">225</span>, <span class="tok-num">244</span>, <span class="tok-num">232</span>) <span class="tok-com">// 底色</span>
+tag.Attrs[<span class="tok-str">&quot;fill&quot;</span>] = <span class="tok-kw">true</span>                <span class="tok-com">// 文字在胶囊里横向居中</span></code></pre></div><h2 id="sec-2">字段</h2><div class="table-wrap"><table><thead><tr><th>字段</th><th>说明</th></tr></thead><tbody><tr><td><code>Label</code></td><td>文案。</td></tr><tr><td><code>Attrs[&quot;fg&quot;]</code> / <code>[&quot;bg&quot;]</code></td><td><code>ui.Color</code>；缺省 fg 走前景色，bg 按主题给一块浅底。</td></tr><tr><td><code>Attrs[&quot;fill&quot;]</code></td><td>文字是否横向居中。</td></tr><tr><td><code>Style</code></td><td><code>Height</code> / <code>Width</code> / <code>Radius</code> / <code>FontSize</code>；不写高度按字号取自然高。</td></tr></tbody></table></div><div class="note info"><code>Style.Height</code> 为 0 时按「行高 + 上下内边距」取自然高；写了就只用它。</div></div><div class="page" id="page-divider" data-slug="divider"><div class="crumb">组件 / 通用</div><h1>分割线 Divider</h1><p class="lead">1px 分隔线，默认水平；给 <code>true</code> 或 <code>Vertical</code> 画竖线。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">Divider</span>()                                    <span class="tok-com">// 水平</span>
+ui.<span class="tok-fn">Divider</span>(<span class="tok-kw">true</span>)                                <span class="tok-com">// 竖直</span>
+ui.<span class="tok-fn">Divider</span>(ui.<span class="tok-typ">Props</span>{Vertical: <span class="tok-kw">true</span>})            <span class="tok-com">// 同上</span>
+ui.<span class="tok-fn">Divider</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{
+	Height: <span class="tok-num">1</span>, Background: ui.<span class="tok-fn">RGB</span>(<span class="tok-num">0xE5</span>, <span class="tok-num">0xE6</span>, <span class="tok-num">0xEB</span>),
+}})</code></pre></div><h2 id="sec-2">取色阶梯</h2><p>主题 <code>Separator</code> → <code>Style.Background</code> → <code>Style.Color</code>，依次回退。竖直的判定来源：<code>Divider(true)</code>、<code>Vertical: true</code>、或「只给了 <code>Width</code> 没给 <code>Height</code>」这条启发式。</p></div><div class="page" id="page-richtext" data-slug="richtext"><div class="crumb">组件 / 通用</div><h1>富文本 RichText</h1><p class="lead"><code>ui.RichText(props, runs...)</code> 把若干 <code>ui.TextRun</code> 拼成一段可折行的富文本：加粗、斜体、行内代码、下划线、删除线、可点链接。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">RichText</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Height: <span class="tok-num">48</span>}},
+	ui.<span class="tok-typ">TextRun</span>{Text: <span class="tok-str">&quot;goed UI 支持 &quot;</span>},
+	ui.<span class="tok-typ">TextRun</span>{Text: <span class="tok-str">&quot;行内加粗&quot;</span>, Bold: <span class="tok-kw">true</span>},
+	ui.<span class="tok-typ">TextRun</span>{Text: <span class="tok-str">&quot;、&quot;</span> },
+	ui.<span class="tok-typ">TextRun</span>{Text: <span class="tok-str">&quot;inline code&quot;</span>, Code: <span class="tok-kw">true</span>},
+	ui.<span class="tok-typ">TextRun</span>{Text: <span class="tok-str">&quot; 和 &quot;</span>},
+	ui.<span class="tok-typ">TextRun</span>{Text: <span class="tok-str">&quot;链接&quot;</span>, <span class="tok-typ">Color</span>: ui.<span class="tok-fn">RGB</span>(<span class="tok-num">22</span>, <span class="tok-num">93</span>, <span class="tok-num">255</span>), OnClick: <span class="tok-kw">func</span>() { ui.<span class="tok-fn">OpenFolder</span>(<span class="tok-str">&quot;&quot;</span>) }},
+)</code></pre></div><h2 id="textrun">TextRun 字段</h2><div class="table-wrap"><table><thead><tr><th>字段</th><th>说明</th></tr></thead><tbody><tr><td><code>Text</code></td><td>这一段文字。</td></tr><tr><td><code>Bold</code> <code>Italic</code> <code>Underline</code> <code>Strike</code></td><td>样式开关。</td></tr><tr><td><code>Code</code></td><td>行内代码：等宽字体、字号略小。</td></tr><tr><td><code>Color</code></td><td>覆盖颜色；<code>A == 0</code> 表示不覆盖。</td></tr><tr><td><code>OnClick</code></td><td>点击这一段触发。</td></tr></tbody></table></div><div class="note tip">折行以「词」为单位，中文按字断行，链接与代码不会被拆开。段落纵向位置由 <code>Props.Style</code> 控制，别在 run 里塞换行。</div></div><div class="page" id="page-markdown" data-slug="markdown"><div class="crumb">组件 / 通用</div><h1>Markdown</h1><p class="lead"><code>ui.Markdown(props, source)</code> 把 GFM 渲染成原生节点：标题、段落、列表、引用、表格、代码块（带语法高亮）、链接。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">Scroll</span>(ui.<span class="tok-typ">Props</span>{ID: <span class="tok-str">&quot;doc&quot;</span>, <span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Flex: <span class="tok-num">1</span>}},
+	ui.<span class="tok-fn">Markdown</span>(ui.<span class="tok-typ">Props</span>{
+		<span class="tok-typ">Style</span>:    ui.<span class="tok-typ">Style</span>{Padding: <span class="tok-num">24</span>, Gap: <span class="tok-num">12</span>},
+		OnSelect: <span class="tok-kw">func</span>(url <span class="tok-typ">string</span>) { <span class="tok-fn">openInBrowser</span>(url) }, <span class="tok-com">// 点链接</span>
+	}, source),
+)</code></pre></div><h2 id="sec-2">行为</h2><ul><li>块级内容展开成一列节点：<code>VStack</code> + <code>RichText</code> + 代码块，正常参与布局与滚动。</li><li>代码块按语言着色（Go / 通用语言共用一套关键字表）。</li><li>链接点击走 <code>Props.OnSelect</code>，收到 URL；不传就没有点击。</li><li>默认 <code>Gap</code> 为 12，可用 <code>Style.Gap</code> 覆盖。</li></ul><div class="note info">解析器是 goldmark（GFM 扩展）。超大文档建议放进 <code>ui.Scroll</code> 里，否则首帧测量会很慢。</div></div><div class="page" id="page-box" data-slug="box"><div class="crumb">组件 / 布局</div><h1>容器 Box</h1><p class="lead">矩形容器：按自身 <code>Style</code> 画底色、描边、圆角，子节点排在内边距区域里。它也是最常用的绝对定位包含块。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">Box</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{
+	Flex: <span class="tok-num">1</span>, Padding: <span class="tok-num">16</span>, Gap: <span class="tok-num">12</span>, Radius: <span class="tok-num">6</span>,
+	Background: ui.<span class="tok-fn">RGB</span>(<span class="tok-num">245</span>, <span class="tok-num">247</span>, <span class="tok-num">250</span>),
+	}}, ui.<span class="tok-fn">Text</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Height: <span class="tok-num">22</span>}}, <span class="tok-str">&quot;卡片内容&quot;</span>))</code></pre></div><h2 id="sec-2">注意</h2><ul><li><code>Box</code> 的子节点<strong>叠在同一块区域</strong>，不是纵向文档流；要多行排就再套 <code>VStack</code> / <code>HStack</code>。</li><li>配合 <code>Position: relative</code> 当绝对定位的包含块（<code>relative</code> 自己仍按文档流占位）。</li><li><code>Gap</code>、<code>Align</code> 之类对 <code>Box</code> 的直接子节点没有意义。</li></ul></div><div class="page" id="page-stack" data-slug="stack"><div class="crumb">组件 / 布局</div><h1>堆叠 VStack / HStack</h1><p class="lead">最常用的两个容器：<code>VStack</code> 纵向依次排，<code>HStack</code> 横向依次排。子项的 <code>Flex</code> 划分剩余空间，<code>Gap</code> 是间距。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">VStack</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Flex: <span class="tok-num">1</span>, Gap: <span class="tok-num">8</span>, Padding: <span class="tok-num">12</span>}},
+	ui.<span class="tok-fn">Text</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Height: <span class="tok-num">22</span>}}, <span class="tok-str">&quot;标题&quot;</span>),
+	ui.<span class="tok-fn">Button</span>(<span class="tok-str">&quot;确定&quot;</span>),
+)
+
+ui.<span class="tok-fn">HStack</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Height: <span class="tok-num">36</span>, Gap: <span class="tok-num">8</span>, Align: ui.Center}},
+	ui.<span class="tok-fn">Text</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Height: <span class="tok-num">22</span>}}, <span class="tok-str">&quot;名称&quot;</span>),
+	ui.<span class="tok-fn">Input</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Flex: <span class="tok-num">1</span>}, Placeholder: <span class="tok-str">&quot;输入名称&quot;</span>}),
+	ui.<span class="tok-fn">Button</span>(<span class="tok-str">&quot;保存&quot;</span>),
+)</code></pre></div><h2 id="sec-2">剩余空间怎么分</h2><ul><li>主轴：没有 <code>Flex</code> 的子项按自然尺寸，剩余空间按 <code>Flex</code> 权重分给写了 <code>Flex</code> 的子项。</li><li><code>Flex: 1</code> 的根节点铺满客户区；<code>Flex: 0</code>（默认）就是自然尺寸。</li><li><code>MarginLeftAuto: true</code> 在 <code>HStack</code> 里把这一项及后面的一起推到最右。</li><li><code>Justify</code> 控制主轴对齐（<code>ui.SpaceBetween</code> / <code>Center</code> / <code>End</code>），<code>Align</code> 控制交叉轴。</li></ul></div><div class="page" id="page-wrap" data-slug="wrap"><div class="crumb">组件 / 布局</div><h1>流式 Wrap</h1><p class="lead">横向流式排列，一行放不下自动换行，等价于 CSS <code>flex-wrap: wrap</code>。子项保持自然尺寸。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">Wrap</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Width: <span class="tok-num">400</span>, Gap: <span class="tok-num">8</span>}},
+	ui.<span class="tok-fn">Tag</span>(ui.<span class="tok-typ">Props</span>{Label: <span class="tok-str">&quot;Go&quot;</span>}),
+	ui.<span class="tok-fn">Tag</span>(ui.<span class="tok-typ">Props</span>{Label: <span class="tok-str">&quot;Desktop&quot;</span>}),
+	ui.<span class="tok-fn">Tag</span>(ui.<span class="tok-typ">Props</span>{Label: <span class="tok-str">&quot;UI&quot;</span>}),
+)</code></pre></div><h2 id="sec-2">规则</h2><ul><li>行高取该行最高的子项，行内从左往右摆，剩余空间留在右侧。</li><li>子节点的 <code>Flex</code> 在 <code>Wrap</code> 里没有意义，会被忽略。</li><li>需要「两端对齐」的网格请用 <code>Table</code> 或手写若干 <code>HStack</code>。</li></ul></div><div class="page" id="page-layer" data-slug="layer"><div class="crumb">组件 / 布局</div><h1>叠层 Layer</h1><p class="lead"><code>ui.H(&quot;layer&quot;, ...)</code>：第一个普通子节点铺满容器，其余按自然尺寸叠在左上角。适合「底图 + 角标」。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">H</span>(<span class="tok-str">&quot;layer&quot;</span>, ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Flex: <span class="tok-num">1</span>}},
+	ui.<span class="tok-fn">Image</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Flex: <span class="tok-num">1</span>}, Data: png}), <span class="tok-com">// 铺满</span>
+	ui.<span class="tok-fn">Tag</span>(ui.<span class="tok-typ">Props</span>{Label: <span class="tok-str">&quot;预览&quot;</span>}),                          <span class="tok-com">// 叠在左上角</span>
+)</code></pre></div><h2 id="sec-2">和绝对定位的区别</h2><p><code>layer</code> 的叠加不要求 <code>Position</code>，但叠加项仍在正常位置（左上角），移位要靠 <code>Margin</code> 或 <code>Style.Left/Top</code>（后者需要 <code>Position: relative</code> 才生效）。要精确钉坐标，用 <code>Box{Position: relative}</code> + 子节点 <code>Position: absolute</code>。</p><div class="note tip"><code>popover</code> / <code>dialog</code> 这类浮层不需要 <code>layer</code>：它们自己就是 Overlay，后绘制、先命中。</div></div><div class="page" id="page-table" data-slug="table"><div class="crumb">组件 / 布局</div><h1>表格 Table</h1><p class="lead">按列对齐的网格：子节点是行，行的子节点是单元格。列宽取各行同列自然宽的最大值。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">Table</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Flex: <span class="tok-num">1</span>, Gap: <span class="tok-num">4</span>}},
+	ui.<span class="tok-fn">HStack</span>(
+		ui.<span class="tok-fn">Text</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Height: <span class="tok-num">22</span>, Weight: <span class="tok-num">600</span>}}, <span class="tok-str">&quot;名称&quot;</span>),
+		ui.<span class="tok-fn">Text</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Height: <span class="tok-num">22</span>, Weight: <span class="tok-num">600</span>}}, <span class="tok-str">&quot;状态&quot;</span>),
+	),
+	ui.<span class="tok-fn">HStack</span>(
+		ui.<span class="tok-fn">Text</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Height: <span class="tok-num">22</span>}}, <span class="tok-str">&quot;worker&quot;</span>),
+		ui.<span class="tok-fn">Tag</span>(ui.<span class="tok-typ">Props</span>{Label: <span class="tok-str">&quot;运行中&quot;</span>}),
+	),
+)</code></pre></div><h2 id="sec-2">列宽规则</h2><ol><li>每列取各行该列的自然宽最大值（<code>MinWidth</code> 作为下限）。</li><li>剩余宽度按单元格的 <code>Flex</code> 分给对应列；都没写 <code>Flex</code> 时均分。</li><li>空单元格仍占一列 —— 列数由最宽的那一行决定。</li></ol></div><div class="page" id="page-scroll" data-slug="scroll"><div class="crumb">组件 / 布局</div><h1>滚动 Scroll</h1><p class="lead">可滚动容器，纵向默认自动。滚动位置按 <code>ID</code> 保存，所以必须给非空且唯一的 <code>ID</code>。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">Scroll</span>(ui.<span class="tok-typ">Props</span>{
+	ID:      <span class="tok-str">&quot;results&quot;</span>,
+	<span class="tok-typ">Style</span>:   ui.<span class="tok-typ">Style</span>{Flex: <span class="tok-num">1</span>},
+	WideBar: <span class="tok-kw">true</span>,        <span class="tok-com">// 加宽滚动条并预留滑槽</span>
+	NoWheelX: <span class="tok-kw">true</span>,       <span class="tok-com">// 滚轮不驱动横向滚动</span>
+}, list)
+
+<span class="tok-com">// 读 / 写滚动位置</span>
+off := ui.<span class="tok-fn">ScrollOffset</span>(<span class="tok-str">&quot;results&quot;</span>)
+ui.<span class="tok-fn">SetScrollOffset</span>(<span class="tok-str">&quot;results&quot;</span>, off)
+ui.<span class="tok-fn">ScrollBy</span>(<span class="tok-str">&quot;results&quot;</span>, <span class="tok-num">120</span>)          <span class="tok-com">// 正值向上，一格 = 1</span>
+ui.<span class="tok-fn">ScrollToEnd</span>(<span class="tok-str">&quot;results&quot;</span>)            <span class="tok-com">// 贴底（内容不足一屏时不动）</span>
+ui.<span class="tok-fn">ScrollAxis</span>(<span class="tok-str">&quot;results&quot;</span>, <span class="tok-num">60</span>, <span class="tok-kw">true</span>)   <span class="tok-com">// true 表示横向</span></code></pre></div><h2 id="api">相关 API</h2><div class="table-wrap"><table><thead><tr><th>函数</th><th>说明</th></tr></thead><tbody><tr><td><code>ScrollOffset(id)</code> / <code>SetScrollOffset(id, v)</code></td><td>读 / 写某轴的偏移。</td></tr><tr><td><code>ScrollMax(id)</code></td><td>可滚上限 = 内容高 - 可视高。</td></tr><tr><td><code>ScrollBy(id, delta)</code></td><td>相对滚动一段。</td></tr><tr><td><code>ScrollToEnd(id)</code></td><td>滚到底；流式内容「贴底」用它。</td></tr><tr><td><code>ScrollAxis(id, delta, horizontal)</code></td><td>指定轴滚动。</td></tr><tr><td><code>ResetScroll(id)</code></td><td>丢弃偏移（测试与重建界面用）。</td></tr></tbody></table></div><div class="note info">任意容器都能滚：给 <code>VStack</code> / <code>HStack</code> 写 <code>Style.OverflowY: ui.OverflowAuto</code> 效果相同，滚动条拖动也一样能用。</div></div><div class="page" id="page-input" data-slug="input"><div class="crumb">组件 / 数据录入</div><h1>输入框 Input</h1><p class="lead">单行文本输入。<code>Value</code> 是当前字符串，输入时通过 <code>OnInput</code> 通知应用；<code>ID</code> 必须非空且稳定（编辑状态按 ID 存）。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>account := ui.<span class="tok-typ">Ref</span>(<span class="tok-str">&quot;&quot;</span>)   <span class="tok-com">// 在 setup 里创建</span>
+
+ui.<span class="tok-fn">Input</span>(ui.<span class="tok-typ">Props</span>{
+	ID:          <span class="tok-str">&quot;account&quot;</span>,
+	Value:       account.<span class="tok-fn">Get</span>(),
+	Placeholder: <span class="tok-str">&quot;账号&quot;</span>,
+	OnInput:     <span class="tok-kw">func</span>(v <span class="tok-typ">string</span>) { account.<span class="tok-fn">Set</span>(v) },
+	OnSubmit:    <span class="tok-kw">func</span>(v <span class="tok-typ">string</span>) { <span class="tok-fn">login</span>(v) },
+})
+
+ui.<span class="tok-fn">Input</span>(ui.<span class="tok-typ">Props</span>{ID: <span class="tok-str">&quot;pwd&quot;</span>, Password: <span class="tok-kw">true</span>})</code></pre></div><h2 id="sec-2">字段</h2><div class="table-wrap"><table><thead><tr><th>字段</th><th>说明</th></tr></thead><tbody><tr><td><code>Value</code></td><td>当前文本（受控）。</td></tr><tr><td><code>OnInput</code></td><td><code>func(string)</code>，每次编辑都回调。</td></tr><tr><td><code>OnSubmit</code></td><td><code>func(string)</code>，单行框按 Enter。</td></tr><tr><td><code>OnBlur</code></td><td><code>func()</code>，失焦。</td></tr><tr><td><code>Placeholder</code></td><td>空值时的提示。</td></tr><tr><td><code>Password</code> <code>Readonly</code> <code>Disabled</code> <code>Borderless</code></td><td>密码圆点、只读、禁用、无边框。</td></tr><tr><td><code>Style</code></td><td>未指定尺寸时默认 160×32 DIP。</td></tr></tbody></table></div><h2 id="sec-3">光标与选区</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">SetFocus</span>(<span class="tok-str">&quot;account&quot;</span>)
+line, col := ui.<span class="tok-fn">CaretLineCol</span>(n)      <span class="tok-com">// 0 基，列按 rune</span>
+ui.<span class="tok-fn">MoveCaret</span>(n, <span class="tok-num">0</span>, <span class="tok-num">0</span>)                <span class="tok-com">// 定位到第 1 行第 1 列</span>
+ui.<span class="tok-fn">SelectAll</span>(n)
+ui.<span class="tok-fn">ResetInputState</span>(<span class="tok-str">&quot;account&quot;</span>)        <span class="tok-com">// 换内容时清掉光标与撤销栈</span></code></pre></div></div><div class="page" id="page-textarea" data-slug="textarea"><div class="crumb">组件 / 数据录入</div><h1>多行文本 Textarea</h1><p class="lead">多行编辑器，与 <code>Input</code> 共用光标、选区、IME、撤销重做。设了 <code>OnSubmit</code> 时 Enter 提交、Shift+Enter 换行。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>doc := ui.<span class="tok-typ">Ref</span>(<span class="tok-str">&quot;&quot;</span>)
+
+ui.<span class="tok-fn">Textarea</span>(ui.<span class="tok-typ">Props</span>{
+	ID:          <span class="tok-str">&quot;editor&quot;</span>,
+	Value:       doc.<span class="tok-fn">Get</span>(),
+	<span class="tok-typ">Style</span>:       ui.<span class="tok-typ">Style</span>{Flex: <span class="tok-num">1</span>, Padding: <span class="tok-num">8</span>, FontFamily: <span class="tok-str">&quot;Consolas&quot;</span>},
+	Placeholder: <span class="tok-str">&quot;开始输入…&quot;</span>,
+	Borderless:  <span class="tok-kw">true</span>,
+	OnInput:     <span class="tok-kw">func</span>(v <span class="tok-typ">string</span>) { doc.<span class="tok-fn">Set</span>(v) },
+	OnScroll:    <span class="tok-kw">func</span>(y <span class="tok-typ">float32</span>) { /* 预览同步 */ },
+})</code></pre></div><h2 id="enter">Enter 的语义</h2><div class="table-wrap"><table><thead><tr><th>配置</th><th>行为</th></tr></thead><tbody><tr><td>有 <code>OnSubmit</code></td><td>Enter 提交，<code>Shift+Enter</code> 换行，<code>Ctrl+Enter</code> 也提交。</td></tr><tr><td>没有 <code>OnSubmit</code></td><td>Enter 插入换行。</td></tr><tr><td><code>Readonly</code></td><td>可选中复制，不吃改动类命令。</td></tr></tbody></table></div><h2 id="sec-2">滚动</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>y := ui.<span class="tok-fn">TextareaScrollY</span>(<span class="tok-str">&quot;editor&quot;</span>)
+ui.<span class="tok-fn">SetTextareaScrollY</span>(<span class="tok-str">&quot;editor&quot;</span>, <span class="tok-num">0</span>)
+max := ui.<span class="tok-fn">TextareaScrollMax</span>(<span class="tok-str">&quot;editor&quot;</span>)
+ui.<span class="tok-fn">PageTextarea</span>(<span class="tok-str">&quot;editor&quot;</span>, <span class="tok-num">1</span>)   <span class="tok-com">// 翻一页，dir &lt; 0 向上</span></code></pre></div><h2 id="sec-3">编辑命令</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">EditOpID</span>(<span class="tok-str">&quot;editor&quot;</span>, <span class="tok-str">&quot;undo&quot;</span>)   <span class="tok-com">// undo redo cut copy paste delete selectall</span>
+<span class="tok-kw">if</span> from, to, has := ui.<span class="tok-fn">SelectedRange</span>(n); has {
+	ui.<span class="tok-fn">SelectRange</span>(n, from, to)
+}</code></pre></div><div class="note warn">切换文档但复用同一个 <code>ID</code> 时，先 <code>ui.ResetInputState(id)</code>，否则会带着旧光标和撤销栈。</div></div><div class="page" id="page-select" data-slug="select"><div class="crumb">组件 / 数据录入</div><h1>选择器 Select</h1><p class="lead">下拉选择：<code>Items</code> 是选项数组，<code>Value</code> 是当前值，<code>OnChange</code> 收到所选值。开合状态按 <code>ID</code> 存，所以每个 Select 都要唯一 ID。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>quality := ui.<span class="tok-typ">Ref</span>(<span class="tok-str">&quot;标准&quot;</span>)
+
+ui.<span class="tok-fn">Select</span>(ui.<span class="tok-typ">Props</span>{
+	ID:          <span class="tok-str">&quot;quality&quot;</span>,
+	Value:       quality.<span class="tok-fn">Get</span>(),
+	Items:       []<span class="tok-typ">string</span>{<span class="tok-str">&quot;标准&quot;</span>, <span class="tok-str">&quot;高质量&quot;</span>},
+	Placeholder: <span class="tok-str">&quot;选择质量&quot;</span>,
+	OnChange:    <span class="tok-kw">func</span>(v <span class="tok-typ">string</span>) { quality.<span class="tok-fn">Set</span>(v) },
+	OnOpen:      <span class="tok-kw">func</span>(open <span class="tok-typ">bool</span>) { /* 开合状态 */ },
+})
+
+ui.<span class="tok-fn">SetSelectOpen</span>(<span class="tok-str">&quot;quality&quot;</span>, <span class="tok-kw">true</span>)   <span class="tok-com">// 程序控制开合</span></code></pre></div><h2 id="sec-2">字段</h2><div class="table-wrap"><table><thead><tr><th>字段</th><th>说明</th></tr></thead><tbody><tr><td><code>Items</code></td><td><code>[]string</code>；空数组时点开是个空面板，会走 <code>OnEmpty</code>。</td></tr><tr><td><code>Value</code></td><td>当前选中值。</td></tr><tr><td><code>OnChange</code></td><td><code>func(string)</code>。</td></tr><tr><td><code>OnEmpty</code></td><td><code>func()</code>，空列表被点击。</td></tr><tr><td><code>Compact</code></td><td>只画箭头，适合「输入框 + ▼」的拆分布局；默认 44×32。</td></tr><tr><td><code>Placeholder</code></td><td>没选中时的提示文案。</td></tr></tbody></table></div><div class="note tip"><code>Select</code> 的开合是进程级按 ID 保存的 map：测试里用过要 <code>ui.SetSelectOpen(id, false)</code> 收尾。</div></div><div class="page" id="page-switch" data-slug="switch"><div class="crumb">组件 / 数据录入</div><h1>开关 Switch</h1><p class="lead">布尔开关：<code>Value bool</code> + <code>OnChange func(bool)</code>。滑块位置带 140ms 过渡，状态一变就朝目标滑。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>enabled := ui.<span class="tok-typ">Ref</span>(<span class="tok-kw">false</span>)
+
+ui.<span class="tok-fn">Switch</span>(ui.<span class="tok-typ">Props</span>{
+	ID:       <span class="tok-str">&quot;notify&quot;</span>,
+	Value:    enabled.<span class="tok-fn">Get</span>(),
+	OnChange: <span class="tok-kw">func</span>(on <span class="tok-typ">bool</span>) { enabled.<span class="tok-fn">Set</span>(on) },
+	OnBG:     <span class="tok-str">&quot;#35A66F&quot;</span>,   <span class="tok-com">// 轨道开色</span>
+	OffBG:    ui.<span class="tok-fn">RGB</span>(<span class="tok-num">0xC9</span>, <span class="tok-num">0xCD</span>, <span class="tok-num">0xD4</span>),
+	Knob:     <span class="tok-str">&quot;#FFFFFF&quot;</span>,
+})</code></pre></div><h2 id="sec-2">字段</h2><ul><li><code>OnBG</code> / <code>OffBG</code> / <code>Knob</code> 接受 <code>ui.Color</code> 或 <code>&quot;#RRGGBB&quot;</code> 字符串。</li><li>默认 40×22 DIP，用 <code>Style.Width</code> / <code>Height</code> 覆盖。</li><li><code>Disabled</code> 置灰且不吃点击。</li><li>重建界面时可用 <code>ResetSwitchAnim(id)</code> 丢掉动画状态。</li></ul></div><div class="page" id="page-checkbox" data-slug="checkbox"><div class="crumb">组件 / 数据录入</div><h1>复选框 Checkbox</h1><p class="lead">方框 + 对勾 + 右侧标签，整块可点。方框 14 DIP，默认整行最小高度 20 DIP。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>hidden := ui.<span class="tok-typ">Ref</span>(<span class="tok-kw">false</span>)
+
+ui.<span class="tok-fn">Checkbox</span>(ui.<span class="tok-typ">Props</span>{
+	Value:    hidden.<span class="tok-fn">Get</span>(),
+	Label:    <span class="tok-str">&quot;包含隐藏文件&quot;</span>,
+	OnChange: <span class="tok-kw">func</span>(v <span class="tok-typ">bool</span>) { hidden.<span class="tok-fn">Set</span>(v) },
+})</code></pre></div><h2 id="sec-2">说明</h2><ul><li>不写 <code>Label</code> 时只画方框。</li><li><code>Disabled</code> 禁止交互且置灰。</li><li>点击标签文字同样生效（整行是一个命中块）。</li></ul></div><div class="page" id="page-slider" data-slug="slider"><div class="crumb">组件 / 数据录入</div><h1>滑块 Slider</h1><p class="lead"><code>ui.Slider(props, min, max, step)</code>：受控数值范围，<code>OnChange</code> 收到 <code>func(float64)</code>。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>volume := ui.<span class="tok-typ">Ref</span>(<span class="tok-num">0.0</span>)
+
+ui.<span class="tok-fn">Slider</span>(ui.<span class="tok-typ">Props</span>{
+	ID:       <span class="tok-str">&quot;volume&quot;</span>,
+	Value:    volume.<span class="tok-fn">Get</span>(),
+	<span class="tok-typ">Style</span>:    ui.<span class="tok-typ">Style</span>{Width: <span class="tok-num">220</span>},
+	OnChange: <span class="tok-kw">func</span>(v <span class="tok-typ">float64</span>) { volume.<span class="tok-fn">Set</span>(v) },
+}, <span class="tok-num">0</span>, <span class="tok-num">100</span>, <span class="tok-num">5</span>)</code></pre></div><h2 id="sec-2">交互</h2><ul><li>点击轨道、按住拖动都会把值算到指针位置，并按 <code>step</code> 夹取。</li><li>获得焦点后用 <code>←</code> / <code>→</code>（或 <code>↑</code> / <code>↓</code>）按 <code>step</code> 加减，<code>Home</code> / <code>End</code> 跳两端。</li><li><code>Value</code> 接受 <code>float64</code> / <code>float32</code> / <code>int</code>。</li></ul></div><div class="page" id="page-tabs" data-slug="tabs"><div class="crumb">组件 / 数据录入</div><h1>标签页 Tabs</h1><p class="lead">水平标签栏：<code>Items</code> 是 <code>[]ui.Tab</code>，<code>Value</code> 是选中 id，<code>Variant: &quot;pill&quot;</code> 切胶囊样式。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>active := ui.<span class="tok-typ">Ref</span>(<span class="tok-str">&quot;home&quot;</span>)
+
+ui.<span class="tok-fn">Tabs</span>(ui.<span class="tok-typ">Props</span>{
+	Items: []ui.<span class="tok-typ">Tab</span>{
+		{ID: <span class="tok-str">&quot;home&quot;</span>, Label: <span class="tok-str">&quot;主页&quot;</span>},
+		{ID: <span class="tok-str">&quot;log&quot;</span>, Label: <span class="tok-str">&quot;日志&quot;</span>, Closable: <span class="tok-kw">true</span>, Icon: <span class="tok-str">&quot;edit&quot;</span>},
+	},
+	Value:    active.<span class="tok-fn">Get</span>(),
+	Variant:  <span class="tok-str">&quot;pill&quot;</span>,
+	OnChange: <span class="tok-kw">func</span>(id <span class="tok-typ">string</span>) { active.<span class="tok-fn">Set</span>(id) },
+	OnClose:  <span class="tok-kw">func</span>(id <span class="tok-typ">string</span>) { <span class="tok-fn">closeTab</span>(id) },
+})</code></pre></div><h2 id="tab">Tab 字段</h2><div class="table-wrap"><table><thead><tr><th>字段</th><th>说明</th></tr></thead><tbody><tr><td><code>ID</code> <code>Label</code> <code>Icon</code></td><td>标识、文案、左侧图标；<code>ID</code> 为空时用 <code>Label</code>。</td></tr><tr><td><code>Closable</code> <code>CloseID</code></td><td>显示关闭按钮；<code>CloseID</code> 是回调里收到的 id。</td></tr><tr><td><code>Disabled</code></td><td>不可选中。</td></tr></tbody></table></div><h2 id="sec-2">颜色与尺寸</h2><ul><li><code>SelectedBackground</code> / <code>SelectedColor</code> / <code>ItemBackground</code> / <code>ItemColor</code> / <code>ItemBorder</code> / <code>CloseColor</code>，缺省都取主题。</li><li>默认矩形标签高 28 DIP，胶囊 34 DIP。</li></ul></div><div class="page" id="page-image" data-slug="image"><div class="crumb">组件 / 数据展示</div><h1>图片 Image</h1><p class="lead">显示 PNG / JPEG 字节：按原图比例等比缩放并居中，不拉伸。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code><span class="tok-com">//go:embed avatar.png</span>
+<span class="tok-kw">var</span> avatar []<span class="tok-typ">byte</span>
+
+ui.<span class="tok-fn">Image</span>(ui.<span class="tok-typ">Props</span>{
+	Data:  avatar,
+	Badge: <span class="tok-str">&quot;3&quot;</span>,                                   <span class="tok-com">// 右上角角标</span>
+	<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Width: <span class="tok-num">80</span>, Height: <span class="tok-num">80</span>, Radius: <span class="tok-num">6</span>},
+})</code></pre></div><h2 id="sec-2">说明</h2><ul><li>未指定尺寸时默认 56×56 DIP。</li><li><code>Radius</code> 生效于裁剪区域；<code>Badge</code> 画在右上角。</li><li>字节要能解码：<code>Pixels</code> 这类每帧变化的缓冲请走 <code>Canvas</code> + <code>DrawPixels</code>。</li></ul></div><div class="page" id="page-qrcode" data-slug="qrcode"><div class="crumb">组件 / 数据展示</div><h1>二维码 QRCode</h1><p class="lead">把一段文本编码并绘制成二维码，节点保持正方形：同时指定宽高时取较短边。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>n := ui.<span class="tok-fn">QRCode</span>(ui.<span class="tok-typ">Props</span>{
+	Badge: <span class="tok-str">&quot;d.cn&quot;</span>,                                  <span class="tok-com">// 中央圆角标签</span>
+	<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Width: <span class="tok-num">220</span>, Height: <span class="tok-num">220</span>},
+}, <span class="tok-str">&quot;https://example.com&quot;</span>)
+n.Attrs[<span class="tok-str">&quot;level&quot;</span>] = ui.QRLevelH                   <span class="tok-com">// L / M / Q / H，默认 M</span>
+n.Attrs[<span class="tok-str">&quot;quiet&quot;</span>] = <span class="tok-num">4</span>                             <span class="tok-com">// 静区模块数，标准要求 ≥ 4</span>
+
+<span class="tok-com">// 显式版本</span>
+ui.<span class="tok-fn">QRCodeWith</span>(<span class="tok-str">&quot;https://example.com&quot;</span>, ui.QRLevelH, ui.<span class="tok-typ">Props</span>{})</code></pre></div><h2 id="sec-2">相关函数</h2><div class="table-wrap"><table><thead><tr><th>函数</th><th>说明</th></tr></thead><tbody><tr><td><code>QRCodeInfo(text, level)</code></td><td>返回版本号与模块边长。</td></tr><tr><td><code>QRCodePNG(text, level, scale, quiet)</code></td><td>导出 PNG；<code>scale</code> 每模块像素（≤0 取 6）。</td></tr><tr><td><code>ParseQRLevel(&quot;h&quot;)</code></td><td>解析等级，未知值回退 M。</td></tr></tbody></table></div><div class="note info">内容超出编码上限时只画底色，不 panic；需要错误信息就用 <code>QRCodePNG</code>。</div></div><div class="page" id="page-empty" data-slug="empty"><div class="crumb">组件 / 数据展示</div><h1>空状态 Empty</h1><p class="lead">空状态面板：图标 + 标题 + 说明 + 可选操作。<code>Dashed</code> 画虚线框，<code>Accent</code> 用强调色。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">Empty</span>(ui.<span class="tok-typ">Props</span>{
+	Title:  <span class="tok-str">&quot;暂无结果&quot;</span>,
+	Hint:   <span class="tok-str">&quot;调整条件后重试&quot;</span>,
+	Icon:   <span class="tok-str">&quot;history&quot;</span>,   <span class="tok-com">// image（默认）/ history / spinner / 已登记的 Glyph 名</span>
+	Dashed: <span class="tok-kw">true</span>,
+}, ui.<span class="tok-fn">Button</span>(<span class="tok-str">&quot;刷新&quot;</span>))</code></pre></div><h2 id="sec-2">字段</h2><ul><li><code>Title</code> / <code>Hint</code>：主文案与次文案。</li><li><code>Icon</code>：<code>image</code>（默认）、<code>history</code>、<code>spinner</code>，其它名字查 Glyph 图标集，找不到回退 <code>image</code>。</li><li>子节点成为底部操作区（CTA）。</li></ul></div><div class="page" id="page-canvas" data-slug="canvas"><div class="crumb">组件 / 数据展示</div><h1>画布 Canvas</h1><p class="lead">自定义绘制区：<code>OnPaint</code> 拿到 <code>renderer.Context</code> 与这块矩形，直接画。图标、骨架、图表、实时画面都走它。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code><span class="tok-kw">import</span> <span class="tok-str">&quot;github.com/goedui/goed/ui/renderer&quot;</span>
+
+ui.<span class="tok-fn">Canvas</span>(ui.<span class="tok-typ">Props</span>{
+	<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Width: <span class="tok-num">240</span>, Height: <span class="tok-num">120</span>},
+	OnPaint: <span class="tok-kw">func</span>(ctx renderer.<span class="tok-typ">Context</span>, x, y, w, h <span class="tok-typ">float32</span>) {
+		ctx.<span class="tok-fn">FillRect</span>(x, y, w, h, renderer.<span class="tok-fn">RGB</span>(<span class="tok-num">240</span>, <span class="tok-num">245</span>, <span class="tok-num">250</span>))
+		ctx.<span class="tok-fn">DrawLine</span>(x, y, x+w, y+h, renderer.<span class="tok-fn">RGB</span>(<span class="tok-num">40</span>, <span class="tok-num">100</span>, <span class="tok-num">180</span>), <span class="tok-num">2</span>)
+		ctx.<span class="tok-fn">DrawText</span>(<span class="tok-str">&quot;hello&quot;</span>, x+<span class="tok-num">8</span>, y+<span class="tok-num">8</span>, w-<span class="tok-num">16</span>, <span class="tok-num">20</span>, renderer.TextStyle{
+			FontFamily: <span class="tok-str">&quot;Microsoft YaHei UI&quot;</span>, FontSize: <span class="tok-num">13</span>,
+			<span class="tok-typ">Color</span>: renderer.<span class="tok-fn">RGB</span>(<span class="tok-num">30</span>, <span class="tok-num">30</span>, <span class="tok-num">30</span>),
+		})
+	},
+})</code></pre></div><h2 id="sec-2">绘制接口</h2><div class="table-wrap"><table><thead><tr><th>方法</th><th>说明</th></tr></thead><tbody><tr><td><code>FillRect</code> / <code>FillRoundedRect</code> / <code>DrawRect</code></td><td>矩形与圆角矩形，圆角半径等于半边长就是圆。</td></tr><tr><td><code>DrawLine</code></td><td>线段，带宽度。</td></tr><tr><td><code>DrawText</code> / <code>MeasureText</code></td><td>文本绘制与测量，<code>TextStyle.VAlign</code> 控制垂直对齐。</td></tr><tr><td><code>DrawImage</code> / <code>DrawPixels</code></td><td>解码后的图片 / 原始 NRGBA 像素缓冲。</td></tr><tr><td><code>PushClip</code> / <code>PopClip</code></td><td>裁剪区域。</td></tr></tbody></table></div><h2 id="sec-3">尺寸与悬停</h2><ul><li>不写尺寸时优先吃父级空间，取不到才回退 400×300 DIP。</li><li>要悬停反馈就在回调里问 <code>renderer.PointerIn(x, y, w, h)</code>；<code>renderer.PointerDown()</code> 是按下态。</li><li>回调里的 <code>ctx</code> 只在本次绘制有效，别存起来下次用。</li></ul></div><div class="page" id="page-menubar" data-slug="menubar"><div class="crumb">组件 / 导航</div><h1>菜单栏 MenuBar</h1><p class="lead">顶层菜单栏：一排按钮 + 当前展开的下拉（内部是 <code>Popover</code>）。收回 / 展开由 <code>OnOpen</code> 通知应用。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>open := ui.<span class="tok-typ">Ref</span>(<span class="tok-str">&quot;&quot;</span>)
+
+ui.<span class="tok-fn">MenuBar</span>(ui.<span class="tok-typ">Props</span>{
+	ID: <span class="tok-str">&quot;main-menu&quot;</span>,
+	Menus: []ui.<span class="tok-typ">Menu</span>{{
+		ID:    <span class="tok-str">&quot;file&quot;</span>,
+		Label: <span class="tok-str">&quot;文件&quot;</span>,
+		Items: []ui.<span class="tok-typ">MenuItem</span>{
+			{Label: <span class="tok-str">&quot;新建&quot;</span>, Shortcut: <span class="tok-str">&quot;Ctrl+N&quot;</span>, Action: newFile},
+			{Label: <span class="tok-str">&quot;打开…&quot;</span>, Shortcut: <span class="tok-str">&quot;Ctrl+O&quot;</span>, Action: openFile},
+			{Sep: <span class="tok-kw">true</span>},
+			{Label: <span class="tok-str">&quot;退出&quot;</span>, Action: ui.CloseWindow},
+		},
+	}},
+	Open:   open.<span class="tok-fn">Get</span>(),
+	OnOpen: <span class="tok-kw">func</span>(id <span class="tok-typ">string</span>) { open.<span class="tok-fn">Set</span>(id) },  <span class="tok-com">// &quot;&quot; 表示收起</span>
+})</code></pre></div><h2 id="menu--menuitem">Menu 与 MenuItem</h2><div class="table-wrap"><table><thead><tr><th>字段</th><th>说明</th></tr></thead><tbody><tr><td><code>Menu.ID</code> / <code>Menu.Label</code> / <code>Menu.Items</code></td><td>菜单标识、按钮文案、菜单项。</td></tr><tr><td><code>MenuItem.Label</code></td><td>显示文本；同名项共用最后一个回调。</td></tr><tr><td><code>MenuItem.Shortcut</code></td><td>右侧快捷键提示（只显示，不绑定）。</td></tr><tr><td><code>MenuItem.Sep</code></td><td>画分隔线。</td></tr><tr><td><code>MenuItem.Checked</code> / <code>Heading</code></td><td>勾选标记 / 小标题样式。</td></tr><tr><td><code>MenuItem.Action</code></td><td>点击回调。</td></tr></tbody></table></div><h2 id="sec-2">交互</h2><ul><li>点按钮展开、点空白或 Esc 收起，收起时 <code>OnOpen</code> 收到空串。</li><li><code>OnSelect</code> 收到的是显示文本；要按语义分支请用 <code>MenuItem.Action</code>。</li><li>下拉节点的 id 默认是 <code>&lt;menubar-id&gt;-popup</code>，可用 <code>PopupId</code> 指定。</li><li><code>OpenBackground</code> / <code>OpenColor</code> 覆盖展开项配色。</li></ul></div><div class="page" id="page-windowcaption" data-slug="windowcaption"><div class="crumb">组件 / 导航</div><h1>窗口按钮 WindowCaption</h1><p class="lead">窗口右上角的最小化 / 最大化 / 关闭图形。它只负责画，点击由宿主的命中区处理。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code><span class="tok-com">// main.go：自绘标题栏</span>
+ui.<span class="tok-fn">CreateApp</span>(<span class="tok-typ">App</span>).
+	<span class="tok-fn">AppTitleBar</span>(<span class="tok-kw">true</span>).   <span class="tok-com">// 应用树从 y=0 起铺满，系统标题栏不再绘制</span>
+	<span class="tok-fn">Run</span>()
+
+<span class="tok-com">// 顶栏里把三个按钮放最右</span>
+ui.<span class="tok-fn">HStack</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Height: ui.TitleBarHeight, Align: ui.Center, Padding: <span class="tok-num">0</span>}},
+	ui.<span class="tok-fn">Text</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Flex: <span class="tok-num">1</span>, Height: <span class="tok-num">22</span>, Padding: <span class="tok-num">10</span>}}, <span class="tok-str">&quot;应用名&quot;</span>),
+	ui.<span class="tok-fn">WindowCaption</span>(),
+)</code></pre></div><h2 id="sec-2">约束</h2><ul><li>标题栏高度固定 <code>ui.TitleBarHeight</code>（32 DIP），每格宽 <code>ui.CaptionButtonWidth</code>。图形钉在最右三格，不跟父级内边距走。</li><li><strong>不要</strong>给 <code>WindowCaption</code> 挂 <code>OnClick</code>：宿主把这三格判成 <code>HTMINBUTTON</code> / <code>HTMAXBUTTON</code> / <code>HTCLOSE</code>，挂了会被当成应用控件，系统按钮失灵。</li><li>悬停与最大化图标在绘制时读 <code>platform.Frame</code>，不需要应用每帧重建。</li><li>浏览器上没有系统按钮，此时返回 <code>nil</code>。</li><li>自绘标题栏又要自己画齿轮 / 关闭时，配 <code>HideCaptionButtons()</code> 把三格命中区让出来，关闭调 <code>ui.CloseWindow()</code>。</li></ul><div class="note tip"><code>ui.Frame()</code> 返回 <code>Title</code> / <code>Maximized</code> / 悬停按钮等状态；<code>ui.CaptionButtons()</code> 报告宿主有没有系统按钮。</div></div><div class="page" id="page-dialog" data-slug="dialog"><div class="crumb">组件 / 反馈与浮层</div><h1>对话框 Dialog</h1><p class="lead">居中对话框：铺满父级的半透明遮罩 + 居中卡片。默认宽 400 DIP，最小 240。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">Dialog</span>(ui.<span class="tok-typ">Props</span>{
+	Title:       <span class="tok-str">&quot;确认删除&quot;</span>,
+	Message:     <span class="tok-str">&quot;此操作无法撤销。&quot;</span>,
+	Modal:       <span class="tok-kw">true</span>,      <span class="tok-com">// 点遮罩不关</span>
+	ContentWidth: <span class="tok-num">420</span>,
+	OnClose:     <span class="tok-kw">func</span>() { dialogOpen.<span class="tok-fn">Set</span>(<span class="tok-kw">false</span>) },
+	OnEnter:     <span class="tok-kw">func</span>() { <span class="tok-fn">deleteItem</span>() },
+},
+	ui.<span class="tok-fn">HStack</span>(ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Gap: <span class="tok-num">8</span>, Justify: ui.End}},
+		ui.<span class="tok-fn">Button</span>(ui.<span class="tok-typ">Props</span>{Variant: <span class="tok-str">&quot;secondary&quot;</span>, OnClick: cancel}, <span class="tok-str">&quot;取消&quot;</span>),
+		ui.<span class="tok-fn">Button</span>(ui.<span class="tok-typ">Props</span>{OnClick: confirm}, <span class="tok-str">&quot;删除&quot;</span>),
+	),
+)</code></pre></div><h2 id="sec-2">字段</h2><div class="table-wrap"><table><thead><tr><th>字段</th><th>说明</th></tr></thead><tbody><tr><td><code>Title</code> / <code>Message</code></td><td>标题 / 正文（可含换行）。</td></tr><tr><td><code>ContentWidth</code></td><td>卡片宽度，默认 400，最小 240。</td></tr><tr><td><code>OnClose</code></td><td>Esc、点击遮罩、关闭按钮。</td></tr><tr><td><code>OnEnter</code></td><td>Enter 回调（确认框用来「保存」）。</td></tr><tr><td><code>Modal</code></td><td>禁止点击遮罩关闭（内部把 dismiss 置 false）。</td></tr><tr><td><code>CloseOnEnter</code></td><td>Enter 自动关闭（没有 <code>OnEnter</code> 时）。</td></tr></tbody></table></div><h2 id="sec-3">键盘与命中</h2><ul><li>Dialog 是模态层：按键一律先给它，Esc 走 <code>OnClose</code>。</li><li>子节点通常是一行按钮；卡片内容由 <code>Title</code> / <code>Message</code> + 子节点组成。</li><li>叠在 Dialog 上的滚动区不会抢滚轮 —— 滚轮先落在最上层的 Dialog 子树里。</li></ul></div><div class="page" id="page-popover" data-slug="popover"><div class="crumb">组件 / 反馈与浮层</div><h1>浮层 Popover</h1><p class="lead">菜单 / 下拉本体：按锚点定位、靠边时夹回画布并上下翻转、Esc 关闭。MenuBar、Select、ContextMenu 都用它。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">Popover</span>(ui.<span class="tok-typ">Props</span>{
+	ID:      <span class="tok-str">&quot;actions-popup&quot;</span>,
+	Anchor:  <span class="tok-str">&quot;actions-button&quot;</span>,   <span class="tok-com">// 锚点节点 id</span>
+	Items:   []<span class="tok-typ">string</span>{<span class="tok-str">&quot;复制&quot;</span>, <span class="tok-str">&quot;---&quot;</span>, <span class="tok-str">&quot;删除&quot;</span>},
+	AlignX:  <span class="tok-str">&quot;end&quot;</span>,              <span class="tok-com">// start / center / end</span>
+	OnSelect: <span class="tok-kw">func</span>(v <span class="tok-typ">string</span>) { <span class="tok-fn">runAction</span>(v) },
+	OnClose:  <span class="tok-kw">func</span>() { popupOpen.<span class="tok-fn">Set</span>(<span class="tok-kw">false</span>) },
+})</code></pre></div><h2 id="sec-2">字段</h2><ul><li><code>Items</code> 里 <code>&quot;-&quot;</code> 或 <code>&quot;---&quot;</code> 画分隔线。</li><li><code>AlignX</code> 决定相对锚点的水平对齐。</li><li><code>Anchor</code> 为空时继承父级给的盒子（按坐标摆），右键菜单就是这么用的。</li><li>选中项回调 <code>OnSelect</code>（显示文本），关闭回调 <code>OnClose</code>。</li></ul></div><div class="page" id="page-itemmenu" data-slug="itemmenu"><div class="crumb">组件 / 反馈与浮层</div><h1>富选项菜单 ItemMenu</h1><p class="lead">带图标与说明的下拉面板：可选头部（标题 + 键盘提示）、每项一行（图标 / 名称 / 说明）、可选底栏。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">ItemMenu</span>(ui.<span class="tok-typ">Props</span>{
+	Anchor: <span class="tok-str">&quot;mode-button&quot;</span>,
+	Title:  <span class="tok-str">&quot;选择模式&quot;</span>,
+	Hint:   <span class="tok-str">&quot;↑↓ 切换&quot;</span>,
+	Items: []ui.<span class="tok-typ">MenuRow</span>{
+		{ID: <span class="tok-str">&quot;fast&quot;</span>, Icon: <span class="tok-str">&quot;bolt&quot;</span>, Label: <span class="tok-str">&quot;快速&quot;</span>, Desc: <span class="tok-str">&quot;更快完成任务&quot;</span>, Active: <span class="tok-kw">true</span>},
+		{ID: <span class="tok-str">&quot;quality&quot;</span>, Icon: <span class="tok-str">&quot;sparkle&quot;</span>, Label: <span class="tok-str">&quot;高质量&quot;</span>, Desc: <span class="tok-str">&quot;优先输出质量&quot;</span>},
+	},
+	Footer:   <span class="tok-str">&quot;模式设置&quot;</span>,
+	OnFooter: openModeSettings,
+	OnSelect: <span class="tok-kw">func</span>(id <span class="tok-typ">string</span>) { <span class="tok-fn">setMode</span>(id) },  <span class="tok-com">// 收到 MenuRow.ID</span>
+})</code></pre></div><h2 id="menurow">MenuRow 字段</h2><div class="table-wrap"><table><thead><tr><th>字段</th><th>说明</th></tr></thead><tbody><tr><td><code>ID</code> <code>Icon</code> <code>Label</code> <code>Desc</code></td><td>标识、左图标、主文案、右侧说明。</td></tr><tr><td><code>Active</code></td><td>当前项高亮。</td></tr></tbody></table></div><h2 id="sec-2">交互</h2><ul><li>根是铺满画布的遮罩：点面板外任意位置都关闭。</li><li>卡片贴锚点摆，下方空间不够时翻到上方。</li><li><code>Items</code> 为空返回 <code>nil</code>（这一项不存在）。</li><li><code>SelectedBackground</code> / <code>SelectedColor</code> 覆盖高亮配色。</li></ul></div><div class="page" id="page-tooltip" data-slug="tooltip"><div class="crumb">组件 / 反馈与浮层</div><h1>提示 Tooltip</h1><p class="lead">锚在某个节点上方的单行提示，浮在内容之上，不会被锚点盒子裁掉。何时加入节点树由应用决定。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">H</span>(<span class="tok-str">&quot;layer&quot;</span>, ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Flex: <span class="tok-num">1</span>}},
+	ui.<span class="tok-fn">Button</span>(ui.<span class="tok-typ">Props</span>{ID: <span class="tok-str">&quot;save-btn&quot;</span>, OnClick: save}, <span class="tok-str">&quot;保存&quot;</span>),
+	hint.<span class="tok-fn">Get</span>(),   <span class="tok-com">// 需要时塞一个 Tooltip 进来</span>
+)
+
+hint.<span class="tok-fn">Set</span>(ui.<span class="tok-fn">Tooltip</span>(ui.<span class="tok-typ">Props</span>{Anchor: <span class="tok-str">&quot;save-btn&quot;</span>, Label: <span class="tok-str">&quot;保存文件&quot;</span>}))</code></pre></div><h2 id="sec-2">说明</h2><ul><li><code>Anchor</code> 是目标节点 id，<code>Label</code> 是提示文字。</li><li>它是 Overlay：后绘制、先命中，画在锚点盒子外面。</li><li>没有自动的进入 / 离开延迟，悬停时机由应用控制（<code>OnMouseEnter</code> / <code>OnMouseLeave</code>）。</li></ul></div><div class="page" id="page-contextmenu" data-slug="contextmenu"><div class="crumb">组件 / 反馈与浮层</div><h1>右键菜单 ContextMenu</h1><p class="lead">在 <code>OnContextMenu</code> 回调里用指针坐标构造：铺满父级的无色遮罩 + 一张按坐标摆的菜单卡片。</p><hr class="rule"><h2 id="sec">示例</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>menu := ui.<span class="tok-typ">Ref</span>[*ui.<span class="tok-typ">VNode</span>](<span class="tok-kw">nil</span>)
+
+ui.<span class="tok-fn">H</span>(<span class="tok-str">&quot;layer&quot;</span>, ui.<span class="tok-typ">Props</span>{<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Flex: <span class="tok-num">1</span>}},
+	ui.<span class="tok-fn">Box</span>(ui.<span class="tok-typ">Props</span>{
+		<span class="tok-typ">Style</span>: ui.<span class="tok-typ">Style</span>{Position: ui.PositionRelative, Flex: <span class="tok-num">1</span>},
+		OnContextMenu: <span class="tok-kw">func</span>(x, y <span class="tok-typ">float32</span>) {
+			menu.<span class="tok-fn">Set</span>(ui.<span class="tok-fn">ContextMenu</span>(ui.<span class="tok-typ">Props</span>{
+				AtX: x, AtY: y,
+				Items: []ui.<span class="tok-typ">MenuItem</span>{
+					{Label: <span class="tok-str">&quot;复制&quot;</span>, Shortcut: <span class="tok-str">&quot;Ctrl+C&quot;</span>, Action: copySel},
+					{Label: <span class="tok-str">&quot;删除&quot;</span>, Action: delSel},
+				},
+				OnClose: <span class="tok-kw">func</span>() { menu.<span class="tok-fn">Set</span>(<span class="tok-kw">nil</span>) },
+			}))
+		},
+	}, content),
+	menu.<span class="tok-fn">Get</span>(),
+)</code></pre></div><h2 id="sec-2">字段与约定</h2><ul><li><code>AtX</code> / <code>AtY</code> 是指针位置（客户区 DIP）。</li><li><code>Items</code> 为空时返回 <code>nil</code>；<code>Sep</code> 画分隔线，<code>Action</code> 是点击回调。</li><li>点空白、选中菜单项、Esc 都会走 <code>OnClose</code>；<code>OnSelect</code> 在 <code>Action</code> <strong>之后</strong>触发。</li><li>遮罩铺满父级，所以菜单开着时底下点不到 —— 这是上下文菜单的通行行为。</li></ul></div><div class="page" id="page-api-app" data-slug="api-app"><div class="crumb">API</div><h1>应用与窗口</h1><p class="lead"><code>ui.CreateApp(root)</code> 返回 <code>*ui.App</code>，窗口与主题的配置都挂在它上面；<code>Run()</code> 进入消息循环，必须在主 goroutine 调用。</p><hr class="rule"><h2 id="sec">链式配置</h2><div class="table-wrap"><table><thead><tr><th>方法</th><th>说明</th></tr></thead><tbody><tr><td><code>Title(string)</code></td><td>窗口标题（也是任务栏名）。</td></tr><tr><td><code>Size(w, h)</code></td><td>客户区逻辑尺寸，默认 800×600 DIP。</td></tr><tr><td><code>Theme(name)</code> / <code>UseTheme(t)</code></td><td>按名字取主题 / 直接用一份主题值。</td></tr><tr><td><code>Continuous(bool)</code></td><td>每帧重建根组件；实时动画才开。</td></tr><tr><td><code>AppTitleBar(bool)</code> / <code>HiddenTitlebar()</code></td><td>应用自绘标题栏，树从 y=0 铺满。</td></tr><tr><td><code>HideCaptionButtons()</code></td><td>让出最右三格的系统按钮命中区（自绘关闭按钮时必须）。</td></tr><tr><td><code>Icon(ico []byte)</code></td><td>标准 ICO 窗口图标。</td></tr><tr><td><code>TitleBarStyle(ui.Style)</code></td><td>覆盖框架标题栏的底色 / 字色 / 字体。</td></tr><tr><td><code>DropFiles(func([]string))</code></td><td>接收拖进窗口的文件路径。</td></tr><tr><td><code>Run()</code></td><td>创建窗口并进入消息循环，返回 error。</td></tr></tbody></table></div><h2 id="sec-2">窗口控制</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">SetTitle</span>(<span class="tok-str">&quot;无标题 - 记事本&quot;</span>)
+ui.<span class="tok-fn">SetWindowSize</span>(<span class="tok-num">1000</span>, <span class="tok-num">700</span>)      <span class="tok-com">// 窗口就绪前返回 false</span>
+w, h, ok := ui.<span class="tok-fn">WindowSize</span>()
+ui.<span class="tok-fn">CloseWindow</span>()                 <span class="tok-com">// 与标题栏关闭同一条路</span>
+ui.<span class="tok-fn">SetCloseGuard</span>(<span class="tok-kw">func</span>() <span class="tok-typ">bool</span> {   <span class="tok-com">// 返回 false 表示先别关</span>
+	<span class="tok-kw">return</span> !doc.<span class="tok-fn">Dirty</span>()
+})</code></pre></div><h2 id="sec-3">自绘标题栏</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>app := ui.<span class="tok-fn">CreateApp</span>(<span class="tok-typ">App</span>).
+	<span class="tok-fn">AppTitleBar</span>(<span class="tok-kw">true</span>).      <span class="tok-com">// 系统标题栏不再绘制</span>
+	<span class="tok-fn">HideCaptionButtons</span>()   <span class="tok-com">// 自己画齿轮 / 关闭时让出三格命中区</span>
+_ = app.R
+
+<span class="tok-com">// 需要系统按钮就用 ui.WindowCaption()；</span>
+<span class="tok-com">// 窗口状态（最大化、按钮悬停）读 ui.Frame()</span></code></pre></div><div class="note warn"><code>Run()</code> 必须主 goroutine；<code>SetWindowSize</code> 跨线程安全（内部 Post），但直接调 Win32 <code>SetWindowPos</code> 会死锁。</div></div><div class="page" id="page-api-platform" data-slug="api-platform"><div class="crumb">API</div><h1>平台能力</h1><p class="lead">剪贴板、文件对话框、拖出文件这些系统能力都走 <code>platform</code>，未实现的平台返回错误而不是 panic。</p><hr class="rule"><h2 id="sec">剪贴板</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">ClipboardSet</span>(<span class="tok-str">&quot;要复制的文本&quot;</span>)
+text := ui.<span class="tok-fn">ClipboardGet</span>()</code></pre></div><h2 id="sec-2">文件对话框</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>path, ok, err := ui.<span class="tok-fn">OpenFile</span>(<span class="tok-str">&quot;打开&quot;</span>, <span class="tok-str">&quot;文本文件 (*.txt)|*.txt&quot;</span>)
+<span class="tok-kw">if</span> err != <span class="tok-kw">nil</span> { /* 平台不支持 */ }
+<span class="tok-kw">if</span> !ok { /* 用户取消 */ }
+
+dir, ok, err := ui.<span class="tok-fn">OpenFolder</span>(<span class="tok-str">&quot;选择目录&quot;</span>)
+target, ok, err := ui.<span class="tok-fn">SaveFile</span>(<span class="tok-str">&quot;另存为&quot;</span>, <span class="tok-str">&quot;a.txt&quot;</span>, <span class="tok-str">&quot;文本文件 (*.txt)|*.txt&quot;</span>, <span class="tok-str">&quot;.txt&quot;</span>)</code></pre></div><h2 id="sec-3">拖放</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code><span class="tok-com">// 拖进窗口</span>
+ui.<span class="tok-fn">CreateApp</span>(<span class="tok-typ">App</span>).<span class="tok-fn">DropFiles</span>(<span class="tok-kw">func</span>(paths []<span class="tok-typ">string</span>) { <span class="tok-fn">open</span>(paths[<span class="tok-num">0</span>]) }).<span class="tok-fn">Run</span>()
+
+<span class="tok-com">// 拖出窗口（阻塞到用户松手，必须在 UI 线程）</span>
+<span class="tok-kw">if</span> err := ui.<span class="tok-fn">DoDragDropFiles</span>([]<span class="tok-typ">string</span>{path}); err != <span class="tok-kw">nil</span> {
+	/* 平台不支持或路径不在同一父目录 */
+}</code></pre></div><h2 id="sec-4">错误语义</h2><ul><li>平台没实现的能力返回 <code>err</code>，调用方自行降级。</li><li><code>ok == false</code> 表示用户取消，不是错误。</li><li><code>DoDragDropFiles</code> 的路径必须同属一个父目录。</li></ul></div><div class="page" id="page-api-edit" data-slug="api-edit"><div class="crumb">API</div><h1>文本编辑</h1><p class="lead"><code>Input</code> / <code>Textarea</code> 共用一套编辑核心；下面这些入口供状态栏行列、查找定位、弹出菜单里的剪切复制粘贴使用。</p><hr class="rule"><h2 id="sec">焦点</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">SetFocus</span>(<span class="tok-str">&quot;editor&quot;</span>)     <span class="tok-com">// &quot;&quot; 表示取消焦点</span>
+id := ui.<span class="tok-fn">FocusedID</span>()
+x, y, w, h, ok := ui.<span class="tok-fn">FocusedCaretRect</span>()   <span class="tok-com">// 光标矩形，贴输入法候选窗用</span></code></pre></div><h2 id="sec-2">光标与选区</h2><div class="table-wrap"><table><thead><tr><th>函数</th><th>说明</th></tr></thead><tbody><tr><td><code>CaretLineCol(n)</code></td><td>光标的 (行, 列)，0 基，列按 rune 计。</td></tr><tr><td><code>MoveCaret(n, line, col)</code></td><td>移动光标并滚入可视范围。</td></tr><tr><td><code>SelectedRange(n)</code></td><td>选区字节区间；<code>has == false</code> 表示没有选中。</td></tr><tr><td><code>SelectRange(n, from, to)</code></td><td>选中字节区间并滚入可视范围。</td></tr><tr><td><code>SelectAll(n)</code> / <code>SelectAllStay(n)</code></td><td>全选 / 全选但不滚动。</td></tr></tbody></table></div><h2 id="sec-3">编辑命令</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">EditOp</span>(n, <span class="tok-str">&quot;undo&quot;</span>)       <span class="tok-com">// undo redo cut copy paste delete selectall</span>
+ui.<span class="tok-fn">EditOpID</span>(<span class="tok-str">&quot;editor&quot;</span>, <span class="tok-str">&quot;copy&quot;</span>)  <span class="tok-com">// 菜单回调里拿不到节点时用 id</span></code></pre></div><h2 id="sec-4">滚动（多行）</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>y := ui.<span class="tok-fn">TextareaScrollY</span>(<span class="tok-str">&quot;editor&quot;</span>)
+ui.<span class="tok-fn">SetTextareaScrollY</span>(<span class="tok-str">&quot;editor&quot;</span>, <span class="tok-num">0</span>)
+ui.<span class="tok-fn">PageTextarea</span>(<span class="tok-str">&quot;editor&quot;</span>, <span class="tok-num">1</span>)          <span class="tok-com">// 翻页，dir &lt; 0 向上</span>
+lh := ui.<span class="tok-fn">TextareaLineHeight</span>(<span class="tok-str">&quot;editor&quot;</span>)
+off := ui.<span class="tok-fn">TextareaOffsetY</span>(<span class="tok-str">&quot;editor&quot;</span>, byteOffset)</code></pre></div><div class="note tip">切换文档而复用同一个 <code>ID</code> 时先 <code>ui.ResetInputState(id)</code>，否则会带着旧光标与撤销栈。</div></div><div class="page" id="page-api-scroll" data-slug="api-scroll"><div class="crumb">API</div><h1>滚动控制</h1><p class="lead">滚动状态按容器 <code>ID</code> 保存。除了 <code>Scroll</code> 控件，任意写了 <code>OverflowY: auto</code> 的容器都适用。</p><hr class="rule"><h2 id="sec">函数</h2><div class="table-wrap"><table><thead><tr><th>函数</th><th>说明</th></tr></thead><tbody><tr><td><code>ScrollOffset(id)</code></td><td>当前偏移（DIP）。</td></tr><tr><td><code>SetScrollOffset(id, v)</code></td><td>设置偏移，越界会在下一次布局里夹回。</td></tr><tr><td><code>ScrollMax(id)</code></td><td>可滚上限 = 内容高 - 可视高。</td></tr><tr><td><code>ScrollBy(id, delta)</code></td><td>相对滚动，delta 正值向上（一格 = 1）。</td></tr><tr><td><code>ScrollToEnd(id)</code></td><td>滚到底；流式内容贴底用它。</td></tr><tr><td><code>ScrollAxis(id, delta, horizontal)</code></td><td>指定轴滚动。</td></tr><tr><td><code>ResetScroll(id)</code></td><td>丢弃偏移（测试 / 重建界面）。</td></tr></tbody></table></div><h2 id="sec-2">贴底策略</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code><span class="tok-com">// 流式追加时：只有用户本来就在底部才跟着滚，</span>
+<span class="tok-com">// 别把正在翻历史的用户拽回来。</span>
+<span class="tok-kw">if</span> ui.<span class="tok-fn">ScrollBottomGap</span>(<span class="tok-str">&quot;chat&quot;</span>) &lt; <span class="tok-num">24</span> {
+	ui.<span class="tok-fn">ScrollToEnd</span>(<span class="tok-str">&quot;chat&quot;</span>)
+}</code></pre></div></div><div class="page" id="page-api-const" data-slug="api-const"><div class="crumb">API</div><h1>常量与主题</h1><p class="lead">对齐、溢出、定位、inset 位、按键名都以 <code>ui.*</code> 常量导出，避免在各处手写字符串。</p><hr class="rule"><h2 id="sec">对齐与溢出</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.Start  ui.Center  ui.End  ui.Stretch  ui.SpaceBetween
+
+ui.OverflowVisible  ui.OverflowHidden  ui.OverflowAuto  ui.OverflowScroll
+
+ui.PositionRelative  ui.PositionAbsolute  ui.PositionSticky
+ui.InsetTop  ui.InsetRight  ui.InsetBottom  ui.InsetLeft  ui.InsetAll</code></pre></div><h2 id="sec-2">主题</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.<span class="tok-fn">RegisterTheme</span>(t)          <span class="tok-com">// 登记后可用名字切</span>
+ui.<span class="tok-fn">LookupTheme</span>(<span class="tok-str">&quot;dark&quot;</span>)       <span class="tok-com">// 未知名字回退默认</span>
+ui.<span class="tok-fn">SetTheme</span>(t)               <span class="tok-com">// 运行中切换</span>
+cur := ui.<span class="tok-fn">CurrentTheme</span>()</code></pre></div><h2 id="sec-3">按键</h2><p><code>ui.KeyEnter</code>、<code>ui.KeyEscape</code>、<code>ui.KeyTab</code>、<code>ui.KeyLeft</code> / <code>Right</code> / <code>Up</code> / <code>Down</code>、<code>ui.KeyHome</code> / <code>End</code>、<code>ui.KeyPageUp</code> / <code>PageDown</code>、<code>ui.KeyDelete</code>、<code>ui.KeySpace</code>、<code>ui.KeyF1</code> … <code>ui.KeyF11</code>、字母 <code>ui.KeyA</code> … <code>ui.KeyZ</code>。</p><h2 id="sec-4">窗口尺寸常量</h2><div class="code"><div class="code-head"><span>GO</span><button class="copy" type="button">复制</button></div><pre><code>ui.TitleBarHeight      <span class="tok-com">// 32 DIP：自绘标题栏的命中区高度</span>
+ui.CaptionButtonWidth  <span class="tok-com">// 46 DIP：系统按钮每格宽度</span></code></pre></div></div><div class="page" id="page-platform" data-slug="platform"><div class="crumb">附录</div><h1>平台差异</h1><p class="lead">同一份界面代码在三套后端上跑：Windows（Direct2D）、Linux（X11）、Web（canvas + wasm）。</p><hr class="rule"><h2 id="sec">后端</h2><div class="table-wrap"><table><thead><tr><th>平台</th><th>后端</th><th>说明</th></tr></thead><tbody><tr><td>Windows 10/11</td><td>Direct2D + DirectWrite</td><td>主目标：GPU 加速、ClearType、原生 DPI 与 IME。</td></tr><tr><td>Linux</td><td>X11</td><td>基础窗口与绘制；部分系统集成能力缺失。</td></tr><tr><td>Web</td><td><code>js &amp;&amp; wasm</code> + canvas</td><td>无系统标题栏按钮，无文件对话框。</td></tr><tr><td>macOS</td><td>—</td><td>尚未实现。</td></tr></tbody></table></div><h2 id="sec-2">平台相关的行为</h2><ul><li><code>ui.WindowCaption()</code> 在 Web 上返回 <code>nil</code>；<code>ui.CaptionButtons()</code> 为 <code>false</code>。</li><li>文件对话框、拖出文件、剪贴板在未实现的平台上返回错误。</li><li>Windows 之外的标题栏命中区与 DPI 处理不同，自绘标题栏时只用 <code>ui.TitleBarHeight</code> / <code>ui.CaptionButtonWidth</code> 这两个常量，别写死数字。</li></ul><h2 id="sec-3">构建</h2><div class="code"><div class="code-head"><span>BASH</span><button class="copy" type="button">复制</button></div><pre><code><span class="tok-com"># Windows</span>
+go build -o app.exe .
+<span class="tok-com"># 只要界面不弹控制台，加 -ldflags=&quot;-H windowsgui&quot;（panic 会没有输出）</span>
+
+<span class="tok-com"># Web（GOOS=js GOARCH=wasm）</span>
+GOOS=js GOARCH=wasm go build -o app.wasm ./app</code></pre></div></div><div class="page" id="page-limit" data-slug="limit"><div class="crumb">附录</div><h1>已知限制</h1><p class="lead">这些是当前实现里会碰到、但不会报错的边界，写界面前先看一眼。</p><hr class="rule"><h2 id="sec">布局</h2><ul><li>颜色 <code>A == 0</code> 表示未设置，画不出全透明。</li><li><code>Top: 0</code> 之类的零偏移需要 <code>Inset</code> 位标志才生效。</li><li><code>Box</code> 的子节点叠在一起，不是文档流。</li><li>文本节点高度不够会裁字形下半；给 <code>Height</code> 时按字号 × 1.4 以上估。</li></ul><h2 id="sec-2">输入</h2><ul><li><code>Scroll</code> / <code>Select</code> / 编辑框的内部状态按 <code>ID</code> 存，<code>ID</code> 变了状态就丢。</li><li><code>Select</code> 的开合是进程级 map，测试要自己 <code>SetSelectOpen(id, false)</code> 收尾。</li><li><code>OnClick</code> 不冒泡：父子都绑了只会触发最上层那个。</li></ul><h2 id="sec-3">平台</h2><ul><li>窗口固定 <code>WS_OVERLAPPEDWINDOW</code>：没有「禁止最大化 / 禁止缩放」的开关，固定尺寸小窗被拉大时内容留在原位。</li><li>Web 上没有系统标题栏按钮与文件对话框。</li><li>macOS 后端未实现。</li></ul><h2 id="sec-4">性能</h2><ul><li><code>Continuous(true)</code> 每帧重建整棵根组件，动画之外的场景别开。</li><li>超长 Markdown / 大列表放进 <code>Scroll</code> 只是裁剪绘制，节点仍然全部参与布局；上万行要自己做分页或虚拟滚动。</li><li>文本测量有跨帧缓存，但每次新字符串仍会问一次后端。</li></ul></div>
+  </main>
+</div>
+<script>const DOCS=[{"slug":"intro","title":"简介","group":"开始"},{"slug":"install","title":"安装","group":"开始"},{"slug":"quickstart","title":"快速上手","group":"开始"},{"slug":"vnode","title":"节点与子内容","group":"基础"},{"slug":"props","title":"Props","group":"基础"},{"slug":"style","title":"Style","group":"基础"},{"slug":"component","title":"组件与状态","group":"基础"},{"slug":"layout","title":"布局与命中","group":"基础"},{"slug":"text","title":"文本与字体","group":"基础"},{"slug":"theme","title":"主题","group":"基础"},{"slug":"button","title":"按钮 Button","group":"通用"},{"slug":"glyph","title":"图标 Glyph","group":"通用"},{"slug":"tag","title":"标签 Tag","group":"通用"},{"slug":"divider","title":"分割线 Divider","group":"通用"},{"slug":"richtext","title":"富文本 RichText","group":"通用"},{"slug":"markdown","title":"Markdown","group":"通用"},{"slug":"box","title":"容器 Box","group":"布局"},{"slug":"stack","title":"堆叠 VStack / HStack","group":"布局"},{"slug":"wrap","title":"流式 Wrap","group":"布局"},{"slug":"layer","title":"叠层 Layer","group":"布局"},{"slug":"table","title":"表格 Table","group":"布局"},{"slug":"scroll","title":"滚动 Scroll","group":"布局"},{"slug":"input","title":"输入框 Input","group":"数据录入"},{"slug":"textarea","title":"多行文本 Textarea","group":"数据录入"},{"slug":"select","title":"选择器 Select","group":"数据录入"},{"slug":"switch","title":"开关 Switch","group":"数据录入"},{"slug":"checkbox","title":"复选框 Checkbox","group":"数据录入"},{"slug":"slider","title":"滑块 Slider","group":"数据录入"},{"slug":"tabs","title":"标签页 Tabs","group":"数据录入"},{"slug":"image","title":"图片 Image","group":"数据展示"},{"slug":"qrcode","title":"二维码 QRCode","group":"数据展示"},{"slug":"empty","title":"空状态 Empty","group":"数据展示"},{"slug":"canvas","title":"画布 Canvas","group":"数据展示"},{"slug":"menubar","title":"菜单栏 MenuBar","group":"导航"},{"slug":"windowcaption","title":"窗口按钮 WindowCaption","group":"导航"},{"slug":"dialog","title":"对话框 Dialog","group":"反馈与浮层"},{"slug":"popover","title":"浮层 Popover","group":"反馈与浮层"},{"slug":"itemmenu","title":"富选项菜单 ItemMenu","group":"反馈与浮层"},{"slug":"tooltip","title":"提示 Tooltip","group":"反馈与浮层"},{"slug":"contextmenu","title":"右键菜单 ContextMenu","group":"反馈与浮层"},{"slug":"api-app","title":"应用与窗口","group":"API"},{"slug":"api-platform","title":"平台能力","group":"API"},{"slug":"api-edit","title":"文本编辑","group":"API"},{"slug":"api-scroll","title":"滚动控制","group":"API"},{"slug":"api-const","title":"常量与主题","group":"API"},{"slug":"platform","title":"平台差异","group":"附录"},{"slug":"limit","title":"已知限制","group":"附录"}];</script><script>
+(function(){
+  var pages = Array.prototype.slice.call(document.querySelectorAll('.page'));
+  var items = Array.prototype.slice.call(document.querySelectorAll('.nav .item'));
+  var groups = Array.prototype.slice.call(document.querySelectorAll('.nav .group'));
+  var main = document.getElementById('main');
+  var q = document.getElementById('q');
+  var empty = document.querySelector('.empty-hint');
+  var byslug = {};
+  DOCS.forEach(function(d){ byslug[d.slug] = d; });
+
+  function show(slug, push){
+    if(!byslug[slug]) slug = DOCS[0].slug;
+    pages.forEach(function(p){ p.classList.toggle('on', p.dataset.slug === slug); });
+    items.forEach(function(a){ a.classList.toggle('on', a.dataset.slug === slug); });
+    document.title = byslug[slug].title + ' · goed UI';
+    // 深链接进来时把当前项滚进侧栏可视区
+    var active = document.querySelector('.nav .item.on');
+    if(active && active.scrollIntoView){ active.scrollIntoView({block:'nearest'}); }
+    if(push !== false){
+      main.scrollTop = 0;
+      window.scrollTo(0, 0);
+    }
+  }
+
+  function route(){
+    var slug = location.hash.replace(/^#\/?/, '');
+    show(slug || DOCS[0].slug);
+  }
+
+  // 侧栏内链（锚点）与路由切换
+  document.addEventListener('click', function(e){
+    var a = e.target.closest ? e.target.closest('a[href^="#/"]') : null;
+    if(!a) return;
+    e.preventDefault();
+    var slug = a.getAttribute('href').replace('#/', '');
+    if(location.hash === '#/' + slug){ show(slug); }
+    else { location.hash = '#/' + slug; }
   });
-}, { rootMargin: "-20% 0px -70% 0px" });
-document.querySelectorAll("h2, section.hero").forEach(n => obs.observe(n));
+
+  // 搜索：过滤侧栏，回车跳第一条
+  function filter(){
+    var term = (q.value || '').trim().toLowerCase();
+    var hits = 0;
+    items.forEach(function(a){
+      var text = (a.dataset.search || '').toLowerCase();
+      var hit = !term || text.indexOf(term) >= 0;
+      a.hidden = !hit;
+      if(hit) hits++;
+    });
+    groups.forEach(function(g){
+      var has = Array.prototype.some.call(g.querySelectorAll('.item'), function(a){ return !a.hidden; });
+      g.classList.toggle('off', !has);
+    });
+    if(empty) empty.hidden = hits > 0;
+    return hits;
+  }
+  if(q){
+    q.addEventListener('input', filter);
+    q.addEventListener('keydown', function(e){
+      if(e.key === 'Enter'){
+        var first = items.filter(function(a){ return !a.hidden; })[0];
+        if(first){ location.hash = first.getAttribute('href'); q.blur(); }
+      }
+      if(e.key === 'Escape'){ q.value=''; filter(); q.blur(); }
+    });
+    document.addEventListener('keydown', function(e){
+      if((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')){
+        e.preventDefault(); q.focus(); q.select();
+      }
+    });
+  }
+
+  // 代码块复制
+  document.querySelectorAll('.code-head .copy').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var block = btn.closest('.code');
+      var code = block ? block.querySelector('code') : null;
+      if(!code) return;
+      var text = code.innerText;
+      function done(ok){
+        var label = ok ? '已复制' : '复制失败';
+        btn.textContent = label;
+        setTimeout(function(){ btn.textContent = '复制'; }, 1200);
+      }
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(function(){ done(true); }, function(){ done(false); });
+        return;
+      }
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch(err){ ok = false; }
+      document.body.removeChild(ta);
+      done(ok);
+    });
+  });
+
+  // 明暗主题
+  var themeBtn = document.getElementById('theme');
+  function setTheme(dark){
+    document.documentElement.classList.toggle('dark', dark);
+    if(themeBtn) themeBtn.textContent = dark ? '浅色' : '暗色';
+    try { localStorage.setItem('goed-docs-dark', dark ? '1' : '0'); } catch(err){}
+  }
+  // ?theme=dark / ?theme=light 可以直接指定（截图与分享链接用）
+  var forced = null;
+  var m = /[?&]theme=(dark|light)/.exec(location.search);
+  if(m) forced = m[1] === 'dark' ? '1' : '0';
+  var saved = forced;
+  if(saved === null){ try { saved = localStorage.getItem('goed-docs-dark'); } catch(err){} }
+  if(saved === '1' || (saved === null && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)){
+    setTheme(true);
+  }
+  if(themeBtn){
+    themeBtn.addEventListener('click', function(){
+      setTheme(!document.documentElement.classList.contains('dark'));
+    });
+  }
+
+  window.addEventListener('hashchange', route);
+  route();
+})();
 </script>
 </body>
 </html>

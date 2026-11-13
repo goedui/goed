@@ -1,6 +1,7 @@
 package renderer
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/goedui/goed/ui/runtime"
@@ -75,6 +76,40 @@ func TestPaintTreeHelloWorld(t *testing.T) {
 	}
 	if len(ctx.texts) != 1 || ctx.texts[0] != "HelloWorld" {
 		t.Fatalf("绘制文本不符合预期: %v", ctx.texts)
+	}
+}
+
+func TestTextEllipsisFitsNodeWidth(t *testing.T) {
+	ctx := &mockContext{w: 480, h: 360}
+	n := runtime.Text(runtime.Props{
+		Style:    runtime.Style{FontSize: 10},
+		Nowrap:   true,
+		Ellipsis: true,
+	}, strings.Repeat("a", 40))
+	n.X, n.Y, n.W, n.H = 0, 0, 100, 20
+	paintLaidOut(ctx, []*runtime.VNode{n}, TextStyle{FontSize: 13}, theme.Light)
+	if len(ctx.texts) != 1 {
+		t.Fatalf("期望 1 次文本绘制，实际 %d", len(ctx.texts))
+	}
+	got := ctx.texts[0]
+	if !strings.HasSuffix(got, "…") || len([]rune(got)) >= 40 {
+		t.Fatalf("超宽文本未省略: %q", got)
+	}
+	if w, _ := ctx.MeasureText(got, 0, TextStyle{FontSize: 10, NoWrap: true}); w > 100 {
+		t.Fatalf("省略后仍超宽: %q %.0f", got, w)
+	}
+}
+
+func TestTextWithoutEllipsisKeepsFullContent(t *testing.T) {
+	ctx := &mockContext{w: 480, h: 360}
+	n := runtime.Text(runtime.Props{
+		Style:  runtime.Style{FontSize: 10},
+		Nowrap: true,
+	}, strings.Repeat("a", 40))
+	n.X, n.Y, n.W, n.H = 0, 0, 100, 20
+	paintLaidOut(ctx, []*runtime.VNode{n}, TextStyle{FontSize: 13}, theme.Light)
+	if len(ctx.texts) != 1 || ctx.texts[0] != strings.Repeat("a", 40) {
+		t.Fatalf("未开启省略时不应截断: %v", ctx.texts)
 	}
 }
 

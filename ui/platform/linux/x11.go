@@ -117,21 +117,21 @@ type x11api struct {
 }
 
 const (
-	xKeyPress         = 2
-	xKeyRelease       = 3
-	xButtonPress      = 4
-	xButtonRelease    = 5
-	xMotionNotify     = 6
-	xEnterNotify      = 7
-	xLeaveNotify      = 8
-	xFocusIn          = 9
-	xFocusOut         = 10
-	xExpose           = 12
-	xDestroyNotify    = 17
-	xUnmapNotify      = 18
-	xMapNotify        = 19
-	xConfigureNotify  = 22
-	xClientMessage    = 33
+	xKeyPress        = 2
+	xKeyRelease      = 3
+	xButtonPress     = 4
+	xButtonRelease   = 5
+	xMotionNotify    = 6
+	xEnterNotify     = 7
+	xLeaveNotify     = 8
+	xFocusIn         = 9
+	xFocusOut        = 10
+	xExpose          = 12
+	xDestroyNotify   = 17
+	xUnmapNotify     = 18
+	xMapNotify       = 19
+	xConfigureNotify = 22
+	xClientMessage   = 33
 
 	xKeyPressMask         = 1 << 0
 	xKeyReleaseMask       = 1 << 1

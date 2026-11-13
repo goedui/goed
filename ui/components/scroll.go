@@ -17,6 +17,8 @@ func init() {
 	renderer.OverflowOffset = func(id string, horizontal bool) float32 {
 		return scrollGetOffset(id, horizontal)
 	}
+	// 布局阶段给所有 overflow 盒子补拖拽回调（含 VStack{OverflowY:auto}）。
+	renderer.EnsureOverflowDrag = EnsureScrollDrag
 	renderer.StoreOverflow = func(id string, horizontal bool, off, maxOff, view, content float32) {
 		scrollSetLayout(id, horizontal, off, scrollExtentEntry{
 			maxOff: maxOff, view: view, content: content,
@@ -42,9 +44,9 @@ var (
 )
 
 type scrollExtentEntry struct {
-	maxOff   float32
-	view     float32
-	content  float32
+	maxOff  float32
+	view    float32
+	content float32
 	// viewH / contentH 保留给只滚纵向的旧调用（贴底、滚动条）。
 	viewH    float32
 	contentH float32
@@ -56,12 +58,6 @@ func scrollKey(id string, horizontal bool) string {
 	}
 	return id + "\x00y"
 }
-
-// 预览滚动条拖动。grab 是按下时指针相对滑块顶的距离。
-var (
-	scrollDragID  string
-	scrollDragGrab float32
-)
 
 func scrollGetOffset(id string, horizontal bool) float32 {
 	scrollMu.RLock()
@@ -100,102 +96,8 @@ func Scroll(parts ...any) *runtime.VNode {
 	if n.Style.OverflowY == "" && n.Style.Overflow == "" {
 		n.Style.OverflowY = runtime.OverflowAuto
 	}
-	if n.Attrs == nil {
-		n.Attrs = runtime.Attrs{}
-	}
-	n.Attrs["onPointerDown"] = func() { beginScrollDrag(n) }
-	n.Attrs["onPointerDrag"] = func() { dragScroll(n) }
 	return n
 }
-
-func scrollBarGeom(n *runtime.VNode) (barY, barH, maxOff float32, ok bool) {
-	id := scrollID(n)
-	scrollMu.RLock()
-	st, has := scrollExtent[scrollKey(id, false)]
-	off := scrollOffset[scrollKey(id, false)]
-	scrollMu.RUnlock()
-	if !has || st.contentH <= n.H+1 || n.H <= 0 {
-		return 0, 0, 0, false
-	}
-	pad := scrollThumbPad(n)
-	track := n.H - 2*pad
-	if track < 8 {
-		track = n.H
-		pad = 0
-	}
-	barH = track * n.H / st.contentH
-	if barH < 28 {
-		barH = 28
-	}
-	if barH > track {
-		barH = track
-	}
-	maxOff = st.contentH - n.H
-	if maxOff < 0 {
-		maxOff = 0
-	}
-	barY = n.Y + pad
-	if maxOff > 0 {
-		barY = n.Y + pad + (track-barH)*(off/maxOff)
-	}
-	return barY, barH, maxOff, true
-}
-
-func scrollThumbPad(n *runtime.VNode) float32 {
-	if renderer.AttrBool(n, "widebar") {
-		return 10
-	}
-	return 8
-}
-
-func beginScrollDrag(n *runtime.VNode) {
-	x, y, ok := renderer.Pointer()
-	if !ok || n == nil {
-		return
-	}
-	barY, barH, _, shown := scrollBarGeom(n)
-	inset := float32(18)
-	if renderer.AttrBool(n, "widebar") {
-		inset = 26
-	}
-	if !shown || x < n.X+n.W-inset || x > n.X+n.W || y < barY || y > barY+barH {
-		return
-	}
-	scrollDragID = scrollID(n)
-	scrollDragGrab = y - barY
-}
-
-func dragScroll(n *runtime.VNode) {
-	if n == nil || scrollDragID == "" || scrollDragID != scrollID(n) {
-		return
-	}
-	_, y, ok := renderer.Pointer()
-	if !ok {
-		return
-	}
-	_, barH, maxOff, shown := scrollBarGeom(n)
-	if !shown {
-		return
-	}
-	track := n.H - barH
-	if track <= 0 {
-		return
-	}
-	off := (y - scrollDragGrab - n.Y) / track * maxOff
-	if off < 0 {
-		off = 0
-	}
-	if off > maxOff {
-		off = maxOff
-	}
-	scrollSetOffset(scrollID(n), false, off)
-	if fn := onFloat(n, "onScroll"); fn != nil {
-		fn(off)
-	}
-}
-
-// EndScrollDrag 松手时结束滚动条拖动。
-func EndScrollDrag() { scrollDragID = "" }
 
 func scrollID(n *runtime.VNode) string {
 	if n == nil {
@@ -295,6 +197,7 @@ func layoutScroll(ctx renderer.Context, n *runtime.VNode, x, y, w, h float32, st
 	if clamped {
 		placeScrollChildren(ctx, n, innerW, offY, style, th)
 	}
+	renderer.PinSticky(y+n.Style.Padding, n.Children)
 }
 
 // placeScrollChildren 累加子节点高度，并只对视口附近做完整布局。
@@ -324,12 +227,13 @@ func placeScrollChildren(ctx renderer.Context, n *runtime.VNode, innerW, off flo
 			cy += gap
 		}
 		seen++
-		// 先拿高度再判断相交。只看块顶的话，比视口高的那一块滚过两屏就被当成
-		// 完全在外面，整棵子树收成占位，标题坐标全挤到内容顶。
-		ch := scrollChildHeight(ctx, c, innerW, true, style, th)
+		// 先用缓存高度判断相交。视口外的长消息不再每帧 MeasureNode。
+		ch := scrollChildHeight(ctx, c, innerW, false, style, th)
 		near := cy+ch > viewTop && cy < viewBot
-		if !near {
-			ch = scrollChildHeight(ctx, c, innerW, false, style, th)
+		if near {
+			if h2 := scrollChildHeight(ctx, c, innerW, true, style, th); h2 > 0 {
+				ch = h2
+			}
 		}
 		m := c.Style.Margin
 		if !near {
@@ -427,9 +331,48 @@ func scrollCachedContentH(id string) float32 {
 	return 0
 }
 
-// paintScrollbar 内容超出可视高度时，在右侧画一根细圆角条。
-// 没有它，弹层里的长列表看起来就像「只有这几行」，用户不会去滚。
+func scrollCachedContentW(id string) float32 {
+	scrollMu.RLock()
+	st, ok := scrollExtent[scrollKey(id, true)]
+	scrollMu.RUnlock()
+	if ok && st.content > 0 {
+		return st.content
+	}
+	return 0
+}
+
+// paintScrollbar 内容超出可视范围时，在右侧 / 底部画细圆角条。
+// 没有它，长列表和宽代码块看起来就像被裁掉了，用户不会去滚。
+//
+// 颜色优先取主题的 Scrollbar（应用可给品牌色），未设置时退回 Foreground
+// 的 18% —— 保持既有观感。拖动中加一点不透明度，让「抓住了」有反馈。
 func paintScrollbar(ctx renderer.Context, n *runtime.VNode, style renderer.TextStyle, th theme.Theme) {
+	paintScrollbarY(ctx, n, style, th)
+	paintScrollbarX(ctx, n, style, th)
+}
+
+func scrollbarColor(n *runtime.VNode, id string, horizontal bool, th theme.Theme) renderer.Color {
+	bar := renderer.ColorFrom(th.Scrollbar)
+	if th.Scrollbar.A == 0 {
+		bar = renderer.ColorFrom(th.Foreground)
+		bar.A = 0.18
+	}
+	// 真抓住时加深一档，给「抓住了」的反馈。只在原本更淡时才提，
+	// 别把主题设的高不透明度压下去。
+	if scrollDragID != "" && scrollDragID == id && scrollDragH == horizontal && bar.A < 0.62 {
+		bar.A = 0.62
+	}
+	return bar
+}
+
+func scrollbarThickness(n *runtime.VNode) (thickness, inset float32) {
+	if renderer.AttrBool(n, "widebar") {
+		return 8, 18
+	}
+	return 6, 10
+}
+
+func paintScrollbarY(ctx renderer.Context, n *runtime.VNode, style renderer.TextStyle, th theme.Theme) {
 	id := scrollID(n)
 	contentH := scrollCachedContentH(id)
 	if contentH <= 0 {
@@ -439,42 +382,54 @@ func paintScrollbar(ctx renderer.Context, n *runtime.VNode, style renderer.TextS
 	if contentH <= n.H+32 || n.H <= 0 {
 		return
 	}
-	off := scrollGetOffset(id, false)
-	maxOff := contentH - n.H
-	if off < 0 {
-		off = 0
-	}
-	if off > maxOff {
-		off = maxOff
-	}
 	barY, barH, _, shown := scrollBarGeom(n)
 	if !shown {
 		return
 	}
-	// 胶囊滑块：离开右缘和上下圆角，不再贴边画成一条缝。
-	bar := renderer.ColorFrom(th.Foreground)
-	bar.A = 0.18
-	wide := renderer.AttrBool(n, "widebar")
-	bw, inset := float32(5), float32(12)
-	if wide {
-		bw, inset = 8, 18
-	}
+	bar := scrollbarColor(n, id, false, th)
+	// 6 DIP 胶囊 + 距右缘 10：贴着卡片内缘浮起，不像旧版那条细缝。
+	bw, inset := scrollbarThickness(n)
 	ctx.FillRoundedRect(n.X+n.W-inset, barY, bw, barH, bw/2, bar)
+}
+
+func paintScrollbarX(ctx renderer.Context, n *runtime.VNode, style renderer.TextStyle, th theme.Theme) {
+	id := scrollID(n)
+	if n.W <= 0 {
+		return
+	}
+	// noscrollbar：容器照常能滚，只是不画那条横向滑块
+	// （编辑器标签条就是这样：标签溢出时滚动，但不显示滚动条）。
+	if renderer.AttrBool(n, "noscrollbar") {
+		return
+	}
+	contentW := scrollCachedContentW(id)
+	if contentW <= n.W+1 {
+		return
+	}
+	barX, barW, _, shown := scrollBarGeomH(n)
+	if !shown {
+		return
+	}
+	bar := scrollbarColor(n, id, true, th)
+	thickness, inset := scrollbarThickness(n)
+	ctx.FillRoundedRect(barX, n.Y+n.H-inset, barW, thickness, thickness/2, bar)
 }
 
 // ScrollBy 按 id 直接滚一段（delta 正值向上，一格 = 1）。
 // 弹层常常要「整块区域都能滚」：把面板级的 onWheel 转发到内部列表就靠它。
-func ScrollBy(id string, delta float32) {
+func ScrollBy(id string, delta float32) { ScrollAxis(id, delta, false) }
+
+// ScrollAxis 滚指定轴。horizontal 为 true 时改横向偏移，否则纵向。
+// 上界不在这里夹：交给布局（它才知道容器真实的可滚范围）。
+func ScrollAxis(id string, delta float32, horizontal bool) {
 	if id == "" || delta == 0 {
 		return
 	}
-	// 一格（delta=1，即 120 滚轮单位）≈ 1.7 行，接近系统的「3 行 / 格」手感。
-	// 上界不在这里夹：交给 layoutScroll（它才知道容器真实的可滚范围）。
-	off := scrollGetOffset(id, false) - delta*60
+	off := scrollGetOffset(id, horizontal) - delta*60
 	if off < 0 {
 		off = 0
 	}
-	scrollSetOffset(id, false, off)
+	scrollSetOffset(id, horizontal, off)
 }
 
 // ScrollBottomGap 返回距离底部还有多少 DIP（0 表示已到底）。
@@ -496,9 +451,10 @@ func ScrollBottomGap(id string) float32 {
 }
 
 // ResetScroll 丢弃某个滚动容器的偏移（测试与重建界面时用）。
+// 可滚上限留给布局写入，这里只清偏移，避免滚轮在下一帧布局前读到 0。
 func ResetScroll(id string) {
-	scrollDelOffset(id, false)
-	scrollDelOffset(id, true)
+	scrollSetOffset(id, false, 0)
+	scrollSetOffset(id, true, 0)
 }
 
 // ScrollOffsetForTest 返回当前纵向滚动偏移（测试用）。
@@ -517,6 +473,16 @@ func ScrollToEnd(id string) {
 
 // ScrollOffset 测试用：读取纵向滚动偏移。
 func ScrollOffset(id string) float32 { return scrollGetOffset(id, false) }
+
+// ScrollOffsetAxis 测试用：horizontal 为真时读横向偏移。
+func ScrollOffsetAxis(id string, horizontal bool) float32 {
+	return scrollGetOffset(id, horizontal)
+}
+
+// ScrollMaxOff 测试用：读取某一轴的可滚上限。
+func ScrollMaxOff(id string, horizontal bool) float32 {
+	return scrollMaxOff(id, horizontal)
+}
 
 // SetScrollOffset 测试用。
 func SetScrollOffset(id string, v float32) { scrollSetOffset(id, false, v) }

@@ -6,6 +6,7 @@ import "github.com/goedui/goed/ui/platform/linux"
 
 // Run 启动 X11 宿主窗口并进入消息循环。
 func Run(opts Options) error {
+	defer Unbind()
 	return linux.Run(linux.Options{
 		Title:            opts.Title,
 		Width:            opts.Width,

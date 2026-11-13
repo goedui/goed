@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"errors"
+
 	"github.com/goedui/goed/ui/app"
 	"github.com/goedui/goed/ui/components"
 	"github.com/goedui/goed/ui/platform"
@@ -35,17 +37,27 @@ type (
 	Dispatcher      = runtime.Dispatcher
 	Menu            = components.Menu
 	MenuItem        = components.MenuItem
+	MenuRow         = components.MenuRow
+	TextRun         = components.TextRun
 	Tab             = components.Tab
 	// 视觉效果参数（挂在 Props 上，A==0 / nil 表示不启用）。
 	GradientFill = runtime.GradientFill
 	ShadowStyle  = runtime.ShadowStyle
+	// QRLevel 是二维码纠错等级，值本身也可直接 String() 成 "L"/"M"/"Q"/"H"。
+	QRLevel = components.Level
 )
 
 const (
-	Start   = runtime.Start
-	Center  = runtime.Center
-	End     = runtime.End
-	Stretch = runtime.Stretch
+	Start        = runtime.Start
+	Center       = runtime.Center
+	End          = runtime.End
+	Stretch      = runtime.Stretch
+	SpaceBetween = runtime.SpaceBetween
+
+	QRLevelL = components.LevelL
+	QRLevelM = components.LevelM
+	QRLevelQ = components.LevelQ
+	QRLevelH = components.LevelH
 
 	OverflowVisible = runtime.OverflowVisible
 	OverflowHidden  = runtime.OverflowHidden
@@ -54,6 +66,7 @@ const (
 
 	PositionRelative = runtime.PositionRelative
 	PositionAbsolute = runtime.PositionAbsolute
+	PositionSticky   = runtime.PositionSticky
 
 	InsetTop    = runtime.InsetTop
 	InsetRight  = runtime.InsetRight
@@ -78,6 +91,8 @@ const (
 	KeyA         = runtime.KeyA
 	KeyC         = runtime.KeyC
 	KeyF         = runtime.KeyF
+	KeyH         = runtime.KeyH
+	KeyJ         = runtime.KeyJ
 	KeyL         = runtime.KeyL
 	KeyN         = runtime.KeyN
 	KeyO         = runtime.KeyO
@@ -112,6 +127,14 @@ func Text(parts ...any) *VNode {
 	return runtime.Text(parts...)
 }
 
+func RichText(p Props, runs ...TextRun) *VNode {
+	return components.RichText(p, runs...)
+}
+
+func Markdown(p Props, source string) *VNode {
+	return components.Markdown(p, source)
+}
+
 func VStack(parts ...any) *VNode {
 	return components.VStack(parts...)
 }
@@ -122,6 +145,11 @@ func HStack(parts ...any) *VNode {
 
 func Table(parts ...any) *VNode {
 	return components.Table(parts...)
+}
+
+// Wrap 横向流式排列，一行放不下自动换行（CSS flex-wrap: wrap）。
+func Wrap(parts ...any) *VNode {
+	return components.Wrap(parts...)
 }
 
 func Button(first any, rest ...any) *VNode {
@@ -136,6 +164,34 @@ func Image(parts ...any) *VNode {
 	return components.Image(parts...)
 }
 
+// QRCode 把文本（通常是链接）画成二维码。Props.Badge 在中央画品牌标签，
+// Attrs["level"] 传 "L"/"M"/"Q"/"H" 或 ui.QRLevel*，Attrs["quiet"] 传静区模块数。
+//
+//	n := ui.QRCode(ui.Props{Style: ui.Style{Width: 220, Height: 220}}, "https://d.cn")
+//	n.Attrs["level"] = ui.QRLevelH
+func QRCode(parts ...any) *VNode {
+	return components.QRCode(parts...)
+}
+
+// QRCodeWith 显式给出内容与纠错等级的二维码节点，其余样式走 Props。
+func QRCodeWith(text string, level QRLevel, p Props) *VNode {
+	return components.QRCodeWith(text, level, p)
+}
+
+// ParseQRLevel 解析 "L"/"M"/"Q"/"H"（大小写不敏感），未知值回退 M。
+func ParseQRLevel(s string) QRLevel { return components.ParseLevel(s) }
+
+// QRCodeInfo 返回编码后的版本与模块边长（用于显示「21×21」这类信息）。
+func QRCodeInfo(text string, level QRLevel) (version, size int, err error) {
+	return components.QRCodeInfo(text, level)
+}
+
+// QRCodePNG 把二维码编码成 PNG 字节。scale 是每模块像素（<=0 取 6），
+// quiet 是静区模块数（传 -1 取 0，标准推荐 4）。内容过长时返回错误。
+func QRCodePNG(text string, level QRLevel, scale, quiet int) ([]byte, error) {
+	return components.QRCodePNG(text, level, scale, quiet)
+}
+
 func Textarea(parts ...any) *VNode {
 	return components.Textarea(parts...)
 }
@@ -144,10 +200,17 @@ func Scroll(parts ...any) *VNode {
 	return components.Scroll(parts...)
 }
 
-func ScrollOffset(id string) float32          { return components.ScrollOffset(id) }
-func SetScrollOffset(id string, v float32)    { components.SetScrollOffset(id, v) }
-func ScrollMax(id string) float32             { return components.ScrollMax(id) }
-func ScrollBy(id string, delta float32)       { components.ScrollBy(id, delta) }
+func ScrollOffset(id string) float32       { return components.ScrollOffset(id) }
+func SetScrollOffset(id string, v float32) { components.SetScrollOffset(id, v) }
+func ScrollMax(id string) float32          { return components.ScrollMax(id) }
+func ScrollBy(id string, delta float32)    { components.ScrollBy(id, delta) }
+
+// ScrollToEnd 把滚动容器滚到最底。偏移会在下一次布局里被夹到合法范围，
+// 所以内容不足一屏时等于不动。流式对话的「贴底」用它。
+func ScrollToEnd(id string) { components.ScrollToEnd(id) }
+func ScrollAxis(id string, delta float32, horizontal bool) {
+	components.ScrollAxis(id, delta, horizontal)
+}
 func TextareaScrollY(id string) float32       { return components.TextareaScrollY(id) }
 func TextareaScrollMax(id string) float32     { return components.TextareaScrollMax(id) }
 func SetTextareaScrollY(id string, y float32) { components.SetTextareaScrollY(id, y) }
@@ -163,6 +226,11 @@ func LayoutRoot() []*VNode { return renderer.LayoutRoot() }
 
 func Switch(parts ...any) *VNode {
 	return components.Switch(parts...)
+}
+
+// Slider creates a numeric range; OnChange is func(float64).
+func Slider(p Props, min, max, step float64) *VNode {
+	return components.Slider(p, min, max, step)
 }
 
 func Checkbox(parts ...any) *VNode {
@@ -190,6 +258,12 @@ func RegisterGlyph(name string, g components.GlyphPaint) { components.RegisterGl
 // HasGlyph 报告图标名是否可用。
 func HasGlyph(name string) bool { return components.HasGlyph(name) }
 
+// PaintGlyphNamed 按名字把图标画进 (x,y,size) 的方框，返回是否真画了。
+// Canvas 自绘里要复用同一套图标时用它，避免每个应用各抄一份几何。
+func PaintGlyphNamed(ctx renderer.Context, name string, x, y, size float32, fg renderer.Color) bool {
+	return components.PaintGlyph(ctx, name, x, y, size, fg)
+}
+
 func Divider(parts ...any) *VNode {
 	return components.Divider(parts...)
 }
@@ -202,8 +276,20 @@ func MenuBar(parts ...any) *VNode {
 	return components.MenuBar(parts...)
 }
 
+// WindowCaption 是窗口右上角的最小化 / 最大化 / 关闭。
+// 只负责绘制，点击由宿主的命中区处理。浏览器上返回 nil。
+// 图形钉在客户区最右三格，不跟父级内边距走。
+func WindowCaption() *VNode {
+	return components.WindowCaption()
+}
+
 func Tabs(parts ...any) *VNode {
 	return components.Tabs(parts...)
+}
+
+// Tag 状态胶囊：圆角底 + 居中短文本。fg/bg 是 runtime.Color。
+func Tag(parts ...any) *VNode {
+	return components.Tag(parts...)
 }
 
 func SetSelectOpen(id string, open bool) {
@@ -248,6 +334,11 @@ func Popover(parts ...any) *VNode {
 	return components.Popover(parts...)
 }
 
+// Tooltip 锚在 Anchor 上方的单行提示，浮在内容之上，不被锚点盒子裁掉。
+func Tooltip(parts ...any) *VNode {
+	return components.Tooltip(parts...)
+}
+
 func Dialog(parts ...any) *VNode {
 	return components.Dialog(parts...)
 }
@@ -258,12 +349,60 @@ func ContextMenu(parts ...any) *VNode {
 	return components.ContextMenu(parts...)
 }
 
+// ItemMenu 富内容下拉面板：图标 + 名称 + 一行说明，当前项高亮。
+// 它贴 Anchor 摆，装不下时自动翻到上方，适合长在输入区上方的模式切换。
+func ItemMenu(parts ...any) *VNode {
+	return components.ItemMenu(parts...)
+}
+
 func NewDispatcher(post func(func())) *Dispatcher {
 	return runtime.NewDispatcher(post)
 }
 
+// NewUIDispatcher 创建投递到 UI 线程的调度器。
+//
+// post 每次投递时才解析，而不是构造时捕获：宿主要在 Run 里才绑定
+// platform.Post，而应用状态通常在 Run 之前就建好了。构造时拷一份
+// platform.Post 只会拿到 nil，于是投递永远只入队、没人执行 —— 界面
+// 收不到后台消息。
+func NewUIDispatcher() *Dispatcher {
+	return runtime.NewLazyDispatcher(func() func(func()) { return platform.Post })
+}
+
 func CreateApp(root *ComponentDef) *App {
 	return app.CreateApp(root)
+}
+
+func OpenFile(title, filter string) (string, bool, error) {
+	if platform.OpenFile == nil {
+		return "", false, errors.New("当前平台不支持选择文件")
+	}
+	return platform.OpenFile(title, filter)
+}
+
+func OpenFolder(title string) (string, bool, error) {
+	if platform.OpenFolder == nil {
+		return "", false, errors.New("folder selection is unavailable")
+	}
+	return platform.OpenFolder(title)
+}
+
+func SaveFile(title, name, filter, ext string) (string, bool, error) {
+	if platform.SaveFile == nil {
+		return "", false, errors.New("当前平台不支持选择文件")
+	}
+	return platform.SaveFile(title, name, filter, ext)
+}
+
+// DoDragDropFiles 把一组磁盘路径交给系统拖放（Windows 上是 OLE DoDragDrop）。
+//
+// 阻塞到用户松手或取消，必须在 UI 线程调用。paths 必须位于同一父目录；
+// 未实现的平台返回错误。
+func DoDragDropFiles(paths []string) error {
+	if platform.DoDragDropFiles == nil {
+		return errors.New("当前平台不支持拖出文件")
+	}
+	return platform.DoDragDropFiles(paths)
 }
 
 // SetAfterPaint 注册每帧绘制完成后的回调（此时布局已生效）。
@@ -298,6 +437,13 @@ func ClipboardSet(text string) {
 	if platform.ClipboardSet != nil {
 		platform.ClipboardSet(text)
 	}
+}
+
+func ClipboardGet() string {
+	if platform.ClipboardGet == nil {
+		return ""
+	}
+	return platform.ClipboardGet()
 }
 
 func ToggleMaximize() bool {

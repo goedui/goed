@@ -16,6 +16,57 @@ import (
 // blinkVisible 真的接上了那份相位，以及它真的管住了那一笔 FillRect —— 只断言
 // 「调用了 blinkVisible」是没用的，一个永远返回 true 的实现照样全绿。
 
+// TestCaretInLineCoversDescender 光标要覆盖整个字身，而不是停在基线。
+//
+// 只画到基线时，13px 输入框里的光标只有约 10.7px 高，比旁边的字明显短一截
+// —— 用户看到的就是「光标偏短」。系统插入符、浏览器输入框、VS Code 都会把
+// 下降部算进去。
+func TestCaretInLineCoversDescender(t *testing.T) {
+	const (
+		fontSize = float32(13)
+		lineH    = fontSize * 1.25
+	)
+	cy, h := caretInLine(0, 0, lineH, fontSize)
+	baseline := lineH * 0.8
+
+	if got := cy + h; got <= baseline {
+		t.Fatalf("光标底 %.2f 未越过基线 %.2f：下降部被裁掉了", got, baseline)
+	}
+	// 底 ≈ 基线 + 一个下降部，误差容忍 0.01 的浮点累积。
+	wantBottom := baseline + fontSize*caretDescender
+	if got := cy + h; absf(got-wantBottom) > 0.01 {
+		t.Fatalf("光标底 %.2f，期望 %.2f（基线 %.2f + 下降部 %.2f）",
+			got, wantBottom, baseline, fontSize*caretDescender)
+	}
+}
+
+// TestCaretInLineStaysInsideLineBox 收紧的行高不能让光标溢到相邻行。
+//
+// 多行输入里行高可能被压到接近字号，若照搬「基线 + 下降部」会画到下一行上。
+func TestCaretInLineStaysInsideLineBox(t *testing.T) {
+	const fontSize = float32(13)
+	for _, lineH := range []float32{0, 6, 10, 13, 15, 16.25, 20, 40} {
+		cy, h := caretInLine(100, 0, lineH, fontSize)
+		if h <= 0 {
+			t.Fatalf("lineH=%.2f 时光标高 %.2f，应为正", lineH, h)
+		}
+		if lineH > 0 {
+			if cy < 100-0.01 || cy+h > 100+lineH+0.01 {
+				t.Fatalf("lineH=%.2f 时光标 [%.2f,%.2f] 超出行盒 [100,%.2f]",
+					lineH, cy, cy+h, 100+lineH)
+			}
+		}
+	}
+}
+
+// TestCaretInLineWithoutFontSize 字号未知时按行高推算，不能除零或返回 0 高。
+func TestCaretInLineWithoutFontSize(t *testing.T) {
+	cy, h := caretInLine(0, 0, 18, 0)
+	if h <= 0 || cy < 0 || cy+h > 18.01 {
+		t.Fatalf("字号为 0 时光标应仍可用：cy=%.2f h=%.2f", cy, h)
+	}
+}
+
 // caretFills 挑出光标那一笔填充。
 //
 // caretWidth(1.6) 全仓库只有光标在用，按宽度认最省事，也不用去猜颜色。

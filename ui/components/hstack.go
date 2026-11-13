@@ -66,6 +66,8 @@ func measureHStack(ctx renderer.Context, n *runtime.VNode, maxW, maxH float32, s
 	if n.Style.Width > 0 {
 		w = n.Style.Width
 	}
+	// 横向可滚时视口也停在父级给的宽度。内容更宽的部分靠 overflow 平移，
+	// 不能把整行撑开，否则视口和内容一样宽，滚轮没有可滚范围。
 	if maxW > 0 && w > maxW {
 		w = maxW
 	}
@@ -81,6 +83,9 @@ func measureHStack(ctx renderer.Context, n *runtime.VNode, maxW, maxH float32, s
 		innerW = 0
 	}
 	widths, _ := renderer.Distribute(natural, flex, gap, innerW)
+	if runtime.OverflowScrolls(n.Style, true) && naturalRowWidth(natural, gap) > innerW {
+		widths = natural
+	}
 	var contentH float32
 	for i, c := range kept {
 		ch := heights[i]
@@ -102,6 +107,9 @@ func measureHStack(ctx renderer.Context, n *runtime.VNode, maxW, maxH float32, s
 }
 
 func layoutHStack(ctx renderer.Context, n *runtime.VNode, x, y, w, h float32, style renderer.TextStyle, th theme.Theme) {
+	// 节点自身的位置要写回去：命中区（CollectHits）和悬停效果都读 X/Y/W/H，
+	// 不写的话带 OnClick 的 HStack 整行都点不动。
+	n.X, n.Y, n.W, n.H = x, y, w, h
 	pad := n.Style.Padding
 	gap := n.Style.Gap
 	align := n.Style.Align
@@ -138,17 +146,41 @@ func layoutHStack(ctx renderer.Context, n *runtime.VNode, x, y, w, h float32, st
 		heights = append(heights, ih+m)
 	}
 	widths, leftover := renderer.Distribute(natural, flex, gap, innerW)
+	// 横向可滚且确实溢出时列保持自然宽度。没溢出仍按 Flex 铺满，
+	// 交给外层形成「内容窄时填满、内容宽时滚动」的行为。
+	if used := naturalRowWidth(natural, gap); runtime.OverflowScrolls(n.Style, true) && used > innerW {
+		widths = natural
+		leftover = innerW - used
+	}
 
 	cx := x + pad
-	if leftover > 0 {
+	between := float32(0)
+	// margin-left: auto：第一个带标记的子项吃掉左侧剩余空间，把自己和
+	// 后面的兄弟一起推到最右。优先级高于 justify。
+	autoIdx := -1
+	for i, c := range kept {
+		if c.Style.MarginLeftAuto {
+			autoIdx = i
+			break
+		}
+	}
+	if leftover > 0 && autoIdx < 0 {
 		switch justify {
 		case runtime.Center:
 			cx += leftover / 2
 		case runtime.End:
 			cx += leftover
+		case runtime.SpaceBetween:
+			if n := len(kept); n > 1 {
+				between = leftover / float32(n-1)
+			}
 		}
 	}
 	for i, c := range kept {
+		// margin-left:auto 在自己的位置才吃掉左侧剩余空间：前面的兄弟照常居左。
+		if i == autoIdx {
+			cx += leftover
+		}
 		cw := widths[i]
 		ch := heights[i]
 		// 弹性列分到的宽度不等于自己的自然宽度（可能被撑宽、也可能被压窄），
@@ -170,8 +202,19 @@ func layoutHStack(ctx renderer.Context, n *runtime.VNode, x, y, w, h float32, st
 		}
 		m := c.Style.Margin
 		renderer.LayoutNode(ctx, c, cx+m, cy+m, cw-2*m, ch-2*m, style, th)
-		cx += cw + gap
+		cx += cw + gap + between
 	}
+}
+
+func naturalRowWidth(natural []float32, gap float32) float32 {
+	var used float32
+	for i, w := range natural {
+		if i > 0 {
+			used += gap
+		}
+		used += w
+	}
+	return used
 }
 
 func paintHStack(ctx renderer.Context, n *runtime.VNode, style renderer.TextStyle, th theme.Theme) {

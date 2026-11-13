@@ -187,3 +187,19 @@ func TestHStackHoverGeometryAndBorder(t *testing.T) {
 		}
 	})
 }
+
+func TestHStackSpaceBetweenPinsEnds(t *testing.T) {
+	ctx := &mockContext{w: 400, h: 80}
+	left := runtime.H("box", runtime.Props{Style: runtime.Style{Width: 40, Height: 20}})
+	right := runtime.H("box", runtime.Props{Style: runtime.Style{Width: 40, Height: 20}})
+	row := HStack(runtime.Props{
+		Style: runtime.Style{Justify: runtime.SpaceBetween, Align: runtime.Center},
+	}, left, right)
+	layoutHStack(ctx, row, 10, 0, 220, 40, renderer.TextStyle{FontSize: 13}, theme.Light)
+	if left.X != 10 {
+		t.Fatalf("左项应贴左边，x=%v", left.X)
+	}
+	if right.X+right.W != 230 {
+		t.Fatalf("右项应贴右边，x=%v w=%v", right.X, right.W)
+	}
+}

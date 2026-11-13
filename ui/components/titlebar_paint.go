@@ -37,24 +37,15 @@ func paintTitleBar(ctx renderer.Context, n *runtime.VNode, style renderer.TextSt
 	}
 	ctx.FillRect(0, 0, w, h, bg)
 
-	btnW := float32(renderer.CaptionButtonWidth)
-	closeX := w - btnW
-	maxX := closeX - btnW
-	minX := maxX - btnW
 	titleX := float32(12)
 	// 没有系统标题栏按钮的宿主（浏览器）上，右侧那三个位置不该占着：
 	// 按钮画出来是死的，标题还会被挤掉一截。
-	titleRight := minX
+	titleRight := w - float32(3*renderer.CaptionButtonWidth)
 	if !platform.CaptionButtons {
-		minX, maxX, closeX = w, w, w
 		titleRight = w
 	}
 
-	hover := renderer.AttrInt(n, "hover")
-	pressed := renderer.AttrInt(n, "pressed")
-	maximized := renderer.AttrBool(n, "maximized")
 	active := activeTitle(n)
-
 	fg := renderer.ColorFrom(th.TitlebarForeground)
 	if fg.A == 0 {
 		fg = renderer.ColorFrom(th.Foreground)
@@ -65,11 +56,9 @@ func paintTitleBar(ctx renderer.Context, n *runtime.VNode, style renderer.TextSt
 	if !active {
 		fg = renderer.Color{R: fg.R, G: fg.G, B: fg.B, A: fg.A * 0.6}
 	}
-	if platform.CaptionButtons {
-		paintCaptionButton(ctx, minX, 0, btnW, h, hover == 1, pressed == 1, false, th, bg, fg, captionMin)
-		paintCaptionButton(ctx, maxX, 0, btnW, h, hover == 2, pressed == 2, false, th, bg, fg, captionMaxRestore(maximized))
-		paintCaptionButton(ctx, closeX, 0, btnW, h, hover == 3, pressed == 3, true, th, bg, fg, captionClose)
-	}
+	paintCaptionStrip(ctx, 0, 0, w, h,
+		renderer.AttrInt(n, "hover"), renderer.AttrInt(n, "pressed"),
+		renderer.AttrBool(n, "maximized"), th, bg, fg)
 
 	if paint := titleBarIcon(n); paint != nil {
 		icon := float32(renderer.TitleBarIconSize)

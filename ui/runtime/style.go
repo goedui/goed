@@ -18,22 +18,28 @@ func RGBA(r, g, b, a uint8) Color {
 // Style 对应 Vue / HTML 的行内 style。零值表示未设置，走主题默认。
 // 每个 VNode 都可以带一份，不限于某个控件。
 type Style struct {
-	Flex       float32
-	Width      float32
-	Height     float32
-	MinWidth   float32
-	MinHeight  float32
-	MaxWidth   float32
-	MaxHeight  float32
-	Padding    float32
+	Flex      float32
+	Width     float32
+	Height    float32
+	MinWidth  float32
+	MinHeight float32
+	MaxWidth  float32
+	MaxHeight float32
+	Padding   float32
 	// Margin 是四边相同的外边距，参与流式占位。可为负。绝对定位不占父级空间。
-	Margin     float32
-	Gap        float32
-	FontSize   float32
-	FontFamily string
-	Weight     int
-	Align      string
-	Justify    string
+	Margin float32
+	// MarginAuto 对应 CSS margin: 0 auto：块级子元素在父级内容区里水平居中。
+	// 只影响横向摆放，纵向仍按文档流。Align 显式写了 Center/End 时以 Align 为准。
+	MarginAuto bool
+	// MarginLeftAuto 对应 CSS margin-left: auto：横排（HStack）里吸收左侧
+	// 剩余空间，把自己和后面的兄弟一起推到最右。
+	MarginLeftAuto bool
+	Gap            float32
+	FontSize       float32
+	FontFamily     string
+	Weight         int
+	Align          string
+	Justify        string
 	// Overflow 同时作用于两轴，对应 CSS overflow。空字符串是 visible。
 	// OverflowX / OverflowY 非空时盖过这一轴。visible | hidden | auto | scroll。
 	Overflow  string
@@ -41,15 +47,16 @@ type Style struct {
 	OverflowY string
 	// Position 空字符串是 static。relative 仍占位，再按 Top/Left 平移。
 	// absolute 脱离文档流，相对最近的 relative/absolute 祖先（没有则相对内容区）的 padding 边。
+	// sticky 仍占文档流，纵向滚出滚动容器上沿时钉在视口顶上。
 	Position string
 	// Top/Right/Bottom/Left 为 0 时默认「没写」。要钉在 0 上，把对应位写进 Inset。
 	// 绝对定位时对边都写了且没写 Width/Height，该轴被拉满。
 	Top, Right, Bottom, Left float32
 	Inset                    uint8
 	Color                    Color
-	Background Color
-	Border     Color
-	Radius     float32
+	Background               Color
+	Border                   Color
+	Radius                   float32
 }
 
 // GradientFill 是线性渐变填充参数：From→To 两端颜色，Vertical 决定方向

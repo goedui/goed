@@ -302,6 +302,25 @@ func TestInputMultilineEnterInsertsNewline(t *testing.T) {
 
 // TestInputMultilinePaintsFromTop 是提示词框的回归：固定高度的多行 Input
 // 必须顶对齐绘制，不能沿用单行的垂直居中，否则光标在第一行、文字在中间。
+func TestInputFillFollowsTheme(t *testing.T) {
+	ctx := &mockContext{w: 400, h: 200}
+	n, _ := newInput("t-theme", "http://127.0.0.1", nil)
+	n.X, n.Y, n.W, n.H = 10, 20, 280, 34
+	th := theme.Dark
+	th.Background = runtime.RGB(30, 30, 30)
+	paintInput(ctx, n, renderer.TextStyle{FontSize: 13}, th)
+	if len(ctx.rounds) == 0 || ctx.rounds[0].c != renderer.ColorFrom(th.Background) {
+		t.Fatalf("dark input fill = %+v", ctx.rounds)
+	}
+	own := runtime.RGB(9, 9, 9)
+	n.Style.Background = own
+	ctx.rounds = nil
+	paintInput(ctx, n, renderer.TextStyle{FontSize: 13}, th)
+	if len(ctx.rounds) == 0 || ctx.rounds[0].c != renderer.ColorFrom(own) {
+		t.Fatalf("explicit fill ignored: %+v", ctx.rounds)
+	}
+}
+
 func TestInputMultilinePaintsFromTop(t *testing.T) {
 	ctx := &mockContext{w: 400, h: 200}
 	n, _ := newInput("t-ml-paint", "描述你想创建的图片", &runtime.Props{Multiline: true})
@@ -321,12 +340,12 @@ func TestInputMultilinePaintsFromTop(t *testing.T) {
 	if d.y != wantY {
 		t.Fatalf("多行输入文字应从顶部内边距开始：got y=%.1f want %.1f", d.y, wantY)
 	}
-	// 编辑区是 14px：字顶到基线约 11.6，高于最小光标，不会被抬起来。
+	// 14px 行高 17.78：光标覆盖完整字身（字顶 → 基线下方的下降部），
+	// 到 17.16 为止；基线在 14.22，下降部约 2.94。
 	cy14, h14 := caretInLine(0, 0, 17.78, 14)
-	if absf(cy14-2.65) > 0.2 || absf((cy14+h14)-14.22) > 0.2 {
-		t.Fatalf("14px 光标应贴着字形：顶 %.2f 底 %.2f，期望顶 2.65 底 14.22", cy14, cy14+h14)
+	if absf(cy14-2.65) > 0.2 || absf((cy14+h14)-17.16) > 0.3 {
+		t.Fatalf("14px 光标应覆盖整个字身：顶 %.2f 底 %.2f，期望顶 2.65 底约 17.16", cy14, cy14+h14)
 	}
-	// 光标从字顶画到基线，不取整段字号（那会伸到基线下面）。
 	_, cy, _, ch, ok := FocusedCaretRect()
 	if !ok {
 		t.Fatal("应能读到光标矩形")
@@ -334,14 +353,20 @@ func TestInputMultilinePaintsFromTop(t *testing.T) {
 	lineH := float32(13) * 1.25
 	baseline := lineH * 0.8
 	inset := (lineH - 13) * 0.7
-	if h := baseline - inset; h < minCaretH && h < 13*0.7 {
-		inset = baseline - minCaretH
+	bottom := baseline + 13*caretDescender
+	if h := bottom - inset; h < minCaretH && h < 13 {
+		inset = bottom - minCaretH
 	}
 	if absf(cy-(wantY+inset)) > 0.51 {
 		t.Fatalf("多行光标应落在字顶：cy=%.2f 期望 %.2f", cy, wantY+inset)
 	}
-	if absf((cy+ch)-(wantY+baseline)) > 0.51 {
-		t.Fatalf("光标底应停在基线：底 %.2f 基线 %.2f", cy+ch, wantY+baseline)
+	if absf((cy+ch)-(wantY+bottom)) > 0.51 {
+		t.Fatalf("光标底应越过基线一个下降部：底 %.2f 期望 %.2f（基线 %.2f）",
+			cy+ch, wantY+bottom, wantY+baseline)
+	}
+	// 光标必须比「只画到基线」高，这是本次修复的实质。
+	if cy+ch <= wantY+baseline {
+		t.Fatalf("光标没有覆盖下降部：底 %.2f 基线 %.2f", cy+ch, wantY+baseline)
 	}
 }
 
@@ -375,7 +400,7 @@ func TestInputSingleLinePaintsCentered(t *testing.T) {
 			got, boxCenter, got-boxCenter)
 	}
 
-	// 光标从字顶画到基线。高度取整段字号时，底会落到基线下面。
+	// 光标覆盖完整字身：字顶 → 基线 + 下降部。只画到基线会明显短于旁边的字。
 	_, cy, _, ch, ok := FocusedCaretRect()
 	if !ok {
 		t.Fatal("应能读到光标矩形")
@@ -383,14 +408,15 @@ func TestInputSingleLinePaintsCentered(t *testing.T) {
 	textY := ctx.draws[0].y
 	baseline := lineH * 0.8
 	inset := (lineH - style.FontSize) * 0.7
-	if h := baseline - inset; h < minCaretH && h < style.FontSize*0.7 {
-		inset = baseline - minCaretH
+	bottom := baseline + style.FontSize*caretDescender
+	if h := bottom - inset; h < minCaretH && h < style.FontSize {
+		inset = bottom - minCaretH
 	}
 	if absf(cy-(textY+inset)) > 0.51 {
 		t.Fatalf("光标应落在字顶：cy=%.2f 期望 %.2f", cy, textY+inset)
 	}
-	if absf((cy+ch)-(textY+baseline)) > 0.51 {
-		t.Fatalf("光标底应停在基线：底 %.2f 基线 %.2f", cy+ch, textY+baseline)
+	if absf((cy+ch)-(textY+bottom)) > 0.51 {
+		t.Fatalf("光标底应越过基线一个下降部：底 %.2f 期望 %.2f", cy+ch, textY+bottom)
 	}
 }
 

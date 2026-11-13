@@ -6,7 +6,6 @@ package components
 
 import (
 	"strings"
-	"unicode/utf8"
 
 	"github.com/goedui/goed/ui/renderer"
 	"github.com/goedui/goed/ui/runtime"
@@ -15,15 +14,18 @@ import (
 
 // drawEditorText 按固定行距逐行画。一次把多行交给后端时，它用自己的行距，
 // 和光标的行距差零点几像素，换行越多差得越多。
-func drawEditorText(ctx renderer.Context, text string, x, y, w, lineH float32, style renderer.TextStyle) {
+func drawEditorText(ctx renderer.Context, text string, x, y, w, h, lineH float32, style renderer.TextStyle) {
 	if text == "" || lineH <= 0 {
 		return
 	}
 	style.LineSpacing = lineH
-	style.NoWrap = true
 	// 一次画完这一段。逐行画会把视口外的行也画上，而且每行一个 DrawText。
 	// 行距已经由 LineSpacing 定死，和光标是同一格。
-	ctx.DrawText(text, x, y, w+8192, lineH*float32(strings.Count(text, "\n")+4), style)
+	if style.NoWrap {
+		ctx.DrawText(text, x, y, w+8192, lineH*float32(strings.Count(text, "\n")+4), style)
+		return
+	}
+	ctx.DrawText(text, x, y, w, h, style)
 }
 
 // clampScrollY 把多行滚动偏移钳进 [0, 内容高度-可视高度]。
@@ -90,6 +92,8 @@ type editPaint struct {
 func paintEditable(ctx renderer.Context, n *runtime.VNode, style renderer.TextStyle, th theme.Theme, st *editState, opt editPaint) {
 	if st != nil {
 		st.viewH = n.H
+		// 密码显示会改变布局文本，切换时必须让旧布局缓存失效。
+		st.setMasked(renderer.AttrBool(n, "password"))
 	}
 	// 以节点上的 multiline attr 为准，和 handleEditKey 同一规则：
 	// 组件类型只决定默认值。Input 加了 multiline 后必须顶对齐，
@@ -97,7 +101,10 @@ func paintEditable(ctx renderer.Context, n *runtime.VNode, style renderer.TextSt
 	if renderer.AttrBool(n, "multiline") {
 		opt.multiline = true
 	}
-	bg := renderer.RGB(255, 255, 255)
+	bg := renderer.ColorFrom(th.Background)
+	if bg.A == 0 {
+		bg = renderer.RGB(255, 255, 255)
+	}
 	if renderer.ColorSet(n.Style.Background) {
 		bg = renderer.ColorFrom(n.Style.Background)
 	}
@@ -124,17 +131,7 @@ func paintEditable(ctx renderer.Context, n *runtime.VNode, style renderer.TextSt
 		renderer.StrokeRounded(ctx, n.X, n.Y, n.W, n.H, r, 1, border)
 	}
 
-	shown := st.value
-	if renderer.AttrBool(n, "password") {
-		shown = strings.Repeat("•", utf8.RuneCountInString(st.value))
-	}
-	body := shown
-	compStart := -1
-	if st.comp != "" {
-		at := clampCaret(shown, st.compAt)
-		body = shown[:at] + st.comp + shown[at:]
-		compStart = at
-	}
+	body := st.displayText()
 	placeholder := renderer.AttrString(n, "placeholder")
 	fg := style.Color
 	empty := body == ""
@@ -176,7 +173,7 @@ func paintEditable(ctx renderer.Context, n *runtime.VNode, style renderer.TextSt
 	if opt.multiline {
 		// 打字 / 移动光标时把光标滚进可视范围。
 		if opt.scrollToCaret && st.scrollSync {
-			caretLine := lay.pointAt(st.caretOffset() + compCursorBytes(st)).line
+			caretLine := lay.pointAt(st.displayCaretOffset()).line
 			caretTop := float32(caretLine) * lay.lineH
 			viewH := n.H - 2*inputTopPad
 			if viewH > 0 {
@@ -198,12 +195,12 @@ func paintEditable(ctx renderer.Context, n *runtime.VNode, style renderer.TextSt
 	offsetX := float32(0)
 	if nowrap {
 		offsetX = st.scrollX
-		if opt.scrollToCaret && st.scrollSync {
-			cp := lay.pointAt(st.caretOffset() + compCursorBytes(st))
+		// 单行框没有纵向跟随，但横向一样要在打字 / 粘贴后把光标露出来；
+		// 否则长文本的逻辑光标在末尾，视口却一直停在开头。
+		if st.scrollSync {
+			cp := lay.pointAt(st.displayCaretOffset())
 			end := lay.pointAtLineEnd(cp.line).x
 			offsetX = revealCaretX(st, cp.x, end, wrapW)
-		}
-		if opt.scrollToCaret && st.scrollSync {
 			st.scrollSync = false
 		}
 		if offsetX < 0 {
@@ -277,22 +274,25 @@ func paintEditable(ctx renderer.Context, n *runtime.VNode, style renderer.TextSt
 		drawH = n.H + lay.lineH
 	}
 	if opt.multiline {
-		drawEditorText(ctx, drawBody, n.X+inputPad-offsetX, drawY, drawW, lay.lineH, textStyle)
+		drawEditorText(ctx, drawBody, n.X+inputPad-offsetX, drawY, drawW, drawH, lay.lineH, textStyle)
 	} else {
 		ctx.DrawText(drawBody, n.X+inputPad-offsetX, drawY, drawW, drawH, textStyle)
 	}
 
-	// 选区高亮：逐可视行画矩形。
+	// 选区高亮：逐可视行画矩形。布局偏移是显示文本偏移，选区是真实值偏移，
+	// 先把两端换算过去，密码全选才能覆盖所有圆点。
 	if from, to, has := st.selRange(); has {
+		dFrom := st.displayValueOffset(from)
+		dTo := st.displayValueOffset(to)
 		sel := renderer.ColorFrom(th.Button)
 		sel.A = 0.30
 		line := -1
 		var lineFrom float32
 		for _, p := range lay.points {
-			if p.off < from {
+			if p.off < dFrom {
 				continue
 			}
-			if p.off > to {
+			if p.off > dTo {
 				break
 			}
 			if p.line != line {
@@ -305,10 +305,7 @@ func paintEditable(ctx renderer.Context, n *runtime.VNode, style renderer.TextSt
 			}
 		}
 		if line >= 0 {
-			endX := lay.pointAt(clampCaret(body, to)).x
-			if compStart >= 0 {
-				endX = lay.pointAt(clampCaret(body, to)).x
-			}
+			endX := lay.pointAt(clampCaret(body, dTo)).x
 			ctx.FillRect(n.X+inputPad+lineFrom-offsetX, textY+float32(line)*lay.lineH,
 				endX-lineFrom, lay.lineH, sel)
 		}
@@ -316,8 +313,9 @@ func paintEditable(ctx renderer.Context, n *runtime.VNode, style renderer.TextSt
 
 	// 组合串下划线。
 	if st.comp != "" {
-		startP := lay.pointAt(st.caretOffset() - len(st.comp))
-		endP := lay.pointAt(st.caretOffset())
+		compAt := clampCaret(st.value, st.compAt)
+		startP := lay.pointAt(st.displayValueOffset(compAt))
+		endP := lay.pointAt(st.displayOffset(compAt + len(st.comp)))
 		underline := renderer.ColorFrom(th.Button)
 		y := textY + float32(startP.line+1)*lay.lineH - 2
 		if startP.line == endP.line {
@@ -329,7 +327,7 @@ func paintEditable(ctx renderer.Context, n *runtime.VNode, style renderer.TextSt
 	}
 
 	// 光标按字形在行盒里的位置下移，不贴行顶、也不在行盒里居中。
-	cp := lay.pointAt(st.caretOffset() + compCursorBytes(st))
+	cp := lay.pointAt(st.displayCaretOffset())
 	cx := n.X + inputPad + cp.x - offsetX
 	cy, caretH := caretInLine(textY, cp.line, lay.lineH, textStyle.FontSize)
 	ctx.PopClip()
@@ -400,10 +398,23 @@ func paintEditorBars(ctx renderer.Context, n *runtime.VNode, th theme.Theme, st 
 	ctx.FillRoundedRect(barX, n.Y+n.H-6, barW, 3.5, 2, col)
 }
 
-// caretInLine 把光标画在字形墨迹上：上沿对齐字顶，下沿停在基线。
+// caretInLine returns the caret rect inside one line box.
 //
-// 基线按行高的 0.8，和 DirectWrite UNIFORM、web canvas 的落笔一致。
-// 字顶大约在行顶下 (lineH-fontSize)*0.7。光标若取整段字号，底会落到基线下面。
+// The caret spans the full glyph body: from the ascender down past the
+// baseline by the descender. Stopping at the baseline — the previous
+// behaviour — left the bar noticeably shorter than the text beside it, because
+// the visible ink of a 13px line starts below the line top and descenders were
+// not covered at all. Windows' own caret, browser inputs and VS Code all cover
+// the descender.
+//
+// Geometry, all relative to the line top:
+//
+//	ascender  = (lineH-fontSize)*0.7 + fontSize*0.75   (ink top of cap/x-height)
+//	baseline  = lineH*0.8                              (DirectWrite UNIFORM)
+//	descender = fontSize*caretDescender
+//
+// The result is clamped to the line box so a tight lineH cannot bleed the bar
+// into the neighbouring row.
 func caretInLine(textY float32, line int, lineH, fontSize float32) (cy, caretH float32) {
 	top := textY + float32(line)*lineH
 	if lineH <= 0 {
@@ -413,27 +424,49 @@ func caretInLine(textY float32, line int, lineH, fontSize float32) (cy, caretH f
 		}
 		return top, h
 	}
+	if fontSize <= 0 {
+		fontSize = lineH * 0.75
+	}
+
+	// Ink top: the gap above the glyph plus the ascender of the em box. The 0.7
+	// factor matches the leading split used by the text backends.
 	inset := float32(0)
-	if lineH > fontSize && fontSize > 0 {
+	if lineH > fontSize {
 		inset = (lineH - fontSize) * 0.7
 	}
 	baseline := lineH * 0.8
 	if baseline <= inset {
 		baseline = lineH
 	}
-	caretH = baseline - inset
-	// 只在光标短到看不清时才抬到最小高度，并且仍停在基线。
-	// 14px 编辑区算出来约 11.6，不能再抬，否则顶会离开字顶。
-	if caretH < minCaretH && caretH < fontSize*0.7 {
-		if baseline < minCaretH {
-			caretH = baseline
+	bottom := baseline + fontSize*caretDescender
+
+	// Only raise the top when the glyph box is cramped; otherwise the caret
+	// would float away from the ink it is supposed to mark.
+	if h := bottom - inset; h < minCaretH && h < fontSize {
+		if bottom < minCaretH {
 			inset = 0
 		} else {
-			caretH = minCaretH
-			inset = baseline - caretH
+			inset = bottom - minCaretH
 		}
 	}
-	return top + inset, caretH
+
+	// Stay inside the line box so adjacent rows never get a stray bar.
+	if inset < 0 {
+		inset = 0
+	}
+	if bottom > lineH {
+		bottom = lineH
+	}
+	if bottom <= inset {
+		bottom = inset + minCaretH
+		if bottom > lineH {
+			bottom = lineH
+			if inset > bottom-minCaretH {
+				inset = bottom - minCaretH
+			}
+		}
+	}
+	return top + inset, bottom - inset
 }
 
 // paintSparseSelection 给大文档的可视行画选区。普通布局按 points 逐行画，
@@ -443,6 +476,9 @@ func paintSparseSelection(ctx renderer.Context, n *runtime.VNode, th theme.Theme
 	if !has || lay == nil || lay.lineH <= 0 {
 		return
 	}
+	// body 是显示文本，选区端点是真实值偏移，先换算。
+	from = st.displayValueOffset(from)
+	to = st.displayValueOffset(to)
 	sel := renderer.ColorFrom(th.Button)
 	sel.A = 0.30
 	lineH := lay.lineH
@@ -499,7 +535,7 @@ func paintLargeEditable(ctx renderer.Context, n *runtime.VNode, style renderer.T
 	// 翻页了，视图却纹丝不动，看起来就像「编辑区翻页没生效」。
 	scroll := st.scrollY
 	if opt.multiline && opt.scrollToCaret && st.scrollSync {
-		caret := clampCaret(body, st.caretOffset()+compCursorBytes(st))
+		caret := clampCaret(body, st.displayCaretOffset())
 		caretTop := float32(lay.lineForOffset(caret)) * lay.lineH
 		viewH := n.H - 2*inputTopPad
 		if viewH > 0 {
@@ -546,7 +582,7 @@ func paintLargeEditable(ctx renderer.Context, n *runtime.VNode, style renderer.T
 
 	offsetX := st.scrollX
 	if opt.scrollToCaret && st.scrollSync {
-		caret := clampCaret(body, st.caretOffset()+compCursorBytes(st))
+		caret := clampCaret(body, st.displayCaretOffset())
 		line := lay.lineForOffset(caret)
 		startOff := lay.lineStart(line)
 		if startOff > caret {
@@ -560,10 +596,10 @@ func paintLargeEditable(ctx renderer.Context, n *runtime.VNode, style renderer.T
 	}
 	textY := n.Y + inputTopPad + float32(startLine)*lineH - scroll
 	ctx.PushClip(n.X+1, n.Y+1, n.W-2, n.H-2)
-	drawEditorText(ctx, body[start:end], n.X+inputPad-offsetX, textY, n.W-2*inputPad, lineH, textStyle)
+	drawEditorText(ctx, body[start:end], n.X+inputPad-offsetX, textY, n.W-2*inputPad, n.H+lineH, lineH, textStyle)
 	paintSparseSelection(ctx, n, th, st, lay, body, textStyle, startLine, endLine, offsetX, scroll)
 
-	caret := clampCaret(body, st.caretOffset())
+	caret := clampCaret(body, st.displayCaretOffset())
 	caretLine := lay.lineForOffset(caret)
 	caretStart := lay.lineStart(caretLine)
 	if caretStart > caret {

@@ -69,6 +69,50 @@ func TestScrollWheelMovesOffset(t *testing.T) {
 	}
 }
 
+// TestScrollStickyHeaderStaysAtTop 滚过表头后，sticky 行钉在视口上沿，普通行继续上移。
+func TestScrollStickyHeaderStaysAtTop(t *testing.T) {
+	ResetScroll("sc-sticky")
+	t.Cleanup(func() { ResetScroll("sc-sticky") })
+	head := runtime.H("hstack", runtime.Props{
+		ID: "sc-head",
+		Style: runtime.Style{
+			Height: 24, Position: runtime.PositionSticky,
+			Background: runtime.RGB(240, 240, 240),
+		},
+	}, runtime.Text("名称"))
+	rows := []*runtime.VNode{head}
+	for i := 0; i < 12; i++ {
+		id := ""
+		if i == 0 {
+			id = "sc-row-0"
+		}
+		rows = append(rows, runtime.H("hstack", runtime.Props{
+			ID:    id,
+			Style: runtime.Style{Height: 24},
+		}, runtime.Text("行")))
+	}
+	n := Scroll(runtime.Props{
+		Style: runtime.Style{Width: 220, Height: 80},
+		ID:    "sc-sticky",
+	}, rows)
+	ctx := &mockContext{w: 300, h: 200}
+	renderer.PaintTree(ctx, []*runtime.VNode{n}, theme.Dark)
+	SetScrollOffset("sc-sticky", 48)
+	renderer.PaintTree(ctx, []*runtime.VNode{n}, theme.Dark)
+
+	got := runtime.FindByID([]*runtime.VNode{n}, "sc-head")
+	row := runtime.FindByID([]*runtime.VNode{n}, "sc-row-0")
+	if got == nil || row == nil {
+		t.Fatal("表头或首行缺失")
+	}
+	if abs32(got.Y-n.Y) > 0.5 {
+		t.Fatalf("sticky 表头应钉在滚动容器上沿：head=%.1f scroll=%.1f", got.Y, n.Y)
+	}
+	if row.Y >= got.Y {
+		t.Fatalf("数据行应滚到表头之上（被盖住）：row=%.1f head=%.1f", row.Y, got.Y)
+	}
+}
+
 func TestScrollPaintDoesNotRemeasureContent(t *testing.T) {
 	ResetScroll("sc-cache")
 	t.Cleanup(func() { ResetScroll("sc-cache") })
@@ -184,4 +228,3 @@ func TestWideBarLeavesGutterForContent(t *testing.T) {
 		t.Fatalf("wide bar should leave a gutter, child.W=%.1f scroll.W=%.1f", child.W, n.W)
 	}
 }
-

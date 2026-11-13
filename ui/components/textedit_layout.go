@@ -55,7 +55,7 @@ const largeLayoutBytes = 256 * 1024
 const largeLineStride = 256
 
 func layoutOf(ctx renderer.Context, st *editState, wrapW float32, style renderer.TextStyle) *inputLayout {
-	return layoutText(ctx, st, st.text(), wrapW, style)
+	return layoutText(ctx, st, st.displayText(), wrapW, style)
 }
 
 func layoutText(ctx renderer.Context, st *editState, text string, wrapW float32, style renderer.TextStyle) *inputLayout {
@@ -74,7 +74,9 @@ func layoutText(ctx renderer.Context, st *editState, text string, wrapW float32,
 	if st == nil {
 		return &inputLayout{text: text, wrapW: wrapW, lineH: editorLineStep(style.FontSize, style.FontSize*1.4)}
 	}
-	LayoutDebug = append(LayoutDebug, wrapW)
+	if len(LayoutDebug) < layoutDebugLimit {
+		LayoutDebug = append(LayoutDebug, wrapW)
+	}
 	_, natural := ctx.MeasureText(" ", wrapW, style)
 	lineH := editorLineStep(style.FontSize, natural)
 	style.LineSpacing = lineH
@@ -533,6 +535,8 @@ func (st *editState) moveToLineCol(line, col int) {
 	if col < 0 {
 		col = 0
 	}
+	// 行列是在显示文本上数的；密码框里一行 N 个圆点仍对应 N 个 rune。
+	text := st.displayText()
 	off := 0
 	if st.layout != nil && st.layout.sparse() {
 		if line > st.layout.maxLine {
@@ -541,7 +545,7 @@ func (st *editState) moveToLineCol(line, col int) {
 		off = st.layout.lineStart(line)
 		end := st.layout.lineEnd(line)
 		for i := 0; i < col; i++ {
-			next := st.nextRuneOffset(off)
+			next := nextRuneIn(text, off)
 			if next == off || next > end {
 				break
 			}
@@ -558,14 +562,14 @@ func (st *editState) moveToLineCol(line, col int) {
 			}
 		}
 		for i := 0; i < col; i++ {
-			next := st.nextRuneOffset(off)
+			next := nextRuneIn(text, off)
 			if next == off || st.layout.pointAt(next).line != line {
 				break
 			}
 			off = next
 		}
 	} else {
-		lines := strings.Split(st.value, "\n")
+		lines := strings.Split(text, "\n")
 		if line >= len(lines) {
 			line = len(lines) - 1
 		}
@@ -578,29 +582,28 @@ func (st *editState) moveToLineCol(line, col int) {
 		}
 		off += len(string(runes[:col]))
 	}
-	st.caret = clampCaret(st.value, off)
+	st.caret = clampCaret(st.value, st.valueOffsetFromDisplay(off))
 	st.anchor = st.caret
 	st.scrollSync = true
 }
 
-func (st *editState) nextRuneOffset(off int) int {
-	if off >= len(st.value) {
+func nextRuneIn(s string, off int) int {
+	if off < 0 || off >= len(s) {
 		return off
 	}
-	_, size := utf8.DecodeRuneInString(st.value[off:])
+	_, size := utf8.DecodeRuneInString(s[off:])
 	return off + size
 }
 
 // caretLineCol 返回光标的 0 基 (行, 列)；列按 rune 计，软换行也算一行。
 func (st *editState) caretLineCol() (line, col int) {
-	at := st.caretOffset()
+	text := st.displayText()
+	at := clampCaret(text, st.displayOffset(st.caretOffset()))
 	if st.layout != nil && st.layout.sparse() {
 		line = st.layout.lineForOffset(at)
-		start := st.layout.lineStart(line)
-		from := clampCaret(st.value, start)
-		to := clampCaret(st.value, at)
-		if to > from {
-			col = utf8.RuneCountInString(st.value[from:to])
+		start := clampCaret(text, st.layout.lineStart(line))
+		if at > start {
+			col = utf8.RuneCountInString(text[start:at])
 		}
 		return line, col
 	}
@@ -614,15 +617,12 @@ func (st *editState) caretLineCol() (line, col int) {
 				break
 			}
 		}
-		from := clampCaret(st.value, start)
-		to := clampCaret(st.value, at)
-		if to > from {
-			col = utf8.RuneCountInString(st.value[from:to])
+		start = clampCaret(text, start)
+		if at > start {
+			col = utf8.RuneCountInString(text[start:at])
 		}
 		return line, col
 	}
-	text := st.value
-	at = clampCaret(text, at)
 	line = strings.Count(text[:at], "\n")
 	start := strings.LastIndexByte(text[:at], '\n') + 1
 	col = utf8.RuneCountInString(text[start:at])

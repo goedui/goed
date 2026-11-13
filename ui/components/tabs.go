@@ -119,7 +119,7 @@ func Tabs(parts ...any) *runtime.VNode {
 				Padding:    pad,
 			},
 			Icon: t.Icon,
-			ID: id, Label: t.Label, Variant: "ghost", Selected: selected, Disabled: disabled,
+			ID:   id, Label: t.Label, Variant: "ghost", Selected: selected, Disabled: disabled,
 			OnClick: func() {
 				if disabled || id == value {
 					return

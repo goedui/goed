@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"syscall"
+	"time"
 	"unsafe"
 )
 
@@ -25,6 +26,21 @@ func stamp(exe, icoPath string) error {
 	if len(entries) == 0 {
 		return fmt.Errorf("%s 里没有图像", icoPath)
 	}
+	// 新生成的 exe 可能被 Defender 或索引服务短暂占用。
+	var lastErr error
+	for attempt := 0; attempt < 5; attempt++ {
+		if attempt > 0 {
+			time.Sleep(time.Duration(100<<uint(attempt-1)) * time.Millisecond)
+		}
+		lastErr = stampOnce(exe, entries)
+		if lastErr == nil {
+			return nil
+		}
+	}
+	return lastErr
+}
+
+func stampOnce(exe string, entries []icoEntry) error {
 	path, err := syscall.UTF16PtrFromString(exe)
 	if err != nil {
 		return err

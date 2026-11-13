@@ -21,9 +21,12 @@ func init() {
 	SaveImage = func(string, string) (string, bool, error) { return "", false, nil }
 	OpenImage = func() (string, bool, error) { return "", false, nil }
 	OpenFile = func(string, string) (string, bool, error) { return "", false, nil }
+	OpenFiles = func(string, string) ([]string, bool, error) { return nil, false, nil }
+	OpenPath = func(string) error { return nil }
 	SaveFile = func(string, string, string, string) (string, bool, error) { return "", false, nil }
 	OpenFolder = func(string) (string, bool, error) { return "", false, nil }
 
+	ClipboardImage = func() ([]byte, bool) { return nil, false }
 	ClipboardGet = web.ClipboardText
 	ClipboardSet = web.SetClipboardText
 

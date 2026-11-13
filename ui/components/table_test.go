@@ -49,6 +49,44 @@ func TestTableAlignsColumnsWithEmptyCells(t *testing.T) {
 	}
 }
 
+// TestTableFlexColumnTakesLeftover 写了 Flex 的列吃掉剩余宽度，没写的列停在最小宽。
+func TestTableFlexColumnTakesLeftover(t *testing.T) {
+	cell := func(id, text string, min, flex float32) *runtime.VNode {
+		return runtime.H("hstack", runtime.Props{
+			ID:    id,
+			Style: runtime.Style{MinWidth: min, Flex: flex, Padding: 4},
+		}, runtime.Text(text))
+	}
+	n := Table(runtime.Props{Style: runtime.Style{Width: 400, Gap: 0}},
+		HStack(
+			cell("h0", "名称", 0, 1),
+			cell("h1", "大小", 80, 0),
+			cell("h2", "日期", 120, 0),
+		),
+		HStack(
+			cell("r0", "a.txt", 0, 1),
+			cell("r1", "12", 80, 0),
+			cell("r2", "2026", 120, 0),
+		),
+	)
+	ctx := &mockContext{w: 500, h: 200}
+	renderer.PaintTree(ctx, []*runtime.VNode{n}, theme.Light)
+	h0 := runtime.FindByID([]*runtime.VNode{n}, "h0")
+	h1 := runtime.FindByID([]*runtime.VNode{n}, "h1")
+	h2 := runtime.FindByID([]*runtime.VNode{n}, "h2")
+	r0 := runtime.FindByID([]*runtime.VNode{n}, "r0")
+	r1 := runtime.FindByID([]*runtime.VNode{n}, "r1")
+	if abs32(h0.X-r0.X) > 0.5 || abs32(h1.X-r1.X) > 0.5 {
+		t.Fatalf("列起点应对齐：header=(%.1f,%.1f) row=(%.1f,%.1f)", h0.X, h1.X, r0.X, r1.X)
+	}
+	if abs32(h1.W-r1.W) > 0.5 || h1.W < 80-0.5 {
+		t.Fatalf("固定列应保持最小宽并对齐：h1=%.1f r1=%.1f", h1.W, r1.W)
+	}
+	if h0.W <= h1.W || abs32((h0.W+h1.W+h2.W)-n.W) > 1 {
+		t.Fatalf("名称列应吃掉剩余宽度：name=%.1f size=%.1f date=%.1f table=%.1f", h0.W, h1.W, h2.W, n.W)
+	}
+}
+
 func abs32(v float32) float32 {
 	if v < 0 {
 		return -v

@@ -164,9 +164,9 @@ const (
 	dwmwaWindowCornerPreference = 33
 	dwmwcpRound                 = 2
 
-	dwriteTextAlignLeading      = 0
-	dwriteTextAlignCenter       = 2
-	dwriteTextAlignTrailing     = 1
+	dwriteTextAlignLeading  = 0
+	dwriteTextAlignCenter   = 2
+	dwriteTextAlignTrailing = 1
 	// DWRITE_PARAGRAPH_ALIGNMENT：0 Near、1 Far、**2 Center**。
 	//
 	// 和上面的 TEXT_ALIGNMENT 不是同一套顺序：TEXT 是 0 Leading、1 Trailing、
@@ -284,8 +284,8 @@ const (
 	// 13 ReleaseFontTable、14 GetGlyphRunOutline、15 GetRecommendedRenderingMode、
 	// 16 GetGdiCompatibleMetrics、17 GetGdiCompatibleGlyphMetrics、
 	// 18 GetDesignGlyphAdvances、19 GetGdiCompatibleGlyphAdvances。
-	idxFaceGlyphCount      = 9
-	idxFaceDesignAdvances  = 18
+	idxFaceGlyphCount     = 9
+	idxFaceDesignAdvances = 18
 
 	idxGetSystemFontCollection = 3
 	idxCreateTextFormat        = 15

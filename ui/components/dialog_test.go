@@ -86,6 +86,16 @@ func TestDialogSwallowsEveryKeyDown(t *testing.T) {
 
 // TestDialogEnterPrefersOnEnter 单独把「closeOnEnter 是死支」钉死：
 // 两边都写的时候，Enter 只该走 onEnter，绝不能再顺手调一次 onClose。
+func TestDialogLetsTextReachFocusedField(t *testing.T) {
+	n := Dialog()
+	if runtime.DispatchKey([]*runtime.VNode{n}, runtime.KeyEvent{Char: '中', Down: true}) {
+		t.Fatal("文字键不该被对话框吃掉")
+	}
+	if runtime.DispatchKey([]*runtime.VNode{n}, runtime.KeyEvent{Key: runtime.KeyBackspace, Down: true}) {
+		t.Fatal("退格不该被对话框吃掉")
+	}
+}
+
 func TestDialogEnterPrefersOnEnter(t *testing.T) {
 	var order []string
 	n := Dialog(runtime.Props{
@@ -572,8 +582,8 @@ func TestPaintDialogMaskAndChildren(t *testing.T) {
 		if got.x != 0 || got.y != 0 || got.w != 1000 || got.h != 800 {
 			t.Fatalf("遮罩矩形 = (%g,%g,%g,%g)，期望 (0,0,1000,800)", got.x, got.y, got.w, got.h)
 		}
-		if want := renderer.RGBA(0, 0, 0, 72); got.c != want {
-			t.Fatalf("遮罩色 = %+v，期望半透明黑 %+v", got.c, want)
+		if want := renderer.RGBA(15, 23, 42, 110); got.c != want {
+			t.Fatalf("遮罩色 = %+v，期望冷灰半透明 %+v", got.c, want)
 		}
 	})
 
@@ -600,8 +610,10 @@ func TestPaintDialogMaskAndChildren(t *testing.T) {
 		if len(ctx.rounds) == 0 {
 			t.Fatal("卡片的圆角底没画")
 		}
-		if ctx.rounds[0].r != dialogRadius {
-			t.Fatalf("卡片圆角 = %g，期望 %g", ctx.rounds[0].r, dialogRadius)
+		// 卡片带投影：mock 画布没有 FillShadowRoundedRect，走效果退化路径
+		// 时 r 会带上模糊余量，这里只钉「圆角不小于设计半径」。
+		if ctx.rounds[0].r < dialogRadius {
+			t.Fatalf("卡片圆角 = %g，期望 >= %g", ctx.rounds[0].r, dialogRadius)
 		}
 		if len(ctx.texts) == 0 || ctx.texts[0] != "标题" {
 			t.Fatalf("画出来的文字 = %v，期望第一行是 标题", ctx.texts)

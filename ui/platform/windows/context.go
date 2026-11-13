@@ -22,8 +22,8 @@ type formatKey struct {
 	weight  int
 	italic  bool
 	align   renderer.Align
-	valign renderer.Align
-	nowrap bool
+	valign  renderer.Align
+	nowrap  bool
 }
 
 // d2dContext 把 Direct2D / DirectWrite 接到 renderer.Context。
@@ -32,24 +32,24 @@ type d2dContext struct {
 	brush com
 	// d2d 是 ID2D1Factory：画圆角图片要它建遮罩几何体（见 DrawImageRounded）。
 	// 为 0 时圆角退化成直角，不会出错。
-	d2d         com
-	dwrite      com
+	d2d    com
+	dwrite com
 	// stroke 是圆头线帽的 ID2D1StrokeStyle，懒创建，跟渲染目标一起释放。
-	stroke com
+	stroke      com
 	locale      []uint16
 	formats     map[formatKey]com
 	formatOrder []formatKey
 	// families 缓存「font-family 列表 -> 挑中的族名」，避免每个新字号都把整条
 	// 列表拿去查一遍系统字体集合（见 pickFamily）。
-	families map[string]string
-	images      map[uint64]cachedBitmap
-	imageOrder  []uint64
-	imageBytes  int
-	shadows     map[shadowKey]com
-	scratch     []byte
-	width       float32
-	height      float32
-	dpi         float32
+	families   map[string]string
+	images     map[uint64]cachedBitmap
+	imageOrder []uint64
+	imageBytes int
+	shadows    map[shadowKey]com
+	scratch    []byte
+	width      float32
+	height     float32
+	dpi        float32
 }
 
 func (c *d2dContext) Width() float32  { return c.width }

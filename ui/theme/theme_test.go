@@ -25,7 +25,7 @@ func TestVSCodeLightPlus(t *testing.T) {
 	if Light.Foreground != hex("#000000") {
 		t.Fatalf("editor.foreground: %+v", Light.Foreground)
 	}
-	if Light.Titlebar != hex("#DDDDDD") {
+	if Light.Titlebar != hex("#FFFFFF") {
 		t.Fatalf("titleBar.activeBackground: %+v", Light.Titlebar)
 	}
 	if Light.Button != hex("#007ACC") {

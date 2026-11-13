@@ -8,13 +8,16 @@ package runtime
 // 「点面板外面」这件事有人接 —— 不然得让 app 层额外通知「刚才那一下点在了空处」，
 // 而 app 层并不知道谁开着菜单。
 func OverlayTag(tag string) bool {
-	return tag == "popover" || tag == "dialog" || tag == "ctxmenu"
+	return tag == "popover" || tag == "dialog" || tag == "ctxmenu" ||
+		tag == "tooltip" || tag == "itemmenu"
 }
 
 // Hit 是布局后的可点击区域，坐标单位 DIP。
 type Hit struct {
 	X, Y, W, H float32
 	OnClick    func()
+	OnEnter    func()
+	OnLeave    func()
 	clips      []hitClip
 }
 
@@ -38,32 +41,40 @@ func collectHitsSplit(nodes []*VNode, base, overlay *[]Hit) {
 }
 
 func collectHitsClipped(nodes []*VNode, base, overlay *[]Hit, clips []hitClip) {
+	// 绝对定位节点延后到本层普通节点之后处理；延后的节点必须交给「单节点访问器」，
+	// 不能再喂回本函数——否则它们会被再次延后，无限递归（书签栏崩溃根因）。
 	var abs []*VNode
 	for _, n := range nodes {
 		if n == nil {
 			continue
 		}
-		if IsAbsolute(n) {
+		// sticky 跟 absolute 一样延后命中：钉在视口上时要盖住下面滚上来的行。
+		if IsAbsolute(n) || IsSticky(n) {
 			abs = append(abs, n)
 			continue
 		}
-		if OverlayTag(n.Tag) {
-			collectHits([]*VNode{n}, overlay)
-			continue
-		}
-		if n.OnClick != nil && n.W > 0 && n.H > 0 && attrEnabled(n) {
-			*base = append(*base, Hit{X: n.X, Y: n.Y, W: n.W, H: n.H, OnClick: n.OnClick, clips: copyClips(clips)})
-		}
-		next := clips
-		if OverflowClips(n.Style, true) || OverflowClips(n.Style, false) {
-			next = append(append([]hitClip{}, clips...), hitClip{n.X, n.Y, n.X + n.W, n.Y + n.H})
-		}
-		if len(n.Children) > 0 {
-			collectHitsClipped(n.Children, base, overlay, next)
-		}
+		visitHitClipped(n, base, overlay, clips)
 	}
-	if len(abs) > 0 {
-		collectHitsClipped(abs, base, overlay, clips)
+	for _, n := range abs {
+		visitHitClipped(n, base, overlay, clips)
+	}
+}
+
+// visitHitClipped 处理单个节点：收集自身 hit，再递归其孩子。
+func visitHitClipped(n *VNode, base, overlay *[]Hit, clips []hitClip) {
+	if OverlayTag(n.Tag) {
+		collectHits([]*VNode{n}, overlay)
+		return
+	}
+	if hitTarget(n) {
+		*base = append(*base, hitOf(n, clips))
+	}
+	next := clips
+	if OverflowClips(n.Style, true) || OverflowClips(n.Style, false) {
+		next = append(append([]hitClip{}, clips...), hitClip{n.X, n.Y, n.X + n.W, n.Y + n.H})
+	}
+	if len(n.Children) > 0 {
+		collectHitsClipped(n.Children, base, overlay, next)
 	}
 }
 
@@ -72,12 +83,40 @@ func collectHits(nodes []*VNode, out *[]Hit) {
 		if n == nil {
 			continue
 		}
-		if n.OnClick != nil && n.W > 0 && n.H > 0 && attrEnabled(n) {
-			*out = append(*out, Hit{X: n.X, Y: n.Y, W: n.W, H: n.H, OnClick: n.OnClick})
+		if hitTarget(n) {
+			*out = append(*out, hitOf(n, nil))
 		}
 		if len(n.Children) > 0 {
 			collectHits(n.Children, out)
 		}
+	}
+}
+
+func hitTarget(n *VNode) bool {
+	return n != nil && n.W > 0 && n.H > 0 && attrEnabled(n) &&
+		(n.OnClick != nil || n.OnEnter != nil || n.OnLeave != nil)
+}
+
+func hitOf(n *VNode, clips []hitClip) Hit {
+	return Hit{
+		X: n.X, Y: n.Y, W: n.W, H: n.H,
+		OnClick: n.OnClick, OnEnter: n.OnEnter, OnLeave: n.OnLeave,
+		clips: copyClips(clips),
+	}
+}
+
+// DispatchHover 在指针进出某个区域时各调用一次，对应 onMouseEnter / onMouseLeave。
+func DispatchHover(hits []Hit, x1, y1, x2, y2 float32) {
+	a := hoverIndex(hits, x1, y1)
+	b := hoverIndex(hits, x2, y2)
+	if a == b {
+		return
+	}
+	if a >= 0 && hits[a].OnLeave != nil {
+		hits[a].OnLeave()
+	}
+	if b >= 0 && hits[b].OnEnter != nil {
+		hits[b].OnEnter()
 	}
 }
 
@@ -114,50 +153,58 @@ func HitNode(nodes []*VNode, x, y float32) *VNode {
 func hitNodeWalk(nodes []*VNode, x, y float32) *VNode {
 	var found *VNode
 	var clips []hitClip
-	var walk func([]*VNode)
+	var visit func(n *VNode)
+	var walk func(list []*VNode)
+	// walk 只负责延后绝对节点，visit 处理单节点；绝对节点不再进 walk，避免无限递归。
 	walk = func(list []*VNode) {
 		var abs []*VNode
 		for _, n := range list {
-			if IsAbsolute(n) {
+			if n == nil {
+				continue
+			}
+			if IsAbsolute(n) || IsSticky(n) {
 				abs = append(abs, n)
 				continue
 			}
-			if n == nil || n.W <= 0 || n.H <= 0 || !attrEnabled(n) {
-				continue
-			}
-			if OverlayTag(n.Tag) && (len(nodes) == 0 || n != nodes[0]) {
-				continue
-			}
-			if x < n.X || y < n.Y || x >= n.X+n.W || y >= n.Y+n.H {
-				continue
-			}
-			if !pointInClips(clips, x, y) {
-				continue
-			}
-			if n.OnClick != nil {
+			visit(n)
+		}
+		for _, n := range abs {
+			visit(n)
+		}
+	}
+	visit = func(n *VNode) {
+		if n.W <= 0 || n.H <= 0 || !attrEnabled(n) {
+			return
+		}
+		if OverlayTag(n.Tag) && (len(nodes) == 0 || n != nodes[0]) {
+			return
+		}
+		if x < n.X || y < n.Y || x >= n.X+n.W || y >= n.Y+n.H {
+			return
+		}
+		if !pointInClips(clips, x, y) {
+			return
+		}
+		if n.OnClick != nil {
+			found = n
+		}
+		if n.Attrs != nil {
+			if _, ok := n.Attrs["onPointerDown"].(func()); ok {
+				found = n
+			} else if _, ok := n.Attrs["onContextMenu"].(func(float32, float32)); ok {
 				found = n
 			}
-			if n.Attrs != nil {
-				if _, ok := n.Attrs["onPointerDown"].(func()); ok {
-					found = n
-				} else if _, ok := n.Attrs["onContextMenu"].(func(float32, float32)); ok {
-					found = n
-				}
-			}
-			pushed := false
-			if OverflowClips(n.Style, true) || OverflowClips(n.Style, false) {
-				clips = append(clips, hitClip{n.X, n.Y, n.X + n.W, n.Y + n.H})
-				pushed = true
-			}
-			if len(n.Children) > 0 {
-				walk(n.Children)
-			}
-			if pushed {
-				clips = clips[:len(clips)-1]
-			}
 		}
-		if len(abs) > 0 {
-			walk(abs)
+		pushed := false
+		if OverflowClips(n.Style, true) || OverflowClips(n.Style, false) {
+			clips = append(clips, hitClip{n.X, n.Y, n.X + n.W, n.Y + n.H})
+			pushed = true
+		}
+		if len(n.Children) > 0 {
+			walk(n.Children)
+		}
+		if pushed {
+			clips = clips[:len(clips)-1]
 		}
 	}
 	walk(nodes)

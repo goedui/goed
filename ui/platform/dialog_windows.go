@@ -15,12 +15,17 @@ func init() {
 	OpenFile = func(title, filter string) (string, bool, error) {
 		return windows.OpenFileDialog(HWND, title, filter)
 	}
+	OpenFiles = func(title, filter string) ([]string, bool, error) {
+		return windows.OpenFilesDialog(HWND, title, filter)
+	}
+	OpenPath = windows.OpenPath
 	SaveFile = func(title, name, filter, ext string) (string, bool, error) {
 		return windows.SaveFileDialog(HWND, title, name, filter, ext)
 	}
 	OpenFolder = func(title string) (string, bool, error) {
 		return windows.OpenFolderDialog(HWND, title)
 	}
+	ClipboardImage = windows.ClipboardImage
 	ClipboardGet = windows.ClipboardText
 	ClipboardSet = windows.SetClipboardText
 }

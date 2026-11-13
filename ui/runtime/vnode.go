@@ -27,28 +27,38 @@ type Props struct {
 
 	ID, Label, Placeholder, Variant, Title, Hint, Icon, Name, Badge   string
 	Message, Path, Open, PopupId, Anchor, AlignX, Shortcut, TextAlign string
+	// Footer 是浮层面板底栏右侧的文案（目前只有 ItemMenu 用）。
+	Footer string
 
 	Disabled, Selected, Password, Compact, Multiline, Readonly       bool
 	Nowrap, Borderless, Dashed, Vertical, CloseOnEnter, Modal, Focus bool
 	WideBar                                                          bool
+	// NoWheelX 禁止滚轮驱动横向滚动，仍可拖动横向滚动条；滚轮会继续交给外层。
+	NoWheelX bool
+	// Ellipsis 单行文本超出节点宽度时尾部省略，通常与 Nowrap 同用。
+	Ellipsis bool
 
-	OnClick       func()
-	Value         any
-	OnChange      any
-	OnInput       func(string)
-	OnSubmit      func(string)
-	OnBlur        func()
-	OnKeyDown     KeyHandler
-	OnClose       any
-	OnOpen        any
-	OnSelect      any
-	OnEmpty       func()
-	OnEnter       func()
-	OnWheel       any
+	OnClick      func()
+	OnMouseEnter func()
+	OnMouseLeave func()
+	Value        any
+	OnChange     any
+	OnInput      func(string)
+	OnSubmit     func(string)
+	OnBlur       func()
+	OnKeyDown    KeyHandler
+	OnClose      any
+	OnOpen       any
+	OnSelect     any
+	OnEmpty      func()
+	// OnFooter is the ItemMenu footer link ("API 配置" / "模式") callback.
+	OnFooter func()
+	OnEnter      func()
+	OnWheel      any
 	// OnScroll 在编辑框纵向滚动偏移变化时回调（滚轮、光标跟随、外部设置都会
 	// 经绘制出口统一通知），供「编辑区滚动 → 预览同步」这类联动使用。
-	OnScroll  func(float32)
-	OnPaint   any
+	OnScroll      func(float32)
+	OnPaint       any
 	OnPointerDown func()
 	// OnContextMenu 在指针按下右键、且按在这个节点上时回调，x/y 是客户区指针位置
 	// （DIP）。
@@ -99,6 +109,8 @@ type VNode struct {
 	Children   []*VNode
 	Component  *ComponentDef
 	OnClick    func()
+	OnEnter    func()
+	OnLeave    func()
 	X, Y, W, H float32
 	resolved   bool
 	parent     *VNode
@@ -184,6 +196,8 @@ func applyProps(n *VNode, p Props) *VNode {
 	n.Props = p
 	n.Style = p.Style
 	n.OnClick = p.OnClick
+	n.OnEnter = p.OnMouseEnter
+	n.OnLeave = p.OnMouseLeave
 	put := func(k string, v any) {
 		if n.Attrs == nil {
 			n.Attrs = Attrs{}
@@ -228,6 +242,7 @@ func applyProps(n *VNode, p Props) *VNode {
 	putStr("alignX", p.AlignX)
 	putStr("shortcut", p.Shortcut)
 	putStr("align", p.TextAlign)
+	putStr("footer", p.Footer)
 
 	putBool("disabled", p.Disabled)
 	putBool("selected", p.Selected)
@@ -236,12 +251,14 @@ func applyProps(n *VNode, p Props) *VNode {
 	putBool("multiline", p.Multiline)
 	putBool("readonly", p.Readonly)
 	putBool("nowrap", p.Nowrap)
+	putBool("ellipsis", p.Ellipsis)
 	putBool("borderless", p.Borderless)
 	putBool("dashed", p.Dashed)
 	putBool("vertical", p.Vertical)
 	putBool("closeOnEnter", p.CloseOnEnter)
 	putBool("focus", p.Focus)
 	putBool("widebar", p.WideBar)
+	putBool("noWheelX", p.NoWheelX)
 	if p.Modal {
 		put("dismiss", false)
 	}
@@ -278,6 +295,9 @@ func applyProps(n *VNode, p Props) *VNode {
 	}
 	if p.OnEmpty != nil {
 		put("onEmpty", p.OnEmpty)
+	}
+	if p.OnFooter != nil {
+		put("onFooter", p.OnFooter)
 	}
 	if p.OnEnter != nil {
 		put("onEnter", p.OnEnter)
@@ -327,6 +347,12 @@ func fallthroughProps(host *VNode, roots []*VNode) {
 	if root.OnClick == nil {
 		root.OnClick = host.OnClick
 	}
+	if root.OnEnter == nil {
+		root.OnEnter = host.OnEnter
+	}
+	if root.OnLeave == nil {
+		root.OnLeave = host.OnLeave
+	}
 }
 
 func mergeStyle(dst *Style, src Style) {
@@ -360,6 +386,8 @@ func mergeStyle(dst *Style, src Style) {
 	if dst.Margin == 0 {
 		dst.Margin = src.Margin
 	}
+	dst.MarginAuto = dst.MarginAuto || src.MarginAuto
+	dst.MarginLeftAuto = dst.MarginLeftAuto || src.MarginLeftAuto
 	if dst.Gap == 0 {
 		dst.Gap = src.Gap
 	}

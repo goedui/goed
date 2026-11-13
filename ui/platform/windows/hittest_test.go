@@ -83,6 +83,21 @@ func TestHitTestClientHitInCaption(t *testing.T) {
 	}
 }
 
+// TestHitTestNoCaptionButtons 钉住 HideCaptionButtons 的效果：btnW=0 时右侧
+// 三块不再归系统，应用声明过的点（例如设置齿轮）回到客户区，空白仍是 HTCAPTION。
+func TestHitTestNoCaptionButtons(t *testing.T) {
+	const w, h, border, title = int32(280), int32(380), int32(8), int32(32)
+	if g := hitTest(w-10, 16, w, h, border, title, 0, false, nil, 96); g != htCaption {
+		t.Fatalf("关掉系统按钮后空白处仍应是 HTCAPTION，得到 %d", g)
+	}
+	always := func(x, y float32) bool { return true }
+	for _, px := range []int32{w - 10, w - 52, w - 92} {
+		if g := hitTest(px, 16, w, h, border, title, 0, false, always, 96); g != htClient {
+			t.Errorf("关掉系统按钮后应用控件应拿到 HTCLIENT（px=%d），得到 %d", px, g)
+		}
+	}
+}
+
 // TestHitTestClientHitDPI hitTest 收的是**物理像素**，而 ClientHitTest 收的是 DIP。
 // 这条用例钉住那个换算：忘了换的话 125% 缩放下「声明过的区域」会整体偏右下，
 // 表现为「标签条只有最左边一小截能点」。

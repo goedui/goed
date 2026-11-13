@@ -44,6 +44,7 @@ var (
 	procGlobalAlloc                = modKernel32.NewProc("GlobalAlloc")
 	procGlobalLock                 = modKernel32.NewProc("GlobalLock")
 	procGlobalUnlock               = modKernel32.NewProc("GlobalUnlock")
+	procGlobalSize                 = modKernel32.NewProc("GlobalSize")
 )
 
 const (

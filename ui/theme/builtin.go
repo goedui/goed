@@ -12,8 +12,8 @@ var Light = Theme{
 	Background: hex("#FFFFFF"),
 	Foreground: hex("#000000"),
 
-	// titleBar.activeBackground / activeForeground
-	Titlebar:           hex("#DDDDDD"),
+	// titleBar.activeBackground / activeForeground。浅色标题栏用纯白，和编辑区连成一片。
+	Titlebar:           hex("#FFFFFF"),
 	TitlebarForeground: hex("#333333"),
 	TitlebarHover:      hex("#CBCBCB"), // toolbar.hoverBackground #B8B8B850 叠在标题栏上
 	TitlebarInactive:   hex("#E7E7E7"),

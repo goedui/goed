@@ -4,10 +4,10 @@ import "testing"
 
 // plainContext 只实现最小 Context（模拟不支持可选接口的后端 / 测试 mock）。
 type plainContext struct {
-	fills    []string // 记录走了哪条填充路径
-	lastC    Color
-	lastR    float32
-	callNum  int
+	fills   []string // 记录走了哪条填充路径
+	lastC   Color
+	lastR   float32
+	callNum int
 }
 
 func (c *plainContext) Width() float32  { return 100 }
@@ -31,10 +31,10 @@ func (c *plainContext) DrawText(text string, x, y, maxW, maxH float32, style Tex
 func (c *plainContext) MeasureText(text string, maxW float32, style TextStyle) (float32, float32) {
 	return float32(len(text)) * 8, 16
 }
-func (c *plainContext) DrawImage(data []byte, x, y, w, h float32)                     {}
-func (c *plainContext) DrawPixels(pix []byte, pw, ph int, x, y, w, h float32)          {}
-func (c *plainContext) PushClip(x, y, w, h float32)                                    {}
-func (c *plainContext) PopClip()                                                       {}
+func (c *plainContext) DrawImage(data []byte, x, y, w, h float32)             {}
+func (c *plainContext) DrawPixels(pix []byte, pw, ph int, x, y, w, h float32) {}
+func (c *plainContext) PushClip(x, y, w, h float32)                           {}
+func (c *plainContext) PopClip()                                              {}
 
 // gradientContext 额外实现可选渐变接口，用于验证「支持则走原生」。
 type gradientContext struct {

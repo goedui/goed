@@ -169,9 +169,9 @@ func TestMenuBarOpensAndRunsAction(t *testing.T) {
 	open := ""
 	build := func() *runtime.VNode {
 		return MenuBar(runtime.Props{
-			Style: runtime.Style{Height: 30, Flex: 1},
-			ID:    "bar",
-			Open:  open,
+			Style:  runtime.Style{Height: 30, Flex: 1},
+			ID:     "bar",
+			Open:   open,
 			OnOpen: func(id string) { open = id },
 			Menus: []Menu{
 				{

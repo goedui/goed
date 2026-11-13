@@ -6,6 +6,11 @@ import "github.com/goedui/goed/ui/platform/windows"
 
 // Run 启动 Direct2D 宿主窗口并进入消息循环。
 func Run(opts Options) error {
+	// 窗口退出后把平台钩子摘干净，下一个宿主（或同一进程里的离屏用例）
+	// 才不会被上一处的闭包缠住。
+	defer Unbind()
+	// 拖出文件走 OLE DoDragDrop。不在这里挂上的话，应用层只能看到 nil。
+	bindDragDrop()
 	return windows.Run(windows.Options{
 		Title:            opts.Title,
 		Width:            opts.Width,
@@ -21,6 +26,8 @@ func Run(opts Options) error {
 		Composition:      opts.Composition,
 		Caret:            opts.Caret,
 		ClientHitTest:    opts.ClientHitTest,
+		NoCaptionButtons: opts.NoCaptionButtons,
+		DropFiles:        opts.DropFiles,
 		Close:            opts.Close,
 		BindRequestFrame: bindRequestFrame,
 		SetWindowTitle: func(title string) {

@@ -26,7 +26,14 @@ func placeFlow(ctx Context, parent *runtime.VNode, nodes []*runtime.VNode, x, y,
 	for _, c := range flow {
 		_, ch := measureNode(ctx, c, w, 0, style, th)
 		m := c.Style.Margin
-		placeChild(ctx, parent, c, x+m, cy+m, w-2*m, ch, style, th)
+		cx := x + m
+		cw := w - 2*m
+		// margin: 0 auto：固定宽度的子节点在内容区里水平居中。
+		if c.Style.MarginAuto && c.Style.Width > 0 && cw > c.Style.Width && c.Style.Align != runtime.Center && c.Style.Align != runtime.End {
+			cx += (cw - c.Style.Width) / 2
+			cw = c.Style.Width
+		}
+		placeChild(ctx, parent, c, cx, cy+m, cw, ch, style, th)
 		cy += ch + 2*m
 	}
 }

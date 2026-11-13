@@ -42,12 +42,20 @@ func PaintTree(ctx Context, nodes []*runtime.VNode, th theme.Theme) {
 }
 
 func paintLaidOut(ctx Context, nodes []*runtime.VNode, style TextStyle, th theme.Theme) {
-	var abs []*runtime.VNode
+	var abs, sticky []*runtime.VNode
 	for _, n := range nodes {
 		if runtime.IsAbsolute(n) {
 			abs = append(abs, n)
 			continue
 		}
+		// sticky 后画，盖住滚到它下面的行。
+		if runtime.IsSticky(n) {
+			sticky = append(sticky, n)
+			continue
+		}
+		paintLaidOutNode(ctx, n, style, th)
+	}
+	for _, n := range sticky {
 		paintLaidOutNode(ctx, n, style, th)
 	}
 	for _, n := range abs {
@@ -77,7 +85,11 @@ func paintLaidOutNode(ctx Context, n *runtime.VNode, style TextStyle, th theme.T
 		if h <= 0 {
 			h = st.FontSize
 		}
-		ctx.DrawText(n.Text, n.X+pad, n.Y+pad, n.W-2*pad, h, st)
+		text := n.Text
+		if AttrBool(n, "ellipsis") {
+			text = ellipsizeText(ctx, text, n.W-2*pad, st)
+		}
+		ctx.DrawText(text, n.X+pad, n.Y+pad, n.W-2*pad, h, st)
 
 	case runtime.KindElement:
 		if widget, ok := Lookup(n.Tag); ok && widget.Paint != nil {
@@ -91,6 +103,35 @@ func paintLaidOutNode(ctx Context, n *runtime.VNode, style TextStyle, th theme.T
 		paintBackground(ctx, n)
 		PaintChildren(ctx, n, st, th)
 	}
+}
+
+// ellipsizeText 把单行文本截到 maxW 内，尾部补省略号。
+func ellipsizeText(ctx Context, text string, maxW float32, style TextStyle) string {
+	if ctx == nil || text == "" || maxW <= 0 {
+		return ""
+	}
+	style.NoWrap = true
+	if w, _ := measureTextCached(ctx, text, 0, style); w <= maxW {
+		return text
+	}
+	runes := []rune(text)
+	lo, hi := 0, len(runes)
+	for lo < hi {
+		mid := (lo + hi + 1) / 2
+		w, _ := measureTextCached(ctx, string(runes[:mid])+"…", 0, style)
+		if w <= maxW {
+			lo = mid
+		} else {
+			hi = mid - 1
+		}
+	}
+	if lo == 0 {
+		if w, _ := measureTextCached(ctx, "…", 0, style); w <= maxW {
+			return "…"
+		}
+		return ""
+	}
+	return string(runes[:lo]) + "…"
 }
 
 func paintOverlays(ctx Context, nodes []*runtime.VNode, style TextStyle, th theme.Theme) {

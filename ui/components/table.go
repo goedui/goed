@@ -17,7 +17,8 @@ func init() {
 const tableMinCol = float32(28)
 
 // Table 按列对齐的网格。子节点是行（hstack / 任意容器），行的子节点是单元格。
-// 列宽取各行该列自然宽的最大值，再按行 flex 把剩余宽度均分；空单元格仍占一列。
+// 列宽取各行该列自然宽的最大值；单元格写了 MinWidth 时作为该列下限。
+// 剩余宽度按单元格 Flex 分给对应列，都没写 Flex 时均分；空单元格仍占一列。
 func Table(parts ...any) *runtime.VNode {
 	return runtime.H("table", parts...)
 }
@@ -72,6 +73,9 @@ func measureTable(ctx renderer.Context, n *runtime.VNode, maxW, maxH float32, st
 			var cw, ch float32
 			if c < len(cells) {
 				cw, ch = renderer.MeasureNode(ctx, cells[c], 0, 0, style, th)
+				if min := cells[c].Style.MinWidth; min > cw {
+					cw = min
+				}
 			}
 			if cw < tableMinCol {
 				cw = tableMinCol
@@ -114,7 +118,7 @@ func measureTable(ctx renderer.Context, n *runtime.VNode, maxW, maxH float32, st
 	if innerW < 0 {
 		innerW = 0
 	}
-	colW = distributeTableCols(colW, gap, innerW)
+	colW = distributeTableCols(colW, tableColFlex(rows, cols), gap, innerW)
 
 	var contentH float32
 	for i, row := range rows {
@@ -160,6 +164,9 @@ func layoutTable(ctx renderer.Context, n *runtime.VNode, x, y, w, h float32, sty
 			var cw, ch float32
 			if c < len(cells) {
 				cw, ch = renderer.MeasureNode(ctx, cells[c], 0, 0, style, th)
+				if min := cells[c].Style.MinWidth; min > cw {
+					cw = min
+				}
 			}
 			if cw < tableMinCol {
 				cw = tableMinCol
@@ -176,7 +183,7 @@ func layoutTable(ctx renderer.Context, n *runtime.VNode, x, y, w, h float32, sty
 		}
 		rowH[i] = rh
 	}
-	colW = distributeTableCols(colW, gap, innerW)
+	colW = distributeTableCols(colW, tableColFlex(rows, cols), gap, innerW)
 
 	cy := y + pad
 	for i, row := range rows {
@@ -203,14 +210,34 @@ func layoutTable(ctx renderer.Context, n *runtime.VNode, x, y, w, h float32, sty
 	}
 }
 
-func distributeTableCols(natural []float32, gap, innerW float32) []float32 {
+// tableColFlex 取每一列在各行里出现过的最大 Flex。都是 0 时均分剩余宽度。
+func tableColFlex(rows []*runtime.VNode, cols int) []float32 {
+	flex := make([]float32, cols)
+	any := false
+	for _, row := range rows {
+		cells := tableCells(row)
+		for c := 0; c < cols && c < len(cells); c++ {
+			if f := cells[c].Style.Flex; f > flex[c] {
+				flex[c] = f
+				any = true
+			}
+		}
+	}
+	if !any {
+		for i := range flex {
+			flex[i] = 1
+		}
+	}
+	return flex
+}
+
+func distributeTableCols(natural, flex []float32, gap, innerW float32) []float32 {
 	n := len(natural)
 	if n == 0 {
 		return natural
 	}
-	flex := make([]float32, n)
-	for i := range flex {
-		flex[i] = 1
+	if len(flex) != n {
+		flex = tableColFlex(nil, n)
 	}
 	widths, _ := renderer.Distribute(natural, flex, gap, innerW)
 	for i := range widths {

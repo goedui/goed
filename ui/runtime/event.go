@@ -21,6 +21,8 @@ const (
 	KeyA         = 0x41
 	KeyC         = 0x43
 	KeyF         = 0x46
+	KeyH         = 0x48
+	KeyJ         = 0x4A
 	KeyL         = 0x4C
 	KeyN         = 0x4E
 	KeyO         = 0x4F
@@ -63,6 +65,13 @@ func DispatchKey(nodes []*VNode, e KeyEvent) bool {
 	// 交叉情况 —— 菜单栏的下拉和右键面板同时开着时，Esc 应该先关右键面板
 	// （它是最后打开的那一层），走 popover 那一支会去关菜单栏。
 	if handle := findHandler(nodes, "ctxmenu"); handle != nil {
+		if handle(e) {
+			return true
+		}
+	}
+	// itemmenu（富内容下拉面板）与 popover 同级：它开着时上下键归面板，
+	// 不能先落到输入框 —— 否则模式切换面板永远收不到 ↑↓。
+	if handle := findHandler(nodes, "itemmenu"); handle != nil {
 		if handle(e) {
 			return true
 		}

@@ -30,7 +30,9 @@ type MenuItem struct {
 	Shortcut string
 	Sep      bool
 	Checked  bool
-	Action   func()
+	// Heading 是分组标题，只显示、不可点。
+	Heading bool
+	Action  func()
 }
 
 func menuIDOf(m Menu) string {
@@ -182,8 +184,12 @@ func MenuBar(parts ...any) *runtime.VNode {
 		labels := make([]string, 0, len(cur.Items))
 		actions := map[string]func(){}
 		for _, it := range cur.Items {
-			if it.Sep {
+			if it.Sep || it.Heading {
 				labels = append(labels, "---")
+				if it.Heading && it.Label != "" {
+					labels = append(labels, it.Label)
+					labels = append(labels, "---")
+				}
 				continue
 			}
 			l := menuItemLabel(it)
@@ -227,12 +233,39 @@ func MenuBar(parts ...any) *runtime.VNode {
 func measureMenuBar(ctx renderer.Context, n *runtime.VNode, maxW, maxH float32, style renderer.TextStyle, th theme.Theme) (float32, float32) {
 	bar := *n
 	bar.Children = visibleMenuBarChildren(n)
-	return measureHStack(ctx, &bar, maxW, maxH, style, th)
+	// 和 layoutMenuBar 同一份让位：三按钮不进流，但菜单项不能量进它的宽度。
+	reserve := captionReserve(n)
+	if reserve > 0 && maxW > reserve {
+		maxW -= reserve
+	}
+	w, h := measureHStack(ctx, &bar, maxW, maxH, style, th)
+	if n.Style.Width <= 0 && n.Style.Flex <= 0 && reserve > 0 {
+		w += reserve
+	}
+	return w, h
+}
+
+func captionReserve(n *runtime.VNode) float32 {
+	var reserve float32
+	if n == nil {
+		return 0
+	}
+	for _, c := range n.Children {
+		if c == nil || !(c.Tag == "caption" || runtime.IsAbsolute(c)) {
+			continue
+		}
+		if c.Style.Width > reserve {
+			reserve = c.Style.Width
+		}
+	}
+	return reserve
 }
 
 func layoutMenuBar(ctx renderer.Context, n *runtime.VNode, x, y, w, h float32, style renderer.TextStyle, th theme.Theme) {
+	n.X, n.Y, n.W, n.H = x, y, w, h
 	var pop *runtime.VNode
 	barKids := make([]*runtime.VNode, 0, len(n.Children))
+	reserve := float32(0)
 	for _, c := range n.Children {
 		if c == nil {
 			continue
@@ -241,12 +274,39 @@ func layoutMenuBar(ctx renderer.Context, n *runtime.VNode, x, y, w, h float32, s
 			pop = c
 			continue
 		}
+		// 系统按钮由自己的 Layout 钉到窗口右缘，不进菜单项的流。
+		// 菜单项要让出它的宽度，否则最后一项落在关闭按钮的命中区里。
+		if c.Tag == "caption" || runtime.IsAbsolute(c) {
+			if c.Style.Width > reserve {
+				reserve = c.Style.Width
+			}
+			continue
+		}
 		barKids = append(barKids, c)
 	}
 	saved := n.Children
 	n.Children = barKids
-	layoutHStack(ctx, n, x, y, w, h, style, th)
+	barW := w
+	if reserve > 0 && barW > reserve {
+		barW -= reserve
+	}
+	layoutHStack(ctx, n, x, y, barW, h, style, th)
+	n.W = w
 	n.Children = saved
+	// caption 不进流，hstack 不会摆它。单独钉到窗口右缘，和宿主命中区对齐。
+	for _, c := range saved {
+		if c == nil || c.Tag != "caption" {
+			continue
+		}
+		cw, ch := c.Style.Width, c.Style.Height
+		if cw <= 0 {
+			cw = float32(3 * renderer.CaptionButtonWidth)
+		}
+		if ch <= 0 {
+			ch = float32(renderer.TitleBarHeight)
+		}
+		renderer.LayoutNode(ctx, c, x, y, cw, ch, style, th)
+	}
 	if pop != nil {
 		// popover 是浮层，上限是画布，不是菜单栏自己的盒子。
 		//
@@ -276,7 +336,7 @@ func paintMenuBar(ctx renderer.Context, n *runtime.VNode, style renderer.TextSty
 func visibleMenuBarChildren(n *runtime.VNode) []*runtime.VNode {
 	out := make([]*runtime.VNode, 0, len(n.Children))
 	for _, c := range n.Children {
-		if c != nil && c.Tag != "popover" {
+		if c != nil && c.Tag != "popover" && c.Tag != "caption" && !runtime.IsAbsolute(c) {
 			out = append(out, c)
 		}
 	}

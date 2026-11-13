@@ -53,8 +53,6 @@ func ColorSet(c runtime.Color) bool { return colorSet(c) }
 // PaintBackground 若节点有 background 则填充。
 func PaintBackground(ctx Context, n *runtime.VNode) { paintBackground(ctx, n) }
 
-
-
 // PointerIn 报告指针是否落在 DIP 矩形内。
 func PointerIn(x, y, w, h float32) bool { return pointerIn(x, y, w, h) }
 

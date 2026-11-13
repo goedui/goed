@@ -34,7 +34,12 @@ type Options struct {
 	Caret func() (x, y, w, h float32, ok bool)
 	// ClientHitTest 报告标题栏区里的某个点是不是应用自己的可点击控件（客户区 DIP）。
 	// 非 nil 时标题栏区不再整条判成 HTCAPTION，见 hitTest。nil = 不占用。
-	ClientHitTest    func(x, y float32) bool
+	ClientHitTest func(x, y float32) bool
+	// NoCaptionButtons 为 true 时顶部条右侧不再保留最小化 / 最大化 / 关闭
+	// 三块系统命中区，见 platform.Options.NoCaptionButtons。
+	NoCaptionButtons bool
+	// DropFiles 报告用户从资源管理器拖进窗口的文件路径。nil 表示不接受拖入。
+	DropFiles func(paths []string)
 	// Close 返回 false 时吞掉这次关闭，窗口留着。nil 表示照常关。
 	Close            func() bool
 	BindRequestFrame func(fn func())
@@ -238,6 +243,11 @@ func (h *host) create() error {
 	if hwnd == 0 {
 		return fmt.Errorf("github.com/goedui/goed/ui: CreateWindowExW 失败: %v", err)
 	}
+	// 只有声明了 DropFiles 才接受拖入：开着 DragAcceptFiles 却没人处理，
+	// 用户拖进来会看到一个「禁止」光标，比直接不接受更让人困惑。
+	if h.opts.DropFiles != nil {
+		EnableFileDrop(hwnd)
+	}
 	h.setHandle(hwnd)
 	hosts[hwnd] = h
 	h.applyDWM()
@@ -362,7 +372,11 @@ func (h *host) hitFromLParam(lParam uintptr) uintptr {
 	if dpi <= 0 {
 		dpi = 96
 	}
-	return hitTest(pt.x, pt.y, int32(h.pixelW), int32(h.pixelH), h.borderPx(), h.titleBarPx(), h.captionBtnPx(), h.maximized, h.opts.ClientHitTest, dpi)
+	btnW := h.captionBtnPx()
+	if h.opts.NoCaptionButtons {
+		btnW = 0
+	}
+	return hitTest(pt.x, pt.y, int32(h.pixelW), int32(h.pixelH), h.borderPx(), h.titleBarPx(), btnW, h.maximized, h.opts.ClientHitTest, dpi)
 }
 
 func (h *host) clientDIP(lParam uintptr) (float32, float32) {
@@ -780,6 +794,12 @@ func (h *host) handle(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr 
 			h.setHover(0)
 			h.setPressed(0)
 		}
+		// 拖出文件时 DoDragDrop 会 ReleaseCapture，松手消息可能落到别的窗口。
+		// MK_LBUTTON 是 wParam 的最低位；以这一帧的按键状态为准，避免按钮
+		// 已经松开还被当成按住。
+		if wParam&0x0001 == 0 {
+			h.pointerDown = false
+		}
 		h.trackClientLeave()
 		x, y := h.clientDIP(lParam)
 		h.emitPointer(x, y, h.pointerDown, false)
@@ -844,6 +864,14 @@ func (h *host) handle(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr 
 		return 0
 	case wmChar:
 		h.emitKey(0, rune(wParam), true)
+		return 0
+	case wmDropFiles:
+		if h.opts.DropFiles != nil {
+			if paths := queryDroppedFiles(wParam); len(paths) > 0 {
+				h.opts.DropFiles(paths)
+				h.requestFrame()
+			}
+		}
 		return 0
 	case wmAppPost:
 		postedMu.Lock()

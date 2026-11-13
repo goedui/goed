@@ -365,7 +365,6 @@ func TestArrowKeysRevealCaretHorizontally(t *testing.T) {
 	}
 }
 
-
 func TestTextareaNowrapKeepsLongLineSingle(t *testing.T) {
 	ctx := &mockContext{w: 500, h: 400}
 	style := renderer.TextStyle{FontSize: 13}
@@ -638,5 +637,45 @@ func TestTextareaSelectionCopy(t *testing.T) {
 	runtime.DispatchKey([]*runtime.VNode{n}, runtime.KeyEvent{Key: runtime.KeyC, Ctrl: true, Down: true})
 	if copied != "你好" {
 		t.Fatalf("复制应是选区内容：%q", copied)
+	}
+}
+
+type paintSpy struct {
+	renderer.Context
+	noWrap []bool
+	widths []float32
+}
+
+func (s *paintSpy) DrawText(text string, x, y, w, h float32, style renderer.TextStyle) {
+	s.noWrap = append(s.noWrap, style.NoWrap)
+	s.widths = append(s.widths, w)
+	s.Context.DrawText(text, x, y, w, h, style)
+}
+
+// A wrapped textarea must paint with wrapping enabled, not just lay out wrapped.
+func TestTextareaWrappedPaintUsesWrapWidth(t *testing.T) {
+	const id = "ta-wrap-paint"
+	ResetInputState(id)
+	t.Cleanup(func() { ResetInputState(id) })
+
+	const width = float32(200)
+	text := strings.Repeat("word ", 80)
+	n := Textarea(runtime.Props{
+		ID:    id,
+		Value: text,
+		Style: runtime.Style{Width: width, Height: 120},
+	})
+	n.X, n.Y, n.W, n.H = 0, 0, width, 120
+	spy := &paintSpy{Context: &mockContext{w: 400, h: 200}}
+	paintTextarea(spy, n, renderer.TextStyle{FontSize: 14}, theme.Light)
+
+	if len(spy.noWrap) == 0 {
+		t.Fatal("wrapped textarea should paint text")
+	}
+	if spy.noWrap[0] {
+		t.Fatal("wrapped textarea painted with NoWrap=true")
+	}
+	if want := width - 2*inputPad; absf(spy.widths[0]-want) > 0.5 {
+		t.Fatalf("paint width = %.1f, want %.1f", spy.widths[0], want)
 	}
 }

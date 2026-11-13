@@ -95,7 +95,7 @@ func layoutLayer(ctx renderer.Context, n *runtime.VNode, x, y, w, h float32, sty
 		if runtime.IsAbsolute(c) {
 			continue
 		}
-		if first || runtime.OverlayTag(c.Tag) {
+		if first || c.Tag == "popover" || c.Tag == "dialog" || c.Tag == "ctxmenu" || c.Tag == "itemmenu" {
 			renderer.LayoutNode(ctx, c, x, y, w, h, style, th)
 			first = false
 			continue

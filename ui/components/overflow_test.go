@@ -97,6 +97,87 @@ func TestOverflowWheelBubblesWhenInnerAtEnd(t *testing.T) {
 	}
 }
 
+func TestOverflowXWheelScrollsWideRow(t *testing.T) {
+	ResetScroll("ov-row")
+	t.Cleanup(func() { ResetScroll("ov-row") })
+	kids := make([]any, 0, 9)
+	kids = append(kids, runtime.Props{
+		ID: "ov-row",
+		Style: runtime.Style{
+			Width: 120, Height: 32, Gap: 4,
+			OverflowX: runtime.OverflowAuto,
+			OverflowY: runtime.OverflowHidden,
+		},
+	})
+	for i := 0; i < 8; i++ {
+		kids = append(kids, runtime.H("box", runtime.Props{Style: runtime.Style{Width: 40, Height: 20}}))
+	}
+	host := HStack(kids...)
+	ctx := &mockContext{w: 400, h: 80}
+	wrap := VStack(runtime.Props{Style: runtime.Style{Width: 160, Height: 40}}, host)
+	renderer.PaintTree(ctx, []*runtime.VNode{wrap}, theme.Light)
+	HandleWheel([]*runtime.VNode{wrap}, host.X+4, host.Y+4, -2)
+	if got := ScrollOffsetAxis("ov-row", true); got <= 0 {
+		t.Fatalf("横向溢出应能滚: off=%v host.W=%.1f", got, host.W)
+	}
+}
+
+func TestOverflowXPaintsHorizontalBarAndDrags(t *testing.T) {
+	ResetScroll("ov-row-bar")
+	t.Cleanup(func() {
+		ResetScroll("ov-row-bar")
+		EndScrollDrag()
+		renderer.SetPointer(0, 0, false)
+	})
+	kids := make([]any, 0, 9)
+	kids = append(kids, runtime.Props{
+		ID: "ov-row-bar",
+		Style: runtime.Style{
+			Width: 120, Height: 32, Gap: 4,
+			OverflowX: runtime.OverflowAuto,
+			OverflowY: runtime.OverflowHidden,
+		},
+	})
+	for i := 0; i < 8; i++ {
+		kids = append(kids, runtime.H("box", runtime.Props{Style: runtime.Style{Width: 40, Height: 20}}))
+	}
+	host := HStack(kids...)
+	wrap := VStack(runtime.Props{Style: runtime.Style{Width: 160, Height: 40}}, host)
+	ctx := &mockContext{w: 400, h: 80}
+	renderer.PaintTree(ctx, []*runtime.VNode{wrap}, theme.Light)
+
+	barX, barW, maxOff, shown := scrollBarGeomH(host)
+	if !shown || maxOff <= 0 || barW <= 0 {
+		t.Fatalf("横向滚动条几何无效：shown=%v maxOff=%.1f barW=%.1f", shown, maxOff, barW)
+	}
+	found := false
+	for _, r := range ctx.rounds {
+		if r.y >= host.Y+host.H-12 && r.h <= 8 && r.w >= 20 && r.x >= host.X {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("横向溢出应在底部画滚动条：rounds=%+v host=%+v", ctx.rounds, host)
+	}
+
+	down, ok := host.Attrs["onPointerDown"].(func())
+	if !ok {
+		t.Fatal("横向 overflow 容器应被补上 onPointerDown")
+	}
+	drag, ok := host.Attrs["onPointerDrag"].(func())
+	if !ok {
+		t.Fatal("横向 overflow 容器应被补上 onPointerDrag")
+	}
+	renderer.SetPointer(barX+barW/2, host.Y+host.H-4, true)
+	down()
+	renderer.SetPointer(host.X+host.W-2, host.Y+host.H-4, true)
+	drag()
+	if got := ScrollOffsetAxis("ov-row-bar", true); got <= 0 {
+		t.Fatalf("拖动横向滚动条应改变偏移：%.1f", got)
+	}
+}
+
 func TestOverflowXOverridesOverflow(t *testing.T) {
 	wide := runtime.H("box", runtime.Props{Style: runtime.Style{Width: 400, Height: 20}})
 	host := HStack(runtime.Props{

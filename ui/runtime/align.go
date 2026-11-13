@@ -2,10 +2,11 @@ package runtime
 
 // 对齐值，对应 CSS align-items / justify-content。写在 Style.Align / Style.Justify 上。
 const (
-	Start   = "start"
-	Center  = "center"
-	End     = "end"
-	Stretch = "stretch"
+	Start        = "start"
+	Center       = "center"
+	End          = "end"
+	Stretch      = "stretch"
+	SpaceBetween = "space-between"
 )
 
 // overflow 值，对应 CSS overflow / overflow-x / overflow-y。
@@ -21,6 +22,8 @@ const (
 const (
 	PositionRelative = "relative"
 	PositionAbsolute = "absolute"
+	// PositionSticky 仍占文档流，滚出最近滚动容器的上沿时钉在视口顶上。
+	PositionSticky = "sticky"
 )
 
 // Inset 标记哪条边写过。值为 0 的边必须置位，否则当成 auto。
@@ -77,6 +80,11 @@ func OverflowScrolls(s Style, horizontal bool) bool {
 // IsAbsolute 报告节点是否脱离文档流。
 func IsAbsolute(n *VNode) bool {
 	return n != nil && n.Style.Position == PositionAbsolute
+}
+
+// IsSticky 报告节点是否在滚动时钉在滚动容器上沿。
+func IsSticky(n *VNode) bool {
+	return n != nil && n.Style.Position == PositionSticky
 }
 
 // IsPositioned 报告节点是否是绝对定位的包含块（relative / absolute）。

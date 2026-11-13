@@ -26,6 +26,10 @@ type Theme struct {
 	// 取用时走 DisabledColors 的内置回退（按 Dark 分两侧）。
 	Disabled           runtime.Color
 	DisabledForeground runtime.Color
+	// Scrollbar 是滚动条滑块色。零值回退到 Foreground 的 18%（旧观感）。
+	// 单列一个字段是因为滑块压在卡片底上：深色主题的 Foreground 是浅灰、
+	// 浅色主题是近黑，两者都能用但都不好看，应用想让它跟品牌色走。
+	Scrollbar runtime.Color
 	FontFamily         string
 	FontSize           float32
 	Padding            float32

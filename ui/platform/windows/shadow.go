@@ -16,6 +16,10 @@ type shadowKey struct {
 	rgba               uint32
 }
 
+// shadowCacheMax 是阴影位图缓存上限。一个界面里「卡片 + 主按钮 + CTA +
+// 徽章 + Logo + 插画」很容易到 7~12 种不同尺寸，上限太小会导致每帧全量重算。
+const shadowCacheMax = 24
+
 func (c *d2dContext) FillShadowRoundedRect(x, y, w, h, r, blur, offsetY float32, body, shadow renderer.Color) {
 	if bmp := c.shadowBitmap(w, h, r, blur, shadow); bmp != 0 {
 		pad := shadowPad(blur)
@@ -28,6 +32,17 @@ func (c *d2dContext) releaseShadows() {
 	for k, bmp := range c.shadows {
 		release(bmp)
 		delete(c.shadows, k)
+	}
+}
+
+// evictOldestShadow 释放一块缓存。key 里没有时间戳，用「尺寸最接近 0」不靠谱；
+// 这里按 map 迭代取第一块 —— 只要上限远大于实际用量，被淘汰的概率很低，
+// 即便淘汰错也只是一次重算，不会像整体清空那样每帧全量重算。
+func (c *d2dContext) evictOldestShadow() {
+	for k, bmp := range c.shadows {
+		release(bmp)
+		delete(c.shadows, k)
+		return
 	}
 }
 
@@ -56,10 +71,15 @@ func (c *d2dContext) shadowBitmap(w, h, r, blur float32, shadow renderer.Color) 
 	if bmp, ok := c.shadows[key]; ok {
 		return bmp
 	}
-	// 窗口拖拽会换尺寸。缓存只留眼前这几块，旧尺寸立刻释放。
-	if len(c.shadows) > 6 {
-		c.releaseShadows()
-		c.shadows = map[shadowKey]com{}
+	// 淘汰最久未用的一块，而不是整体清空。
+	//
+	// 曾经这里是「超过 6 块就全清」：一个页面只要有 7 种不同尺寸的阴影
+	// （两张卡片 + 主按钮 + CTA + 徽章 + Logo + 插画），每次绘制都会把
+	// 前面刚光栅化 + 高斯模糊过的位图全丢掉，于是**每一帧都重算 7 次模糊**，
+	// 表现为开设置对话框、悬停按钮时明显卡顿。上限抬到 24 后，正常界面
+	// 的阴影集合可以常驻；窗口拖拽换尺寸时由 LRU 逐个释放旧尺寸。
+	if len(c.shadows) >= shadowCacheMax {
+		c.evictOldestShadow()
 	}
 	pad := shadowPad(blur)
 	scale := dpi / 96
